@@ -3,10 +3,16 @@ name: test
 on:
   pull_request:
     branches: [ main ]
+  push:
+    branches:
+      - main
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  checks: write
 
 jobs:
   test:
@@ -48,7 +54,9 @@ jobs:
       - name: Install Node modules
         run: npm install
       - name: Build
-        run: sbt test:compile
+        run: |
+          rm -rf ./target/test-reports
+          sbt test:compile
       - name: Run tests
         run: |
           npm run hmr >/dev/null 2>&1 &
@@ -56,3 +64,9 @@ jobs:
         env:
           HEADLESS: true
           STRIPE_TEST_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
+      - name: Publish Test Report
+        id: report
+        uses: mikepenz/action-junit-report@v6
+        if: success() || failure() # always run even if the previous step fails
+        with:
+          report_paths: './target/test-reports/TEST-*.xml'

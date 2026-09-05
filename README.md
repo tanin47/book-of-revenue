@@ -1,7 +1,7 @@
 Book of Revenue
 ================
 
-[![Test](https://github.com/tanin47/book-of-revenue/actions/workflows/test.yml/badge.svg)](https://github.com/tanin47/book-of-revenue/actions/workflows/test.yml)
+[![Test](https://github.com/tanin47/book-of-revenue/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/tanin47/book-of-revenue/actions/workflows/test.yml)
 [![Docker Pulls](https://img.shields.io/docker/pulls/tanin47/book-of-revenue)](https://hub.docker.com/r/tanin47/book-of-revenue)
 
 _Book of Revenue (BOR)_ is an open-source revenue recognition and analytics for Stripe. Built by ex-Stripe engineer.
