@@ -1,0 +1,13 @@
+@()(implicit req: framework.Request[_])
+
+@main("Book of Revenue") {
+  <script src='@routes.AssetsController.versioned("svelte/selectStripeAccount.js")'></script>
+  <link rel="stylesheet" href='@routes.AssetsController.versioned("svelte/selectStripeAccount.css")'>
+  <div id="app"></div>
+
+  <script>
+    new SelectStripeAccount.default({
+      target: document.getElementById('app'),
+    });
+  </script>
+}

@@ -1,0 +1,19 @@
+@import database.models.Customer
+@import play.api.libs.json.JsString
+@(customerId: Option[String], customer: Option[Customer])(implicit req: framework.Request[_])
+
+@main(s"Customer: ${customer.flatMap(_.name).orElse(customer.flatMap(_.email)).orElse(customerId).getOrElse("No name")}") {
+  <script src='@routes.AssetsController.versioned("svelte/dashboard/customerView/deferredRevenue.js")'></script>
+  <link rel="stylesheet" href='@routes.AssetsController.versioned("svelte/dashboard/customerView/deferredRevenue.css")'>
+  <div id="app"></div>
+
+  <script>
+    new DeferredRevenue.default({
+      target: document.getElementById('app'),
+      props: {
+        customerId: @Html(encodeJson(customerId.map(JsString.apply))),
+        customer: @Html(encode(customer))
+      }
+    });
+  </script>
+}

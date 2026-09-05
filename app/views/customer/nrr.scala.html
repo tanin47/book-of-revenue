@@ -1,0 +1,11 @@
+@()(implicit req: framework.Request[_])
+
+@main("Customers") {
+  <script src='@routes.AssetsController.versioned("svelte/dashboard/customer/nrr.js")'></script>
+  <link rel="stylesheet" href='@routes.AssetsController.versioned("svelte/dashboard/customer/nrr.css")'>
+  <div id="app"></div>
+
+  <script>
+    new Nrr.default({target: document.getElementById('app')});
+  </script>
+}

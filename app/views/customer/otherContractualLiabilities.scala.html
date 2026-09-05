@@ -1,0 +1,11 @@
+@()(implicit req: framework.Request[_])
+
+@main("Customers | Deferred revenue") {
+  <script src='@routes.AssetsController.versioned("svelte/dashboard/customer/otherContractualLiabilities.js")'></script>
+  <link rel="stylesheet" href='@routes.AssetsController.versioned("svelte/dashboard/customer/otherContractualLiabilities.css")'>
+  <div id="app"></div>
+
+  <script>
+    new OtherContractualLiabilities.default({target: document.getElementById('app')});
+  </script>
+}

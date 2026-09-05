@@ -1,0 +1,97 @@
+import tanin.play.svelte.SbtSvelte.autoImport.SvelteKeys.svelte
+
+name := """bookofrevenue"""
+organization := "tanin.bookofrevenue"
+
+version := sys.env.getOrElse("GIT_TAG", "0.1.0-beta-dev")
+
+import _root_.scalafix.sbt.{BuildInfo => ScalafixBuildInfo}
+
+lazy val root = (project in file(".")).enablePlugins(PlayScala, SbtWeb, SbtSvelte, SbtPostcss)
+
+Global / onChangedBuildSource := ReloadOnSourceChanges
+
+scalaVersion := "3.3.5"
+semanticdbEnabled := true
+semanticdbVersion := scalafixSemanticdb.revision
+
+scalacOptions ++= Seq(
+  "-feature", // Emit warning and location for usages of features that should be imported explicitly.
+  "-Xfatal-warnings", // Fail if there's a warning.
+  "-Wnonunit-statement", // Don't allow unused non-Unit expression.
+  // Silence warnings on the generated code (e.g. from Play) because we don't have control over it.
+  // Also, silence the warnings on the test code.
+  "-Wconf:msg=.*unused value of type.*&src=(target|test)/.*:silent",
+  "-Wconf:msg=.*unused import.*&src=target/.*:silent",
+//  "-Wunused:imports" // Warn for unused imports.
+)
+
+libraryDependencies ++= Seq(
+  guice,
+  ws,
+  "io.github.tanin47" %% "play3-json-form" % "1.2.0",
+  "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test,
+  "de.leanovate.play-mockws" %% "play-mockws-3-0" % "3.1.0" % Test,
+  "org.playframework" %% "play-slick" % "6.2.0",
+  "org.playframework" %% "play-slick-evolutions" % "6.2.0",
+  "com.github.tminglei" %% "slick-pg" % "0.23.1",
+  "org.postgresql" % "postgresql" % "42.7.7",
+  "org.springframework.security" % "spring-security-crypto" % "6.5.2",
+  ("ch.epfl.scala" %% "scalafix-core" % ScalafixBuildInfo.scalafixVersion).cross(
+    CrossVersion.for3Use2_13
+  ) % ScalafixConfig,
+  "org.jobrunr" % "jobrunr" % "8.1.0",
+  "com.bucket4j" % "bucket4j_jdk17-core" % "8.19.0",
+  "org.bouncycastle" % "bcprov-jdk18on" % "1.85",
+  "org.bouncycastle" % "bcpkix-jdk18on" % "1.85",
+  "org.shredzone.acme4j" % "acme4j-client" % "5.1.0"
+)
+
+ThisBuild / scalafixDependencies += "io.github.tanin47" %% "scalafix-forbidden-symbol" % "1.0.0"
+
+TwirlKeys.templateImports += "framework.Jsonable._"
+
+pipelineStages ++= Seq(postcss, svelte, gzip, digest)
+TestAssets / pipelineStages := Seq(postcss, svelte)
+Assets / pipelineStages := Seq.empty
+
+DigestKeys.indexPath := Some("javascripts/versionedAssets.js")
+DigestKeys.indexWriter ~= { writer => index => s"var VERSIONED_ASSETS = ${writer(index)};" }
+
+postcss / PostcssKeys.binaryFile := (new File(".") / "node_modules" / ".bin" / "postcss").getAbsolutePath
+postcss / PostcssKeys.assetPath := "stylesheets/tailwindbase.css"
+
+svelte / SvelteKeys.webpackBinary := (new File(".") / "node_modules" / ".bin" / "webpack").getAbsolutePath
+svelte / SvelteKeys.webpackConfig := (new File(".") / "webpack.config.js").getAbsolutePath
+
+Test / testOptions += Tests.Argument("-oDF") // Show full stack traces and test case durations.
+
+Compile / packageBin / publishArtifact := false
+Compile / packageDoc / publishArtifact := false
+Compile / packageSrc / publishArtifact := false
+Compile / doc / sources := Seq.empty
+
+Universal / mappings := {
+  val universalMappings = (Universal / mappings).value
+  universalMappings filter {
+    case (_, path) => !path.endsWith("dev_secret.conf") && !path.endsWith("application.conf")
+  }
+}
+
+import com.typesafe.sbt.packager.docker.{DockerChmodType, DockerPermissionStrategy}
+dockerChmodType := DockerChmodType.UserGroupWriteExecute
+dockerPermissionStrategy := DockerPermissionStrategy.CopyChown
+
+Docker / maintainer := "@tanin"
+Docker / packageName := "book-of-revenue"
+Docker / daemonUserUid := None
+Docker / daemonUser := "daemon"
+dockerExposedPorts := Seq(80, 443, 8000)
+dockerUsername := Some("tanin47")
+dockerUpdateLatest := false
+dockerBaseImage := "ibm-semeru-runtimes:open-jdk-25.0.3.0-jdk-jammy"
+
+dockerEntrypoint := dockerEntrypoint.value ++ Seq(
+  "-Dconfig.file=./conf/prod.conf",
+)
+dockerBuildOptions := dockerBuildOptions.value ++ Seq("--platform=linux/amd64")

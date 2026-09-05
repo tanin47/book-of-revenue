@@ -1,0 +1,17 @@
+@import database.models.RichRevRecTransaction
+@(transaction: RichRevRecTransaction)(implicit req: framework.Request[_])
+
+@main(s"Transaction: ${transaction.base.id}") {
+  <script src='@routes.AssetsController.versioned("svelte/dashboard/transaction/view.js")'></script>
+  <link rel="stylesheet" href='@routes.AssetsController.versioned("svelte/dashboard/transaction/view.css")'>
+  <div id="app"></div>
+
+  <script>
+    new View.default({
+      target: document.getElementById('app'),
+      props: {
+        transaction: @Html(encode(transaction))
+      }
+    });
+  </script>
+}

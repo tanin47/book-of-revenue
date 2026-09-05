@@ -1,0 +1,11 @@
+@()(implicit req: framework.Request[_])
+
+@main("Customers") {
+  <script src='@routes.AssetsController.versioned("svelte/dashboard/customer/grr.js")'></script>
+  <link rel="stylesheet" href='@routes.AssetsController.versioned("svelte/dashboard/customer/grr.css")'>
+  <div id="app"></div>
+
+  <script>
+    new Grr.default({target: document.getElementById('app')});
+  </script>
+}

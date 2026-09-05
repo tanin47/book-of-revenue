@@ -1,0 +1,129 @@
+# Routes
+# This file defines all application routes (Higher priority routes first)
+# https://www.playframework.com/documentation/latest/ScalaRouting
+# ~~~~
+
+# An example controller showing a sample home page
+GET         /health-check               controllers.HealthCheckController.index()
+GET         /                           controllers.HomeController.index()
+GET         /privacy-policy             controllers.HomeController.privacy()
+GET         /terms-of-service           controllers.HomeController.tos()
+
+GET         /.well-known/acme-challenge/:token           controllers.Http01ChallengeController.get(token: String)
+
+GET         /onboard                            controllers.HomeController.onboard()
+POST        /onboard/issue-cert                 controllers.HomeController.triggerCertIssuance()
+POST        /onboard/check-cert                 controllers.HomeController.checkCert()
+
+GET         /select-stripe-account                     controllers.AuthController.selectStripeAccount()
+GET         /switch-stripe-account/:accountId/:mode    controllers.AuthController.switchStripeAccount(accountId: String, mode: String)
+
+GET         /settings                              controllers.SettingsController.index()
+POST        /settings/load-stripe-accounts         controllers.SettingsController.loadStripeAccounts()
+POST        /settings/add-new-api-key              controllers.SettingsController.addNewApiKey()
+POST        /settings/remove-api-key               controllers.SettingsController.removeApiKey()
+POST        /settings/load-currencies              controllers.SettingsController.loadCurrencies()
+GET         /settings/switch-currency/:currency    controllers.SettingsController.switchCurrency(currency: String, redirect: Option[String])
+
+GET         /overview                   controllers.DashboardController.index()
+POST        /reprocess-transaction      controllers.DashboardController.reprocessTransaction()
+
+GET         /engine                       controllers.EngineController.index()
+POST        /load-engine                  controllers.EngineController.load()
+POST        /run-engine                   controllers.EngineController.run()
+
+GET         /net-revenue                controllers.NetRevenueController.index()
+POST        /load-net-revenue           controllers.NetRevenueController.load()
+POST        /export-net-revenue         controllers.NetRevenueController.exportCsv()
+
+GET         /deferred-revenue                controllers.DeferredRevenueController.index()
+POST        /load-deferred-revenue           controllers.DeferredRevenueController.load()
+POST        /export-deferred-revenue         controllers.DeferredRevenueController.exportCsv()
+
+GET         /direct-cash-flow                controllers.DirectCashFlowController.index()
+POST        /load-direct-cash-flow           controllers.DirectCashFlowController.load()
+POST        /export-direct-cash-flow         controllers.DirectCashFlowController.exportCsv()
+
+GET         /customer                                                 controllers.CustomerController.index()
+GET         /customer/net-revenue                                     controllers.CustomerController.index()
+POST        /load-customer-list/net-revenue                           controllers.CustomerController.loadNetRevenue()
+POST        /export-customer-list/net-revenue                         controllers.CustomerController.exportNetRevenue()
+GET         /customer/nrr                                             controllers.CustomerController.monthlyNrr()
+POST        /load-customer-list/nrr                                   controllers.CustomerController.loadMonthlyNrr()
+POST        /export-customer-list/nrr                                 controllers.CustomerController.exportMonthlyNrr()
+GET         /customer/grr                                             controllers.CustomerController.monthlyGrr()
+POST        /load-customer-list/grr                                   controllers.CustomerController.loadMonthlyGrr()
+POST        /export-customer-list/grr                                 controllers.CustomerController.exportMonthlyGrr()
+GET         /customer/deferred-revenue                                controllers.CustomerController.deferredRevenue()
+POST        /load-customer-list/deferred-revenue                      controllers.CustomerController.loadDeferredRevenue()
+POST        /export-customer-list/deferred-revenue                    controllers.CustomerController.exportDeferredRevenue()
+GET         /customer/other-contractual-liabilities                   controllers.CustomerController.otherContractualLiabilities()
+POST        /load-customer-list/other-contractual-liabilities         controllers.CustomerController.loadOtherContractualLiabilities()
+POST        /export-customer-list/other-contractual-liabilities       controllers.CustomerController.exportOtherContractualLiabilities()
+
+GET         /product                                                 controllers.ProductController.index()
+GET         /product/net-revenue                                     controllers.ProductController.index()
+POST        /load-product-list/net-revenue                           controllers.ProductController.loadNetRevenue()
+POST        /export-product-list/net-revenue                         controllers.ProductController.exportNetRevenue()
+GET         /product/deferred-revenue                                controllers.ProductController.deferredRevenue()
+POST        /load-product-list/deferred-revenue                      controllers.ProductController.loadDeferredRevenue()
+POST        /export-product-list/deferred-revenue                    controllers.ProductController.exportDeferredRevenue()
+
+POST        /load-transaction-detail       controllers.DashboardController.loadTransactionDetail()
+GET         /customer/transaction/:id      controllers.DashboardController.viewTransaction(id: String)
+GET         /customer/line-item/:lineItemId        controllers.DashboardController.viewLineItem(lineItemId: String)
+
+GET         /customer/:id                                                controllers.CustomerViewController.index(id: String)
+GET         /customer/:id/net-revenue                                    controllers.CustomerViewController.index(id: String)
+POST        /load-transaction-list/net-revenue                           controllers.CustomerViewController.loadNetRevenue()
+POST        /export-transaction-list/net-revenue                         controllers.CustomerViewController.exportNetRevenue()
+GET         /customer/:id/deferred-revenue                               controllers.CustomerViewController.deferredRevenue(id: String)
+POST        /load-transaction-list/deferred-revenue                      controllers.CustomerViewController.loadDeferredRevenue()
+POST        /export-transaction-list/deferred-revenue                    controllers.CustomerViewController.exportDeferredRevenue()
+GET         /customer/:id/other-contractual-liabilities                  controllers.CustomerViewController.otherContractualLiabilities(id: String)
+POST        /load-transaction-list/other-contractual-liabilities         controllers.CustomerViewController.loadOtherContractualLiabilities()
+POST        /export-transaction-list/other-contractual-liabilities       controllers.CustomerViewController.exportOtherContractualLiabilities()
+
+POST        /load-account-summary       controllers.DashboardController.loadAccountSummary()
+POST        /load-line-items            controllers.DashboardController.loadLineItems()
+
+GET         /debits-and-credits              controllers.DashboardController.debitsAndCredits()
+POST        /load-debits-and-credits         controllers.DashboardController.loadDebitsAndCredits()
+POST        /export-debits-and-credits       controllers.DashboardController.exportDebitsAndCredits()
+
+POST        /load-accounts                          controllers.DashboardController.loadAccounts()
+POST        /load-income-statement-accounts         controllers.DashboardController.loadIncomeStatementAccounts()
+POST        /load-balance-sheet-accounts            controllers.DashboardController.loadBalanceSheetAccounts()
+
+GET         /download-file/:id               controllers.ExportedFileController.download(id: String)
+
+GET         /ar-aging                        controllers.DashboardController.arAging()
+POST        /load-ar-aging                   controllers.DashboardController.loadArAging()
+POST        /export-ar-aging                 controllers.DashboardController.exportArAging()
+
+GET         /balance-sheet                controllers.DashboardController.balanceSheet()
+POST        /load-balance-sheet           controllers.DashboardController.loadBalanceSheet()
+POST        /export-balance-sheet         controllers.DashboardController.exportBalanceSheet()
+
+GET         /income-statement                controllers.DashboardController.incomeStatement()
+POST        /load-income-statement           controllers.DashboardController.loadIncomeStatement()
+POST        /export-income-statement         controllers.DashboardController.exportIncomeStatement()
+
+GET         /revenue-waterfall               controllers.DashboardController.revenueWaterfall()
+POST        /load-revenue-waterfall          controllers.DashboardController.loadRevenueWaterfall()
+POST        /export-revenue-waterfall        controllers.DashboardController.exportRevenueWaterfall()
+
+POST        /load-overview                                     controllers.DashboardController.loadOverview()
+
+GET         /login                      controllers.AuthController.login(redirectPath: Option[String])
+POST        /login                      controllers.AuthController.doLogin()
+GET         /logout                     controllers.AuthController.logout()
+GET         /register                   controllers.AuthController.register()
+POST        /register                   controllers.AuthController.doRegister()
+
+GET         /edit                       controllers.UserController.edit()
+POST        /update                     controllers.UserController.update()
+
+GET         /dashboard                    controllers.DashboardController.index()
+
+GET         /assets/*file               controllers.AssetsController.versioned(path="/public", file: Asset)

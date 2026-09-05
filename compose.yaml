@@ -1,0 +1,26 @@
+services:
+  web:
+    image: tanin47/book-of-revenue:GIT_TAG
+    restart: always
+    ports:
+      - 80:80
+      - 443:443
+      - 8000:8000
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=postgres://book_of_revenue_user:${POSTGRES_PASSWORD}@postgres:5432/book_of_revenue_db
+      - APP_DOMAIN
+      - COOKIE_SECRET_KEY
+
+  postgres:
+    image: postgres:18.4
+    restart: always
+    environment:
+      - POSTGRES_PASSWORD
+      - POSTGRES_USER=book_of_revenue_user
+      - POSTGRES_DB=book_of_revenue_db
+    volumes:
+      - ${PERSISTENT_DATA_PATH}/pgdata:/var/lib/postgresql
+    ports:
+      - 5432:5432

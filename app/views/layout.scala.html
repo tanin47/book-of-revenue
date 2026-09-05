@@ -1,0 +1,28 @@
+@(title: String)(content: Html)
+
+<!DOCTYPE html>
+<html lang="en" data-theme="caramellatte">
+  <head>
+    @* Here's where we render the page title `String`. *@
+    <title>@title</title>
+    <link rel="stylesheet" href="@routes.AssetsController.versioned("stylesheets/tailwindbase.css")">
+    <link rel="shortcut icon" type="image/png" href="@routes.AssetsController.versioned("images/logo.png")">
+    <script src='@routes.AssetsController.versioned("javascripts/versionedAssets.js")'></script>
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="@routes.AssetsController.versioned("phosphor-icons/regular/style.css")"
+    />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="@routes.AssetsController.versioned("phosphor-icons/duotone/style.css")"
+    />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="@routes.AssetsController.versioned("phosphor-icons/bold/style.css")"
+    />
+  </head>
+  <body>@content</body>
+</html>

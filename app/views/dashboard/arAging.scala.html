@@ -1,0 +1,11 @@
+@()(implicit req: framework.Request[_])
+
+@main("AR Aging") {
+  <script src='@routes.AssetsController.versioned("svelte/dashboard/arAging/index.js")'></script>
+  <link rel="stylesheet" href='@routes.AssetsController.versioned("svelte/dashboard/arAging/index.css")'>
+  <div id="app"></div>
+
+  <script>
+    new Index.default({target: document.getElementById('app')});
+  </script>
+}

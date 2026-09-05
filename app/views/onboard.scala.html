@@ -1,0 +1,16 @@
+@(appDomain: String)(implicit req: framework.Request[_])
+
+@main("Book of Revenue") {
+  <script src='@routes.AssetsController.versioned("svelte/onboard.js")'></script>
+  <link rel="stylesheet" href='@routes.AssetsController.versioned("svelte/onboard.css")'>
+  <div id="app"></div>
+
+  <script>
+    new Onboard.default({
+      target: document.getElementById('app'),
+      props: {
+        appDomain: @Html(encode(appDomain))
+      }
+    });
+  </script>
+}

@@ -1,0 +1,186 @@
+<script lang="ts">
+import Layout from '../_layout.svelte'
+import {post} from "../../common/form";
+import Table from "../../common/_table.svelte";
+import {type FetchResult, makeSortParam, parseSortParam} from "../../common/table_models";
+import {CURRENT_CURRENCY, formatNumber, LATEST_ACCOUNTING_PERIOD} from "../../common/globals";
+import FilterDialog, {BASE_COLUMNS, type Params} from './_filter_dialog.svelte';
+import Button from "../../common/_button.svelte";
+import {onMount} from "svelte";
+
+let totalNumberOfRows = 0
+
+let params: Params = {
+  periodStart: LATEST_ACCOUNTING_PERIOD,
+  periodEnd: LATEST_ACCOUNTING_PERIOD,
+  groupBy: 'Summary',
+  accounts: [],
+  columns: BASE_COLUMNS.map((column) => column.id),
+  sorts: []
+}
+
+function generateQueryString(): string {
+  const q = new URLSearchParams();
+
+  q.append('start', new Date(params.periodStart).toISOString().substring(0, 10));
+  q.append('end', new Date(params.periodEnd).toISOString().substring(0, 10));
+  q.append('group', params.groupBy);
+
+  if (params.accounts.length > 0) {
+    q.append('accounts', params.accounts.join(','));
+  }
+
+  if (params.columns.length > 0) {
+    q.append('columns', params.columns.join(','));
+  }
+
+  if (params.sorts.length > 0) {
+    q.append('sort', makeSortParam(params.sorts))
+  }
+
+  return q.toString()
+}
+
+function updateParamsFromQueryString() {
+  const queryString = window.location.search;
+  const q = new URLSearchParams(queryString ?? '');
+
+  try {
+    const startParam = q.get('start')
+    params.periodStart = startParam ? new Date(startParam).getTime() : LATEST_ACCOUNTING_PERIOD
+    const endParam = q.get('end')
+    params.periodEnd = endParam ? new Date(endParam).getTime() : LATEST_ACCOUNTING_PERIOD
+
+    params.groupBy = q.get('group') ?? params.groupBy
+
+    params.accounts = (q.get('accounts') ?? '').split(',').map(a => a.trim()).filter((a) => a.length > 0)
+    params.columns = (q.get('columns') ?? '').split(',').map(a => a.trim()).filter((a) => a.length > 0)
+    BASE_COLUMNS.forEach((column) => {
+      if (!params.columns.includes(column.id)) {
+        params.columns.push(column.id)
+      }
+    })
+
+    params.sorts = parseSortParam(q.get('sort'))
+  } catch (e) {
+    console.error('Error parsing query string: ', e, ' queryString: ', queryString, ' q: ', q, '')
+  }
+  params = params
+}
+
+async function load(params: Params, pushHistory: boolean): Promise<FetchResult> {
+  if (pushHistory) {
+    const queryString = generateQueryString()
+    history.pushState({queryString}, '', `${window.location.origin}${window.location.pathname}?${queryString}`)
+  }
+
+  return fetch(params, 0)
+}
+
+async function fetch(params: Params, offset: number): Promise<FetchResult> {
+  return post('/load-debits-and-credits', {
+    params: {...params, currency: CURRENT_CURRENCY},
+    offset
+  })
+}
+
+onMount(() => {
+  function loadPage(pushHistory: boolean) {
+    updateParamsFromQueryString()
+    void table.load(pushHistory)
+  }
+
+  function popstate() {
+    loadPage(false)
+  }
+
+  window.addEventListener('popstate', popstate)
+  loadPage(false)
+
+  return () => {
+    window.removeEventListener('popstate', popstate)
+  }
+})
+
+let isExporting = false
+async function exportCsv(): Promise<void> {
+  isExporting = true;
+
+  try {
+    const json = await post(`/export-debits-and-credits`, {
+      params: {...params, currency: CURRENT_CURRENCY},
+    })
+
+    setTimeout(
+      () => {
+        window.location.href = json.url
+      },
+      100
+    )
+  } catch (e) {
+    // if (e instanceof ValidationError) {
+    //   errors = e.messages
+    // } else {
+    //   errors = ['An unknown error occurred. Please contact your administrator.']
+    // }
+  } finally {
+    isExporting = false;
+  }
+}
+
+let filterDialog: FilterDialog
+let table: Table
+</script>
+
+<FilterDialog
+  bind:this={filterDialog}
+  onSubmitted={async (newParams) => {
+    params = newParams
+    void table.load(true)
+  }}
+/>
+
+<Layout>
+  <div class="flex flex-col w-full h-full grow overflow-hidden">
+    <div class="flex flex-col grow w-full items-stretch overflow-hidden relative">
+      <div class="flex justify-between gap-2 items-stretch bg-base-200 text-sm text-primary border-base-content border-b">
+        <div class="flex items-stretch gap-0">
+          <span class="font-bold py-1 border-e border-base-content px-2 flex items-center">Total: {formatNumber(totalNumberOfRows)}</span>
+          <div class="text-xs px-2 py-1 flex items-center gap-2">
+            <Button class="btn btn-xs btn-secondary shadow-none" onClick={() => {filterDialog.open(params)}}>Filter</Button>
+            <div class="flex items-center gap-1">
+              <span class="font-bold">Period:</span>
+              <span>{new Date(params.periodStart).toISOString().substring(0, 7)} to {new Date(params.periodEnd).toISOString().substring(0, 7)}</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="font-bold">Group by:</span>
+              <span>{params.groupBy}</span>
+            </div>
+            {#if params.accounts.length > 0}
+              <div class="flex items-center gap-1">
+                <span class="font-bold">Only show:</span>
+                <span>{params.accounts.join(', ')}</span>
+              </div>
+            {/if}
+          </div>
+        </div>
+        <div class="flex items-stretch justify-stretch gap-0">
+          <div class="px-2 py-1 flex items-center">
+            <Button class="btn btn-xs btn-info shadow-none" isLoading={isExporting} onClick={() => {void exportCsv()}}>Export</Button>
+          </div>
+        </div>
+      </div>
+      <Table
+        bind:this={table}
+        bind:params={params}
+        bind:totalNumberOfRows={totalNumberOfRows}
+        onFetch={load}
+        onFetchMore={fetch}
+      />
+    </div>
+  </div>
+</Layout>
+
+
+<style lang="scss">
+</style>

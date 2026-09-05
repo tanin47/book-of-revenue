@@ -1,0 +1,20 @@
+# https://www.playframework.com/documentation/latest/ScalaI18N
+
+validation.login.username.error.required = The username is required.
+validation.login.username.error.notExist = The username doesn''t exist.
+validation.login.password.error.required = The password is required.
+validation.login.password.error.invalid = The password is incorrect.
+
+validation.register.error.alreadySetup = Book of Revenue has already been setup. If you want to recover the access, please restart your Book of Revenue instance in the recovery mode.
+validation.register.username.error.required = The username is required.
+validation.register.password.error.required = The password is required.
+validation.register.username.error.alreadyExists = The username has previously been registered. Please login.
+validation.register.stripeApiKey.error.invalid = The Stripe API key is invalid.
+validation.register.stripeApiKey.error.required = The Stripe API key is required.
+validation.register.stripeApiKey.error.accountNotFound = The Stripe API key doesn't correspond to the Stripe account that is currently active.
+
+validation.forgotPassword.email.error.email = The email is invalid.
+validation.forgotPassword.email.error.notExist = The email isn''t registered. Please register.
+
+validation.addNewApiKey.apiKey.error.invalid = The API key is invalid.
+validation.addNewApiKey.apiKey.error.externalError = {0}
