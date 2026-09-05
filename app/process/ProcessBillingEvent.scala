@@ -430,7 +430,6 @@ object ProcessBillingEvent {
   // We need to sanitize the events before processing them. This is to separate intentional human actions from incidental ones caused by the system.
   // As an example, when an invoice is paid, its paid time is set but its payment might be created a second later. We wouldn't want Underpayment in this case.
   private[this] def sanitize(events: Seq[BillingEvent]): Seq[BillingEvent] = {
-    println(s"Sanitizing events")
     val array = events.sorted.toArray
     var index = 0
 
