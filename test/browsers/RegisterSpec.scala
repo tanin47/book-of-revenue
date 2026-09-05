@@ -12,7 +12,7 @@ class RegisterSpec extends Base {
     fill(tid("stripeApiKey"), stripeTestApikey)
     click(tid("submit-button"))
 
-    waitUntil { getPath() == "/select-stripe-account" }
+    waitUntil { getPath() == "/overview" }
 
     var user = await(userService.getByUsername(username)).get
     getLoggedInUserId() should be(Some(user.id))

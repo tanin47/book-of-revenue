@@ -430,6 +430,7 @@ object ProcessBillingEvent {
   // We need to sanitize the events before processing them. This is to separate intentional human actions from incidental ones caused by the system.
   // As an example, when an invoice is paid, its paid time is set but its payment might be created a second later. We wouldn't want Underpayment in this case.
   private[this] def sanitize(events: Seq[BillingEvent]): Seq[BillingEvent] = {
+    println(s"Sanitizing events")
     val array = events.sorted.toArray
     var index = 0
 
@@ -441,7 +442,8 @@ object ProcessBillingEvent {
           nextEvent.foreach {
             // We want to move the MarkPaid event to be after the payment events.
             // We speculate that there might be a race condition that might make the payment events to be after the invoice's paid_at.
-            case p: MoneyMovementBillingEvent if p.contraAccount.isEmpty =>
+            // We only move the payment (not contra) to before the invoice marked paid.
+            case p: MoneyMovementBillingEvent if p.amount.settlement.value >= 0 =>
               if ((p.occurredAt.getEpochSecond - m.occurredAt.getEpochSecond) <= 1) {
                 array(index + 1) = m
                 array(index) = p
