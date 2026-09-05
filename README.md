@@ -1,16 +1,12 @@
 Book of Revenue
 ================
 
+[![Test](https://github.com/tanin47/book-of-revenue/actions/workflows/test.yml/badge.svg)](https://github.com/tanin47/book-of-revenue/actions/workflows/test.yml)
+[![Docker Pulls](https://img.shields.io/docker/pulls/tanin47/book-of-revenue)](https://hub.docker.com/r/tanin47/book-of-revenue)
+
 _Book of Revenue (BOR)_ is an open-source revenue recognition and analytics for Stripe. Built by ex-Stripe engineer.
 
-> [!NOTE]
-> __Do you know how much you earned last month?__
-> 
-> Not payments collected. Not MRR. Under the accounting standards, revenue is earned when the service is delivered, reversed on a refund, and adjusted for dozens of scenarios in between — prorations, upgrades, credit notes, disputes.
-> 
-> _Deploy in minutes and see your correct revenue today._
-
-BOR is a drop-in replacement for Stripe Revenue Recognition and offers revenue analytics that are aligned with the accounting standards.
+It is a drop-in replacement for Stripe Revenue Recognition and offers revenue analytics that are aligned with the accounting standards.
 
 Demo: [demo.bookofrevenue.com](https://demo.bookofrevenue.com) (username: controller, password: 1234)
 
