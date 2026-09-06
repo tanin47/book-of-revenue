@@ -1,12 +1,14 @@
 package browsers
 
 import base.Base.IS_MAC
-import database.models.User
+import database.models.{StripeAccount, User}
 import framework.Instant.MockedTimeChangeListener
 import framework.{BaseController, Instant}
 import org.openqa.selenium.*
 import org.openqa.selenium.chrome.{ChromeDriver, ChromeOptions}
+import org.openqa.selenium.interactions.Actions
 import org.openqa.selenium.logging.{LogType, LoggingPreferences}
+import org.openqa.selenium.support.ui.Select
 import play.api.mvc.{DefaultSessionCookieBaker, Session}
 import play.api.test.TestServer
 
@@ -40,6 +42,9 @@ trait Base extends base.Base with MockedTimeChangeListener {
     application = app
   )
 
+  var user: User = _
+  var stripeAccount: StripeAccount = _
+
   def mockedTimeChanged(time: Instant): Unit = {
     webDriver.executeScript(
       s"""
@@ -54,6 +59,7 @@ trait Base extends base.Base with MockedTimeChangeListener {
          |    return new window.OriginalDate(...args);
          |  }
          |};
+         |Date.now = function() { return ${time.toEpochMilli} };
          |""".stripMargin
     )
   }
@@ -61,6 +67,9 @@ trait Base extends base.Base with MockedTimeChangeListener {
   override def beforeEach(): Unit = {
     Instant.mockedTimeChangedListener = Some(this)
     super.beforeEach()
+
+    user = makeUser()
+    stripeAccount = makeStripeAccount()
 
     go("/")
     webDriver.manage().deleteAllCookies()
@@ -108,7 +117,7 @@ trait Base extends base.Base with MockedTimeChangeListener {
     webDriver.manage().deleteAllCookies()
   }
 
-  def setLoggedInUserCookies(user: User): Unit = {
+  def setLoggedInUserCookies(user: User, stripeAccount: Option[StripeAccount]): Unit = {
     go("/")
 
     val sessionCookieBaker = app.injector.instanceOf[DefaultSessionCookieBaker]
@@ -117,8 +126,14 @@ trait Base extends base.Base with MockedTimeChangeListener {
       sessionCookieBaker.encodeAsCookie(
         new Session(
           Map(
-            BaseController.USER_ID_SESSION_KEY -> user.id
-          )
+            BaseController.USER_ID_SESSION_KEY -> user.id,
+            BaseController.CURRENCY_SESSION_KEY -> "usd"
+          ) ++ stripeAccount.toList.flatMap { stripeAccount =>
+            Seq(
+              BaseController.STRIPE_ACCOUNT_ID_SESSION_KEY -> stripeAccount.id,
+              BaseController.STRIPE_MODE_SESSION_KEY -> (if (stripeAccount.liveModeApiKey.isDefined) { "live" } else { "test" })
+            )
+          }
         )
       )
     )
@@ -132,8 +147,8 @@ trait Base extends base.Base with MockedTimeChangeListener {
   }
 
   // See why: https://tanin.nanakorn.com/set-up-intellij-to-run-scalatests-funspec/
-  def it(name: String, user: => User)(fn: => Any): Unit = it(name) {
-    setLoggedInUserCookies(user)
+  def it(name: String, user: => User, stripeAccount: => StripeAccount = stripeAccount)(fn: => Any): Unit = it(name) {
+    setLoggedInUserCookies(user, Some(stripeAccount))
 
     fn
   }
@@ -157,6 +172,19 @@ trait Base extends base.Base with MockedTimeChangeListener {
   def click(cssSelector: String): Unit = {
     val el = elem(cssSelector)
     el.click()
+  }
+
+  def hover(cssSelector: String, dx: Int, dy: Int): Unit = {
+    val elementToHover = elem(cssSelector)
+    var actions = new Actions(webDriver)
+    actions.moveToElement(elementToHover).moveByOffset(dx, dy).click().perform()
+  }
+
+  def select(cssSelector: String, label: String): Unit = {
+    val el = elem(cssSelector)
+
+    val select = new Select(el)
+    select.selectByVisibleText(label)
   }
 
   private[this] def getElem(cssSelector: String, checkDisplay: Boolean): Option[WebElement] = {
@@ -211,4 +239,25 @@ trait Base extends base.Base with MockedTimeChangeListener {
     elems(Seq(tid("error-panel"), "p").mkString(" ")).map(_.getText.trim) should be(errors)
   }
 
+  def enableCursor(): Unit = {
+    webDriver.executeScript(
+      """
+        |var seleniumCursor = document.createElement('div');
+        |      seleniumCursor.id = 'selenium-visual-cursor';
+        |      seleniumCursor.style.position = 'absolute';
+        |      seleniumCursor.style.zIndex = '99999';
+        |      seleniumCursor.style.width = '12px';
+        |      seleniumCursor.style.height = '12px';
+        |      seleniumCursor.style.background = 'red';
+        |      seleniumCursor.style.borderRadius = '50%';
+        |      seleniumCursor.style.pointerEvents = 'none'; // Prevents it from interfering with clicks
+        |      document.body.appendChild(seleniumCursor);
+        |
+        |      document.addEventListener('mousemove', function(e) {
+        |          seleniumCursor.style.left = e.pageX + 'px';
+        |          seleniumCursor.style.top = e.pageY + 'px';
+        |      });
+        |""".stripMargin
+    )
+  }
 }

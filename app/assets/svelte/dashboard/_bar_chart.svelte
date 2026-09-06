@@ -201,7 +201,8 @@ $: if (canvas) {
           }
         },
         interaction: {
-          mode: 'index',
+          mode: 'nearest',
+          axis: 'x',
           intersect: false
         },
         maintainAspectRatio: false,

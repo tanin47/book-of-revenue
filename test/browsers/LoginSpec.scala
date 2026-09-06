@@ -4,6 +4,10 @@ import controllers.routes
 
 class LoginSpec extends Base {
 
+  before {
+    clearLoggedInUserCookies()
+  }
+
   it("logins correctly") {
     val user = makeUser(password = "1234")
     go(routes.AuthController.login(Some("/")).url)
@@ -12,7 +16,7 @@ class LoginSpec extends Base {
     fill(tid("password"), "1234")
     click(tid("submit-button"))
 
-    waitUntil { getPath() == "/select-stripe-account" }
+    waitUntil { getPath() == "/overview" }
 
     getLoggedInUserId() should be(Some(user.id))
   }

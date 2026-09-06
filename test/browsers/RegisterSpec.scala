@@ -3,6 +3,12 @@ package browsers
 import controllers.routes
 
 class RegisterSpec extends Base {
+  before {
+    clearLoggedInUserCookies()
+    await(userService.deleteById(user.id))
+    await(stripeAccountService.deleteById(stripeAccount.id))
+  }
+
   it("registers and verifies email") {
     val username = "username"
     go(routes.AuthController.register().url)

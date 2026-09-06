@@ -196,10 +196,10 @@ let filterDialog: FilterDialog
   <div class="flex justify-between gap-2 items-stretch bg-base-200 text-sm text-primary border-base-content border-b">
     <div class="flex items-stretch gap-0">
       <div class="text-xs px-2 py-1 flex items-center gap-2">
-        <Button class="btn btn-xs btn-secondary shadow-none" onClick={() => {filterDialog.open(params)}}>Filter</Button>
+        <Button class="btn btn-xs btn-secondary shadow-none" dataTestId="filterButton" onClick={() => {filterDialog.open(params)}}>Filter</Button>
         <div class="flex items-center gap-1">
           <span class="font-bold">Period:</span>
-          <span>{new Date(params.periodStart).toISOString().substring(0, 7)} to {new Date(params.periodEnd).toISOString().substring(0, 7)}</span>
+          <span data-test-id="date">{new Date(params.periodStart).toISOString().substring(0, 7)} to {new Date(params.periodEnd).toISOString().substring(0, 7)}</span>
         </div>
       </div>
     </div>
