@@ -10,7 +10,7 @@ import {
   type Sort
 } from "../../common/table_models";
 import {post} from "../../common/form";
-import {CURRENT_CURRENCY, formatNumber, LATEST_ACCOUNTING_PERIOD} from "../../common/globals";
+import {CURRENT_CURRENCY, formatDate, formatNumber, LATEST_ACCOUNTING_PERIOD} from "../../common/globals";
 import {onMount} from "svelte";
 import Button from "../../common/_button.svelte";
 
@@ -179,7 +179,7 @@ let filterDialog: FilterDialog
             <Button class="btn btn-xs btn-secondary shadow-none" onClick={() => {filterDialog.open(params)}}>Filter</Button>
             <div class="flex items-center gap-1">
               <span class="font-bold">Date:</span>
-              <span>{new Date(params.exclusiveUpUntil).toISOString().substring(0, 10)} (end of day)</span>
+              <span data-test-id="date">{formatDate(params.exclusiveUpUntil)} (end of day)</span>
             </div>
             <div class="flex items-center gap-1">
               <span class="font-bold">Group by:</span>

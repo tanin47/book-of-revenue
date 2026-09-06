@@ -14,7 +14,7 @@ export interface ArAgingDataPoint {
 import BarChart, {type DataPoint} from "./_bar_chart.svelte";
 import {post} from "../common/form";
 import type {Params} from "./_filter_dialog.svelte";
-import {addMonths, getArAgingAuditUrl} from "../common/globals";
+import {addMonths, formatDate, getArAgingAuditUrl} from "../common/globals";
 
 export let params: Params
 export let points: ArAgingDataPoint | null
@@ -31,6 +31,12 @@ $: {
   ]
 }
 
+let arAgingDate = 0
+
+$: {
+  arAgingDate = Math.min(addMonths(params.periodEnd, 1) - 1, new Date().getTime())
+}
+
 </script>
 
  <div class="card-title flex items-baseline justify-between gap-4">
@@ -38,17 +44,17 @@ $: {
     <h2 class="text-ellipsis whitespace-nowrap overflow-hidden">
       AR Aging
     </h2>
-    <span class="text-xs font-normal italic">as of {new Date(params.periodEnd).toISOString().substring(0, 7)}</span>
+    <span class="text-xs font-normal italic">as of {formatDate(arAgingDate)}</span>
   </div>
 </div>
-<div class="py-4">
+<div class="py-4" data-test-id="ar-aging-chart">
   {#if chartPoints.length > 0}
     <BarChart
       points={chartPoints}
       color="red"
       mainLabel="AR"
       valueType="amount"
-      getAuditUrl={(point) => getArAgingAuditUrl(addMonths(params.periodEnd, 1))}
+      getAuditUrl={(point) => getArAgingAuditUrl(arAgingDate)}
     />
   {/if}
 </div>

@@ -9,7 +9,12 @@
 import Button from '../common/_button.svelte'
 import ErrorPanel from '../common/form/_error_panel.svelte'
 import {ValidationError} from '../common/form'
-import {CURRENT_CURRENCY, FIRST_ACCOUNTING_PERIOD, LATEST_ACCOUNTING_PERIOD} from '../common/globals'
+import {
+  CURRENT_CURRENCY,
+  FIRST_ACCOUNTING_PERIOD,
+  formatAccountingPeriod,
+  LATEST_ACCOUNTING_PERIOD
+} from '../common/globals'
 
 export let onSubmitted: (params: Params) => Promise<void>
 
@@ -73,24 +78,24 @@ async function submit(): Promise<void> {
     <div class="flex gap-2 items-center">
       <span class="font-bold">Period:</span>
       <div>
-        <select class="select select-sm" bind:value={periodStart}>
+        <select data-test-id="periodStart" class="select select-sm" bind:value={periodStart}>
           {#each validPeriods as period (period)}
-            <option value={period}>{new Date(period).toISOString().substring(0, 7)}</option>
+            <option value={period}>{formatAccountingPeriod(period)}</option>
           {/each}
         </select>
       </div>
       <div>to</div>
       <div>
-        <select class="select select-sm" bind:value={periodEnd}>
+        <select data-test-id="periodEnd" class="select select-sm" bind:value={periodEnd}>
           {#each validPeriods as period (period)}
-            <option value={period}>{new Date(period).toISOString().substring(0, 7)}</option>
+            <option value={period}>{formatAccountingPeriod(period)}</option>
           {/each}
         </select>
       </div>
     </div>
     <ErrorPanel {errors} />
     <div>
-      <Button class="btn btn-sm btn-primary" {isLoading} onClick={() => {void submit()}}>Apply</Button>
+      <Button class="btn btn-sm btn-primary" dataTestId="submitButton" {isLoading} onClick={() => {void submit()}}>Apply</Button>
     </div>
   </div>
   <div class="modal-backdrop" onclick={() => close(false)}>

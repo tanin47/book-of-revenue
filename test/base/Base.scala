@@ -58,6 +58,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   lazy val ws: FakeOrRealWSClient = app.injector.instanceOf[FakeOrRealWSClient]
 
   lazy val userService: UserService = app.injector.instanceOf[UserService]
+  lazy val stripeAccountService: StripeAccountService = app.injector.instanceOf[StripeAccountService]
 
   lazy val rawStripeObjectService: RawStripeObjectService = app.injector.instanceOf[RawStripeObjectService]
   lazy val invoiceService: InvoiceService = app.injector.instanceOf[InvoiceService]
@@ -166,6 +167,25 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
       )
     )
   }
+
+  def makeStripeAccount(
+    id: String = "",
+    name: String = s"Test account ${genId()}",
+    defaultCurrency: String = "usd",
+    isLivemode: Boolean = true,
+    apiKey: String = s"sk_test_${genId()}"
+  ): StripeAccount = {
+    await(
+      stripeAccountService.upsert(
+        id = id,
+        name = name,
+        defaultCurrency = defaultCurrency,
+        isLivemode = isLivemode,
+        apiKey = apiKey
+      )
+    )
+  }
+
 
   def makeInvoice(
     id: String = s"in_${genId()}",

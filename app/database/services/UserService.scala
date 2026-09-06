@@ -96,4 +96,11 @@ class UserService @Inject() (
       )
     )
   }
+
+  def deleteById(id: String): Future[Unit] = {
+    db.run {
+      query.filter(_.id === id).delete
+    }
+      .map { _ => () }
+  }
 }
