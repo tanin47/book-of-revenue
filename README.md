@@ -174,7 +174,7 @@ __<u>Let BOR manage its own Postgres on persistent disk</u>__
 1. SSH into your machine
 2. Install Docker
 3. Make a new directory for BOR and `cd` into the directory
-4. Run `bash <(curl -sSL https://bookofrevenue.com/install.sh)`
+4. Run `bash <(curl -sSL https://github.com/tanin47/book-of-revenue/releases/download/0.1.0-beta/install.sh)`
 5. Follow the instructions to set up the app domain and the data directory path in the `.env` file
 6. Visit `http://APP_DOMAIN` (not https) to set up an SSL certificate with Let's Encrypt
 7. After setting up the SSL certificate, you will be asked to register with the username, password, and a Stripe API key.
