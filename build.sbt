@@ -30,7 +30,12 @@ libraryDependencies ++= Seq(
   guice,
   ws,
   "io.github.tanin47" %% "play3-json-form" % "1.2.0",
-  "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test,
+  ("org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test)
+    .exclude("org.scalatestplus", "selenium-4-12")
+    .exclude("org.seleniumhq.selenium", "selenium-java")
+    .exclude("org.seleniumhq.selenium", "htmlunit-driver")
+    .exclude("net.sourceforge.htmlunit", "htmlunit-cssparser")
+    ,
   "de.leanovate.play-mockws" %% "play-mockws-3-0" % "3.1.0" % Test,
   "org.playframework" %% "play-slick" % "6.2.0",
   "org.playframework" %% "play-slick-evolutions" % "6.2.0",
@@ -44,7 +49,8 @@ libraryDependencies ++= Seq(
   "com.bucket4j" % "bucket4j_jdk17-core" % "8.19.0",
   "org.bouncycastle" % "bcprov-jdk18on" % "1.85",
   "org.bouncycastle" % "bcpkix-jdk18on" % "1.85",
-  "org.shredzone.acme4j" % "acme4j-client" % "5.1.0"
+  "org.shredzone.acme4j" % "acme4j-client" % "5.1.0",
+  "org.seleniumhq.selenium" % "selenium-java" % "4.48.0" % Test
 )
 
 ThisBuild / scalafixDependencies += "io.github.tanin47" %% "scalafix-forbidden-symbol" % "1.0.0"
