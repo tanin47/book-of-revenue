@@ -1,17 +1,18 @@
 package process
 
-import database.models.{RevRecTransaction, JournalEntry, RichCreditBalanceTransaction, RichInvoiceItem}
+import database.models.{Transaction, JournalEntry}
+import database.models.stripe.{RichStripeCreditBalanceTransaction, RichStripeInvoiceItem}
 import framework.Instant
 import process.Helpers.{amortize, getAccountingPeriod}
 import process.ProcessBillingEvent.{Amount, JournalEntryAmount}
 
 case class ProcessCreditBalanceTransaction(
-  transaction: RevRecTransaction,
-  creditBalanceTransaction: RichCreditBalanceTransaction
-) extends ProcessRevRecTransaction {
+  transaction: Transaction,
+  creditBalanceTransaction: RichStripeCreditBalanceTransaction
+) extends ProcessTransaction {
   lazy val syncedAt: Instant = creditBalanceTransaction.base.syncedAt
   lazy val startedAt: Option[Instant] = Some(creditBalanceTransaction.base.effectiveAt)
-  lazy val status: RevRecTransaction.Status = RevRecTransaction.Status.Transacted
+  lazy val status: Transaction.Status = Transaction.Status.Transacted
 
   def generateRawJournalEntries(): Seq[JournalEntry] = {
     if (
@@ -62,26 +63,26 @@ case class ProcessCreditBalanceTransaction(
       principleAccount = credit,
       stripeAccountId = transaction.stripeAccountId,
       liveMode = transaction.liveMode,
-      revRecTransactionId = transaction.id,
-      revRecTransactionType = transaction.tpe,
-      customerId = creditBalanceTransaction.creditGrant.map(_.customer),
-      invoiceId = creditBalanceTransaction.base.creditInvoiceVoidedInvoiceId,
-      invoiceLineItemId = None,
-      invoiceItemId = None,
-      chargeId = None,
-      balanceTransactionId = None,
-      disputeId = None,
-      refundId = None,
-      customerBalanceTransactionId = None,
-      paymentIntentId = None,
-      paymentRecordId = None,
-      subscriptionId = None,
-      subscriptionItemId = None,
-      creditBalanceTransactionId = Some(creditBalanceTransaction.base.id),
-      creditNoteId = None,
-      creditNoteLineItemId = None,
-      productId = None,
-      priceId = None,
+      transactionId = transaction.id,
+      transactionType = transaction.tpe,
+      stripeCustomerId = creditBalanceTransaction.creditGrant.map(_.customer),
+      stripeInvoiceId = creditBalanceTransaction.base.creditInvoiceVoidedInvoiceId,
+      stripeInvoiceLineItemId = None,
+      stripeInvoiceItemId = None,
+      stripeChargeId = None,
+      stripeBalanceTransactionId = None,
+      stripeDisputeId = None,
+      stripeRefundId = None,
+      stripeCustomerBalanceTransactionId = None,
+      stripePaymentIntentId = None,
+      stripePaymentRecordId = None,
+      stripeSubscriptionId = None,
+      stripeSubscriptionItemId = None,
+      stripeCreditBalanceTransactionId = Some(creditBalanceTransaction.base.id),
+      stripeCreditNoteId = None,
+      stripeCreditNoteLineItemId = None,
+      stripeProductId = None,
+      stripePriceId = None,
       createdAt = syncedAt
     ))
   }

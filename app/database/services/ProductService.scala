@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{Product, ProductTable}
+import database.models.stripe.{StripeProduct, StripeProductTable}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -28,10 +28,10 @@ class ProductService @Inject() (
   import ProductService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[ProductTable] = TableQuery[ProductTable]
+  val query: TableQuery[StripeProductTable] = TableQuery[StripeProductTable]
 
-  def create(data: CreateData): Future[Product] = {
-    val entity = Product(
+  def create(data: CreateData): Future[StripeProduct] = {
+    val entity = StripeProduct(
       stripeAccountId = data.stripeAccountId,
       liveMode = data.liveMode,
       id = data.id,
@@ -56,7 +56,7 @@ class ProductService @Inject() (
     }
   }
 
-  def update(entity: Product): Future[Unit] = {
+  def update(entity: StripeProduct): Future[Unit] = {
     db
       .run {
         query.filter(_.id === entity.id).update(entity)
@@ -64,19 +64,19 @@ class ProductService @Inject() (
       .map(_ => ())
   }
 
-  def getAll(): Future[Seq[Product]] = {
+  def getAll(): Future[Seq[StripeProduct]] = {
     db.run {
       query.result
     }
   }
 
-  def getById(id: String): Future[Option[Product]] = {
+  def getById(id: String): Future[Option[StripeProduct]] = {
     db.run {
       query.filter(_.id === id).result.headOption
     }
   }
 
-  def getByIds(ids: Set[String]): Future[Seq[Product]] = {
+  def getByIds(ids: Set[String]): Future[Seq[StripeProduct]] = {
     db.run {
       query.filter(_.id.inSet(ids)).result
     }

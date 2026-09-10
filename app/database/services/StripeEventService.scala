@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{StripeEvent, StripeEventTable}
+import database.models.stripe.{StripeEvent, StripeEventTable}
 import framework.{Instant, PlayConfig}
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import slick.jdbc.JdbcProfile
@@ -43,7 +43,7 @@ class StripeEventService @Inject() (
 
     val action = SimpleDBIO[Unit] { ctx =>
       val conn = ctx.connection
-      val stmt = conn.prepareStatement("INSERT INTO stripe_event (id, stripe_account_id, live_mode, raw_json, processed_count, created_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING")
+      val stmt = conn.prepareStatement("INSERT INTO stripe.event (id, stripe_account_id, live_mode, raw_json, processed_count, created_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING")
 
       entities.foreach { entity =>
         stmt.setString(1, entity.id)
@@ -88,7 +88,7 @@ class StripeEventService @Inject() (
 
   def incrementProcessedCount(id: String): Future[Unit] = {
     db
-      .run { sqlu"UPDATE stripe_event SET processed_count = processed_count + 1 WHERE id = $id" }
+      .run { sqlu"UPDATE stripe.event SET processed_count = processed_count + 1 WHERE id = $id" }
       .map { _ => () }
   }
 }

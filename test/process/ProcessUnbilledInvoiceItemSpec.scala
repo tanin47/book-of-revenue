@@ -13,7 +13,7 @@ class ProcessUnbilledInvoiceItemSpec extends Base {
     val now = Instant.now()
 
     val transaction = makeProcessUnbilledInvoiceItem(
-      transaction = makeRevRecTransaction(tpe = RevRecTransaction.Type.UnbilledInvoiceItem),
+      transaction = makeTransaction(tpe = Transaction.Type.UnbilledInvoiceItem),
       invoiceItem = makeRichInvoiceItem(base = makeInvoiceItem(
         amount = 1200,
         currency = "usd",
@@ -41,7 +41,7 @@ class ProcessUnbilledInvoiceItemSpec extends Base {
     val now = Instant.now()
 
     val transaction = makeProcessUnbilledInvoiceItem(
-      transaction = makeRevRecTransaction(tpe = RevRecTransaction.Type.UnbilledInvoiceItem),
+      transaction = makeTransaction(tpe = Transaction.Type.UnbilledInvoiceItem),
       invoiceItem = makeRichInvoiceItem(
         base = makeInvoiceItem(
           amount = 1000,

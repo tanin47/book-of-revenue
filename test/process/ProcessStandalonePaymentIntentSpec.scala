@@ -27,7 +27,7 @@ class ProcessStandalonePaymentIntentSpec extends Base {
     val pi = makePaymentIntent(id = "pi_1")
 
     val transaction = makeProcessStandalonePaymentIntent(
-      transaction = makeRevRecTransaction(id = pi.id, tpe = RevRecTransaction.Type.StandalonePaymentIntent),
+      transaction = makeTransaction(id = pi.id, tpe = Transaction.Type.StandalonePaymentIntent),
       paymentIntent = makeRichPaymentIntent(base = pi, charge = Some(makeRichCharge(base = charge, balanceTransaction = Some(bt)))),
     )
 
@@ -58,7 +58,7 @@ class ProcessStandalonePaymentIntentSpec extends Base {
     val pi = makePaymentIntent(id = "pi_1")
 
     val transaction = makeProcessStandalonePaymentIntent(
-      transaction = makeRevRecTransaction(id = pi.id, tpe = RevRecTransaction.Type.StandalonePaymentIntent),
+      transaction = makeTransaction(id = pi.id, tpe = Transaction.Type.StandalonePaymentIntent),
       paymentIntent = makeRichPaymentIntent(base = pi, charge = Some(makeRichCharge(base = charge, balanceTransaction = Some(bt)))),
     )
 
@@ -92,7 +92,7 @@ class ProcessStandalonePaymentIntentSpec extends Base {
     val pi = makePaymentIntent(id = "pi_1")
 
     val transaction = makeProcessStandalonePaymentIntent(
-      transaction = makeRevRecTransaction(id = pi.id, tpe = RevRecTransaction.Type.StandalonePaymentIntent),
+      transaction = makeTransaction(id = pi.id, tpe = Transaction.Type.StandalonePaymentIntent),
       paymentIntent = makeRichPaymentIntent(base = pi, charge = Some(makeRichCharge(base = charge, balanceTransaction = Some(bt)))),
     )
 
@@ -150,7 +150,7 @@ class ProcessStandalonePaymentIntentSpec extends Base {
     // Stage 1: only the refund has settled so far. We paid out 1300 eur against 1200 eur
     // received, leaving Cash at -100 eur and a 100 eur fx loss.
     val afterRefund = makeProcessStandalonePaymentIntent(
-      transaction = makeRevRecTransaction(id = pi.id, tpe = RevRecTransaction.Type.StandalonePaymentIntent),
+      transaction = makeTransaction(id = pi.id, tpe = Transaction.Type.StandalonePaymentIntent),
       paymentIntent = makeRichPaymentIntent(
         base = pi,
         charge = Some(makeRichCharge(
@@ -180,7 +180,7 @@ class ProcessStandalonePaymentIntentSpec extends Base {
     )
 
     val afterFailure = makeProcessStandalonePaymentIntent(
-      transaction = makeRevRecTransaction(id = pi.id, tpe = RevRecTransaction.Type.StandalonePaymentIntent),
+      transaction = makeTransaction(id = pi.id, tpe = Transaction.Type.StandalonePaymentIntent),
       paymentIntent = makeRichPaymentIntent(
         base = pi,
         charge = Some(makeRichCharge(
@@ -222,7 +222,7 @@ class ProcessStandalonePaymentIntentSpec extends Base {
     )
 
     val afterReRefund = makeProcessStandalonePaymentIntent(
-      transaction = makeRevRecTransaction(id = pi.id, tpe = RevRecTransaction.Type.StandalonePaymentIntent),
+      transaction = makeTransaction(id = pi.id, tpe = Transaction.Type.StandalonePaymentIntent),
       paymentIntent = makeRichPaymentIntent(
         base = pi,
         charge = Some(makeRichCharge(
@@ -293,7 +293,7 @@ class ProcessStandalonePaymentIntentSpec extends Base {
     // Stage 1: the dispute has only taken funds so far. We paid out 1300 eur against 1200 eur
     // received, leaving Cash at -100 eur and a 100 eur fx loss.
     val afterDispute = makeProcessStandalonePaymentIntent(
-      transaction = makeRevRecTransaction(id = pi.id, tpe = RevRecTransaction.Type.StandalonePaymentIntent),
+      transaction = makeTransaction(id = pi.id, tpe = Transaction.Type.StandalonePaymentIntent),
       paymentIntent = makeRichPaymentIntent(
         base = pi,
         charge = Some(makeRichCharge(
@@ -323,7 +323,7 @@ class ProcessStandalonePaymentIntentSpec extends Base {
     )
 
     val afterWon = makeProcessStandalonePaymentIntent(
-      transaction = makeRevRecTransaction(id = pi.id, tpe = RevRecTransaction.Type.StandalonePaymentIntent),
+      transaction = makeTransaction(id = pi.id, tpe = Transaction.Type.StandalonePaymentIntent),
       paymentIntent = makeRichPaymentIntent(
         base = pi,
         charge = Some(makeRichCharge(
@@ -364,7 +364,7 @@ class ProcessStandalonePaymentIntentSpec extends Base {
     )
 
     val afterReDispute = makeProcessStandalonePaymentIntent(
-      transaction = makeRevRecTransaction(id = pi.id, tpe = RevRecTransaction.Type.StandalonePaymentIntent),
+      transaction = makeTransaction(id = pi.id, tpe = Transaction.Type.StandalonePaymentIntent),
       paymentIntent = makeRichPaymentIntent(
         base = pi,
         charge = Some(makeRichCharge(
@@ -393,7 +393,7 @@ class ProcessStandalonePaymentIntentSpec extends Base {
     val pi = makePaymentIntent(id = "pi_1")
 
     val transaction = makeProcessStandalonePaymentIntent(
-      transaction = makeRevRecTransaction(id = pi.id, tpe = RevRecTransaction.Type.StandalonePaymentIntent),
+      transaction = makeTransaction(id = pi.id, tpe = Transaction.Type.StandalonePaymentIntent),
       paymentIntent = makeRichPaymentIntent(base = pi, charge = None),
     )
 

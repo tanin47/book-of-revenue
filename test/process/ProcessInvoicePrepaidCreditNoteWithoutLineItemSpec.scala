@@ -46,7 +46,7 @@ class ProcessInvoicePrepaidCreditNoteWithoutLineItemSpec extends Base {
     )
 
     val transaction = makeProcessInvoice(
-      transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+      transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
       invoice = makeRichInvoice(
         base = invoice,
         lineItems = Seq(lineItem),
@@ -121,7 +121,7 @@ class ProcessInvoicePrepaidCreditNoteWithoutLineItemSpec extends Base {
     )
 
     val transaction = makeProcessInvoice(
-      transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+      transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
       invoice = makeRichInvoice(
         base = invoice,
         lineItems = Seq(lineItem),

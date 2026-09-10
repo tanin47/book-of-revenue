@@ -29,8 +29,8 @@ object DebitsAndCreditsService {
     CustomerId,
     CustomerName,
     CustomerEmail,
-    RevRecTransactionId,
-    RevRecTransactionTitle,
+    TransactionId,
+    TransactionTitle,
     InvoiceId,
     InvoiceNumber,
     InvoiceLineItemDescription,
@@ -133,8 +133,8 @@ class DebitsAndCreditsService @Inject() (
         case Column.CustomerId => "customer_id"
         case Column.CustomerName => "customer_name"
         case Column.CustomerEmail => "customer_email"
-        case Column.RevRecTransactionId => "rev_rec_transaction_id"
-        case Column.RevRecTransactionTitle => "rev_rec_transaction_title"
+        case Column.TransactionId => "rev_rec_transaction_id"
+        case Column.TransactionTitle => "rev_rec_transaction_title"
         case Column.InvoiceId => "invoice_id"
         case Column.InvoiceNumber => "invoice_number"
         case Column.InvoiceLineItemId => "invoice_line_item_id"
@@ -166,8 +166,8 @@ class DebitsAndCreditsService @Inject() (
           case Column.CustomerId => sql"product_id"
           case Column.CustomerName => sql"customer_name"
           case Column.CustomerEmail => sql"customer_email"
-          case Column.RevRecTransactionId => sql"rev_rec_transaction_id"
-          case Column.RevRecTransactionTitle => sql"rev_rec_transaction_title"
+          case Column.TransactionId => sql"rev_rec_transaction_id"
+          case Column.TransactionTitle => sql"rev_rec_transaction_title"
           case Column.InvoiceId => sql"invoice_id"
           case Column.InvoiceNumber => sql"invoice_number"
           case Column.InvoiceLineItemDescription => sql"invoice_line_item_description"
@@ -186,8 +186,8 @@ class DebitsAndCreditsService @Inject() (
           case Column.CustomerId => sql"MAX(customer_id) AS product_id"
           case Column.CustomerName => sql"MAX(customer_name) AS customer_name"
           case Column.CustomerEmail => sql"MAX(customer_email) AS customer_email"
-          case Column.RevRecTransactionId => sql"MAX(rev_rec_transaction_id) AS rev_rec_transaction_id"
-          case Column.RevRecTransactionTitle => sql"MAX(rev_rec_transaction_title) AS rev_rec_transaction_title"
+          case Column.TransactionId => sql"MAX(rev_rec_transaction_id) AS rev_rec_transaction_id"
+          case Column.TransactionTitle => sql"MAX(rev_rec_transaction_title) AS rev_rec_transaction_title"
           case Column.InvoiceId => sql"MAX(invoice_id) AS invoice_id"
           case Column.InvoiceNumber => sql"MAX(invoice_number) AS invoice_number"
           case Column.InvoiceLineItemDescription => sql"MAX(invoice_line_item_description) AS invoice_line_item_description"
@@ -219,8 +219,8 @@ class DebitsAndCreditsService @Inject() (
           case Column.CustomerId => ColumnType.String
           case Column.CustomerName => ColumnType.String
           case Column.CustomerEmail => ColumnType.String
-          case Column.RevRecTransactionId => ColumnType.String
-          case Column.RevRecTransactionTitle => ColumnType.String
+          case Column.TransactionId => ColumnType.String
+          case Column.TransactionTitle => ColumnType.String
           case Column.InvoiceId => ColumnType.String
           case Column.InvoiceNumber => ColumnType.String
           case Column.InvoiceLineItemDescription => ColumnType.String
@@ -280,11 +280,11 @@ class DebitsAndCreditsService @Inject() (
             pr.name AS product_name,
             co.title AS rev_rec_transaction_title
           FROM journal_entry j
-          LEFT JOIN customer cus ON cus.id = j.customer_id
-          LEFT JOIN invoice inv ON inv.id = j.invoice_id
-          LEFT JOIN invoice_line_item il ON il.id = j.invoice_line_item_id
-          LEFT JOIN product pr ON pr.id = j.product_id
-          LEFT JOIN rev_rec_transaction co ON co.id = j.rev_rec_transaction_id
+          LEFT JOIN stripe.customer cus ON cus.id = j.customer_id
+          LEFT JOIN stripe.invoice inv ON inv.id = j.invoice_id
+          LEFT JOIN stripe.invoice_line_item il ON il.id = j.invoice_line_item_id
+          LEFT JOIN stripe.product pr ON pr.id = j.product_id
+          LEFT JOIN transaction co ON co.id = j.rev_rec_transaction_id
           WHERE
       """,
       whereClause,
@@ -408,7 +408,7 @@ class DebitsAndCreditsService @Inject() (
     transactionId: String,
     lineItemId: Option[String]
   ): Future[Seq[AccountSummaryEntry]] = {
-    journalEntryService.getByRevRecTransactionId(stripeAccountId, liveMode, transactionId, lineItemId).map { entries =>
+    journalEntryService.getByTransactionId(stripeAccountId, liveMode, transactionId, lineItemId).map { entries =>
       entries
         .flatMap { entry =>
           Seq(

@@ -1,6 +1,7 @@
 package database.services
 
-import database.models.{RevRecTransaction, CustomerBalanceTransaction, CustomerBalanceTransactionTable}
+import database.models.Transaction
+import database.models.stripe.{StripeCustomerBalanceTransaction, StripeCustomerBalanceTransactionTable}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -35,10 +36,10 @@ class CustomerBalanceTransactionService @Inject() (
   import CustomerBalanceTransactionService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[CustomerBalanceTransactionTable] = TableQuery[CustomerBalanceTransactionTable]
+  val query: TableQuery[StripeCustomerBalanceTransactionTable] = TableQuery[StripeCustomerBalanceTransactionTable]
 
-  def create(data: CreateData): Future[CustomerBalanceTransaction] = {
-    val entity = CustomerBalanceTransaction(
+  def create(data: CreateData): Future[StripeCustomerBalanceTransaction] = {
+    val entity = StripeCustomerBalanceTransaction(
       stripeAccountId = data.stripeAccountId,
       liveMode = data.liveMode,
       id = data.id,
@@ -70,7 +71,7 @@ class CustomerBalanceTransactionService @Inject() (
     }
   }
 
-  def update(entity: CustomerBalanceTransaction): Future[Unit] = {
+  def update(entity: StripeCustomerBalanceTransaction): Future[Unit] = {
     db
       .run {
         query.filter(_.id === entity.id).update(entity)
@@ -78,37 +79,37 @@ class CustomerBalanceTransactionService @Inject() (
       .map(_ => ())
   }
 
-  def getById(id: String): Future[Option[CustomerBalanceTransaction]] = {
+  def getById(id: String): Future[Option[StripeCustomerBalanceTransaction]] = {
     db.run {
       query.filter(_.id === id).result.headOption
     }
   }
 
-  def getByCustomerId(customerId: String): Future[Seq[CustomerBalanceTransaction]] = {
+  def getByCustomerId(customerId: String): Future[Seq[StripeCustomerBalanceTransaction]] = {
     db.run {
       query.filter(_.customerId === customerId).result
     }
   }
 
-  def getByInvoiceIds(invoiceIds: Set[String]): Future[Seq[CustomerBalanceTransaction]] = {
+  def getByInvoiceIds(invoiceIds: Set[String]): Future[Seq[StripeCustomerBalanceTransaction]] = {
     db.run {
       query.filter(_.invoiceId.inSet(invoiceIds)).result
     }
   }
 
-  def getByIds(ids: Set[String]): Future[Seq[CustomerBalanceTransaction]] = {
+  def getByIds(ids: Set[String]): Future[Seq[StripeCustomerBalanceTransaction]] = {
     db.run {
       query.filter(_.id.inSet(ids)).result
     }
   }
 
-  def getAllCustomerBalanceTransactionSources(): Future[Seq[RevRecTransaction.Source]] = {
+  def getAllCustomerBalanceTransactionSources(): Future[Seq[Transaction.Source]] = {
     db.run {
       sql"""
         SELECT id, stripe_account_id, live_mode, customer_id
-        FROM customer_balance_transaction
+        FROM stripe.customer_balance_transaction
         WHERE invoice_id IS NULL AND credit_note_id IS NULL;
       """.as[(String, String, Boolean, Option[String])]
-    }.map(_.map { case (id, accountId, liveMode, customerId) => database.models.RevRecTransaction.Source(id, accountId, liveMode, customerId) })
+    }.map(_.map { case (id, accountId, liveMode, customerId) => database.models.Transaction.Source(id, accountId, liveMode, customerId) })
   }
 }

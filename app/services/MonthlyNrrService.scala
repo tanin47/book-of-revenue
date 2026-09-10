@@ -214,7 +214,7 @@ class MonthlyNrrService @Inject() (
       periodColumnsSql,
       sql"""
           FROM
-            customer c
+            stripe.customer c
             LEFT JOIN month_customer_entries e
             ON c.id = e.customer_id
           WHERE c.stripe_account_id = $stripeAccountId AND c.live_mode = $liveMode

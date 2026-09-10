@@ -1,6 +1,6 @@
 package background
 
-import database.models.StripeImporterJob
+import database.models.stripe.StripeImporterJob
 import database.services.{RawStripeObjectService, StripeAccountService, StripeEventService, StripeImporterJobCursorService, StripeImporterJobService, TrackedExceptionService}
 import framework.Helpers.await
 import framework.Instant

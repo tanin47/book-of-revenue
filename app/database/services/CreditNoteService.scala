@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{CreditNote, CreditNoteTable, RichCreditNote, RichCreditNoteRefund}
+import database.models.stripe.{StripeCreditNote, StripeCreditNoteTable, RichStripeCreditNote, RichStripeCreditNoteRefund}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -39,10 +39,10 @@ class CreditNoteService @Inject() (
   import CreditNoteService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[CreditNoteTable] = TableQuery[CreditNoteTable]
+  val query: TableQuery[StripeCreditNoteTable] = TableQuery[StripeCreditNoteTable]
 
-  def create(data: CreateData): Future[CreditNote] = {
-    val entity = CreditNote(
+  def create(data: CreateData): Future[StripeCreditNote] = {
+    val entity = StripeCreditNote(
       stripeAccountId = data.stripeAccountId,
       liveMode = data.liveMode,
       id = data.id,
@@ -74,7 +74,7 @@ class CreditNoteService @Inject() (
     }
   }
 
-  def update(entity: CreditNote): Future[Unit] = {
+  def update(entity: StripeCreditNote): Future[Unit] = {
     db
       .run {
         query.filter(_.id === entity.id).update(entity)
@@ -82,33 +82,33 @@ class CreditNoteService @Inject() (
       .map(_ => ())
   }
 
-  def getById(id: String): Future[Option[CreditNote]] = {
+  def getById(id: String): Future[Option[StripeCreditNote]] = {
     getByIds(Set(id)).map(_.headOption)
   }
 
-  def getAll(): Future[Seq[CreditNote]] = {
+  def getAll(): Future[Seq[StripeCreditNote]] = {
     db.run {
       query.result
     }
   }
 
-  def getByIds(ids: Set[String]): Future[Seq[CreditNote]] = {
+  def getByIds(ids: Set[String]): Future[Seq[StripeCreditNote]] = {
     db.run {
       query.filter(_.id.inSet(ids)).result
     }
   }
 
-  def getByInvoiceIds(invoiceIds: Set[String]): Future[Seq[CreditNote]] = {
+  def getByInvoiceIds(invoiceIds: Set[String]): Future[Seq[StripeCreditNote]] = {
     db.run {
       query.filter(_.invoiceId.inSet(invoiceIds)).result
     }
   }
 
-  def getRichByInvoiceIds(invoiceIds: Set[String]): Future[Seq[RichCreditNote]] = {
+  def getRichByInvoiceIds(invoiceIds: Set[String]): Future[Seq[RichStripeCreditNote]] = {
     getByInvoiceIds(invoiceIds).flatMap(hydrate)
   }
 
-  private[this] def hydrate(items: Seq[CreditNote]): Future[Seq[RichCreditNote]] = {
+  private[this] def hydrate(items: Seq[StripeCreditNote]): Future[Seq[RichStripeCreditNote]] = {
     val creditNoteIds = items.map(_.id).toSet
     val customerBalanceTransactionIds = items.flatMap(_.customerBalanceTransactionId).toSet
 
@@ -124,12 +124,12 @@ class CreditNoteService @Inject() (
       val customerBalanceTransactionById = customerBalanceTransactions.map(cbt => cbt.id -> cbt).toMap
 
       items.map { item =>
-        RichCreditNote(
+        RichStripeCreditNote(
           base = item,
           customerBalanceTransaction = item.customerBalanceTransactionId.flatMap(customerBalanceTransactionById.get),
           lines = linesByCreditNote.getOrElse(item.id, Seq.empty).sortBy(_.base.rank),
           refunds = refundsByCreditNote.getOrElse(item.id, Seq.empty).sortBy(_.rank).map { refund =>
-            RichCreditNoteRefund(
+            RichStripeCreditNoteRefund(
               base = refund,
               refund = refund.refundId.flatMap(richRefundById.get),
             )

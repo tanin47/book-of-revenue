@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{RawStripeObject, RawStripeObjectTable}
+import database.models.stripe.{StripeRawObject, StripeRawObjectTable}
 import framework.{Instant, PlayConfig}
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import slick.jdbc.JdbcProfile
@@ -43,11 +43,11 @@ class RawStripeObjectService @Inject() (
   import RawStripeObjectService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[RawStripeObjectTable] = TableQuery[RawStripeObjectTable]
+  val query: TableQuery[StripeRawObjectTable] = TableQuery[StripeRawObjectTable]
 
-  def create(items: Seq[CreateData]): Future[Seq[RawStripeObject]] = {
+  def create(items: Seq[CreateData]): Future[Seq[StripeRawObject]] = {
     val entities = items.map { item =>
-      RawStripeObject(
+      StripeRawObject(
         id = item.id,
         stripeAccountId = item.stripeAccountId,
         liveMode = item.liveMode,
@@ -61,7 +61,7 @@ class RawStripeObjectService @Inject() (
 
     val action = SimpleDBIO[Unit] { ctx =>
       val conn = ctx.connection
-      val stmt = conn.prepareStatement("INSERT INTO raw_stripe_object (id, stripe_account_id, live_mode, object_type, checksum, raw_json, synced_at, processed_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id, checksum) DO NOTHING")
+      val stmt = conn.prepareStatement("INSERT INTO stripe.raw_object (id, stripe_account_id, live_mode, object_type, checksum, raw_json, synced_at, processed_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id, checksum) DO NOTHING")
 
       entities.foreach { entity =>
         stmt.setString(1, entity.id)
@@ -91,7 +91,7 @@ class RawStripeObjectService @Inject() (
     liveMode: Boolean,
     objectType: String,
     exclusiveMaxCustomerId: Option[String]
-  ): Future[Seq[RawStripeObject]] = {
+  ): Future[Seq[StripeRawObject]] = {
     db.run {
       query
         .filter { q =>
@@ -106,7 +106,7 @@ class RawStripeObjectService @Inject() (
     }
   }
 
-  def getUnprocessed(exclusiveMaxSyncedAt: Option[Instant], exclusiveMaxId: Option[String]): Future[Seq[RawStripeObject]] = {
+  def getUnprocessed(exclusiveMaxSyncedAt: Option[Instant], exclusiveMaxId: Option[String]): Future[Seq[StripeRawObject]] = {
     db.run {
       query
         .filter { q =>
@@ -126,7 +126,7 @@ class RawStripeObjectService @Inject() (
 
   def incrementProcessedCount(id: String, checksum: String): Future[Unit] = {
     db
-      .run { sqlu"UPDATE raw_stripe_object SET processed_count = processed_count + 1 WHERE id = $id AND checksum = $checksum" }
+      .run { sqlu"UPDATE stripe.raw_object SET processed_count = processed_count + 1 WHERE id = $id AND checksum = $checksum" }
       .map { _ => () }
   }
 
@@ -140,7 +140,7 @@ class RawStripeObjectService @Inject() (
       makeSql(
         sql"""
           SELECT COUNT(*) AS count, MAX(synced_at) AS max_synced_at
-          FROM raw_stripe_object
+          FROM stripe.raw_object
           WHERE stripe_account_id = $stripeAccountId AND live_mode = $liveMode
         """,
         processCountCond

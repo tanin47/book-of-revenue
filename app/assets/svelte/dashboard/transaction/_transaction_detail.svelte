@@ -1,14 +1,14 @@
 <script lang="ts">
-import type {BillingActivity, RevRecTransaction, RevRecTransactionDetail} from "../../common/models";
+import type {BillingActivity, Transaction, TransactionDetail} from "../../common/models";
 import {formatAmount, formatDateTime, formatNumber, getQueryParam, makeStripeUrl} from "../../common/globals";
 import BillingActivityLine, {type RelatedId} from "./_billing_activity_line.svelte";
 import {onMount} from "svelte";
 import {post} from "../../common/form";
 import TransactionStatus from '../../common/_transaction_status.svelte'
 
-export let transaction: RevRecTransaction;
+export let transaction: Transaction;
 
-let detail: RevRecTransactionDetail | null = null;
+let detail: TransactionDetail | null = null;
 let highlightedLineItemId: string | null = null;
 
 async function load() {
@@ -106,7 +106,7 @@ function getTitleColorClass(activity: BillingActivity): string {
   }
 }
 
-function getRelatedId(activity: BillingActivity, transaction: RevRecTransaction): RelatedId | null {
+function getRelatedId(activity: BillingActivity, transaction: Transaction): RelatedId | null {
   switch (activity.name) {
     case 'MakePayment':
       const id = activity.paymentRecordId ?? activity.paymentIntentId ?? activity.chargeId;

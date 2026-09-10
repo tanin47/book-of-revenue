@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{Charge, ChargeTable, RichCharge}
+import database.models.stripe.{StripeCharge, StripeChargeTable, RichStripeCharge}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -40,10 +40,10 @@ class ChargeService @Inject() (
   import ChargeService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[ChargeTable] = TableQuery[ChargeTable]
+  val query: TableQuery[StripeChargeTable] = TableQuery[StripeChargeTable]
 
-  def create(data: CreateData): Future[Charge] = {
-    val entity = Charge(
+  def create(data: CreateData): Future[StripeCharge] = {
+    val entity = StripeCharge(
       stripeAccountId = data.stripeAccountId,
       liveMode = data.liveMode,
       id = data.id,
@@ -77,7 +77,7 @@ class ChargeService @Inject() (
     }
   }
 
-  def update(entity: Charge): Future[Unit] = {
+  def update(entity: StripeCharge): Future[Unit] = {
     db
       .run {
         query.filter(_.id === entity.id).update(entity)
@@ -85,50 +85,50 @@ class ChargeService @Inject() (
       .map(_ => ())
   }
 
-  def getAll(): Future[Seq[Charge]] = {
+  def getAll(): Future[Seq[StripeCharge]] = {
     db.run {
       query.result
     }
   }
 
-  def getByIdsOrPaymentIntentIds(ids: Set[String], paymentIntentIds: Set[String]): Future[Seq[Charge]] = {
+  def getByIdsOrPaymentIntentIds(ids: Set[String], paymentIntentIds: Set[String]): Future[Seq[StripeCharge]] = {
     db.run {
       query.filter { q => q.id.inSet(ids) || q.paymentIntentId.inSet(paymentIntentIds) }.result
     }
   }
 
-  def getAllStandaloneChargeSources(): Future[Seq[database.models.RevRecTransaction.Source]] = {
+  def getAllStandaloneChargeSources(): Future[Seq[database.models.Transaction.Source]] = {
     db.run {
       sql"""
         SELECT
           charge.id, charge.stripe_account_id, charge.live_mode, charge.customer_id
-        FROM charge
-        LEFT JOIN invoice_payment
+        FROM stripe.charge
+        LEFT JOIN stripe.invoice_payment
         ON charge.id = invoice_payment.charge_id
         WHERE invoice_payment.charge_id IS NULL AND charge.payment_intent_id IS NULL;
       """.as[(String, String, Boolean, Option[String])]
-    }.map(_.map { case (id, accountId, liveMode, customerId) => database.models.RevRecTransaction.Source(id, accountId, liveMode, customerId) })
+    }.map(_.map { case (id, accountId, liveMode, customerId) => database.models.Transaction.Source(id, accountId, liveMode, customerId) })
   }
 
-  def getByIds(ids: Set[String]): Future[Seq[Charge]] = {
+  def getByIds(ids: Set[String]): Future[Seq[StripeCharge]] = {
     db.run {
       query.filter(_.id.inSet(ids)).result
     }
   }
 
-  def getById(id: String): Future[Option[Charge]] = {
+  def getById(id: String): Future[Option[StripeCharge]] = {
     getByIds(Set(id)).map(_.headOption)
   }
 
-  def getRichByIds(ids: Set[String]): Future[Seq[RichCharge]] = {
+  def getRichByIds(ids: Set[String]): Future[Seq[RichStripeCharge]] = {
     getByIds(ids).flatMap(hydrate)
   }
 
-  def getRichById(id: String): Future[Option[RichCharge]] = {
+  def getRichById(id: String): Future[Option[RichStripeCharge]] = {
     getRichByIds(Set(id)).map(_.headOption)
   }
 
-  private[this] def hydrate(items: Seq[Charge]): Future[Seq[RichCharge]] = {
+  private[this] def hydrate(items: Seq[StripeCharge]): Future[Seq[RichStripeCharge]] = {
     for {
       balanceTransactions <- balanceTransactionService.getByIds(items.flatMap(_.balanceTransactionId).toSet)
       disputes <- disputeService.getRichByChargeIds(items.map(_.id).toSet)
@@ -139,7 +139,7 @@ class ChargeService @Inject() (
       val refundByChargeId = refunds.groupBy(_.base.chargeId.get)
 
       items.map { item =>
-        RichCharge(
+        RichStripeCharge(
           base = item,
           balanceTransaction = item.balanceTransactionId.flatMap(btById.get),
           disputes = disputeByChargeId.getOrElse(item.id, Seq.empty).sortBy(_.base.createdAt),

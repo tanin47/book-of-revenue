@@ -1,9 +1,9 @@
 package controllers
 
 import background.ProcessTransactionWorker
-import database.models.{JournalEntry, RevRecTransaction}
+import database.models.{JournalEntry, Transaction}
 import database.services.JournalEntryService.SortDirection
-import database.services.{CustomerService, ExportedFileService, InvoiceLineItemService, RevRecTransactionService}
+import database.services.{CustomerService, ExportedFileService, InvoiceLineItemService, TransactionService}
 import framework.Helpers.{enumForm, toMonthEnd}
 import framework.*
 import givers.form.Form
@@ -269,7 +269,7 @@ class DashboardController @Inject() (
   arAgingService: ArAgingService,
   revenueWaterfallService: RevenueWaterfallService,
   customerService: CustomerService,
-  revRecTransactionService: RevRecTransactionService,
+  transactionService: TransactionService,
   incomeStatementService: IncomeStatementService,
   balanceSheetService: BalanceSheetService,
   netRevenueService: NetRevenueService,
@@ -293,7 +293,7 @@ class DashboardController @Inject() (
 
   def viewTransaction(transactionId: String): play.api.mvc.Action[AnyContent] = authenticated() { implicit req =>
     for {
-      transaction <- revRecTransactionService.getRichById(req.stripeAccountId, req.liveMode, transactionId).map(_.get)
+      transaction <- transactionService.getRichById(req.stripeAccountId, req.liveMode, transactionId).map(_.get)
     } yield {
       Ok(views.html.dashboard.viewTransaction(transaction))
     }
@@ -314,7 +314,7 @@ class DashboardController @Inject() (
     val data = LOAD_TRANSACTION_DETAIL_FORM.bindFromRequest().get
 
     for {
-      transaction <- revRecTransactionService.getRichById(req.stripeAccountId, req.liveMode, data.transactionId).map(_.get)
+      transaction <- transactionService.getRichById(req.stripeAccountId, req.liveMode, data.transactionId).map(_.get)
     } yield {
       Ok(Json.obj(
         "detail" -> TransactionDetail(transaction).toJson(),
@@ -529,8 +529,8 @@ class DashboardController @Inject() (
     val data = LOAD_LINE_ITEMS_FORM.bindFromRequest().get
 
     for {
-      transaction <- revRecTransactionService.getById(req.stripeAccountId, req.liveMode, data.transactionId.get).map(_.get)
-      lineItems <- if (transaction.tpe == RevRecTransaction.Type.Invoice) {
+      transaction <- transactionService.getById(req.stripeAccountId, req.liveMode, data.transactionId.get).map(_.get)
+      lineItems <- if (transaction.tpe == Transaction.Type.Invoice) {
         invoiceLineItemService.getByInvoice(transaction.id)
       } else {
         Future(Seq.empty)
@@ -640,7 +640,7 @@ class DashboardController @Inject() (
   def reprocessTransaction(): play.api.mvc.Action[JsValue] = authenticated(parse.json) { implicit req =>
     val data = REPROCESS_TRANSACTION_FORM.bindFromRequest().get
     for {
-      transaction <- revRecTransactionService.getById(req.stripeAccountId, req.liveMode, data.transactionId).map(_.get)
+      transaction <- transactionService.getById(req.stripeAccountId, req.liveMode, data.transactionId).map(_.get)
     } yield {
       processTransactionWorker.makeProcessTransaction(transaction).foreach { processTransaction =>
         processTransactionWorker.generateJournalEntries(processTransaction, true)

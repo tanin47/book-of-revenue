@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{InvoiceItem, InvoiceItemTable, RichInvoiceItem}
+import database.models.stripe.{StripeInvoiceItem, StripeInvoiceItemTable, RichStripeInvoiceItem}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -42,10 +42,10 @@ class InvoiceItemService @Inject() (
   import InvoiceItemService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[InvoiceItemTable] = TableQuery[InvoiceItemTable]
+  val query: TableQuery[StripeInvoiceItemTable] = TableQuery[StripeInvoiceItemTable]
 
-  def create(item: CreateData): Future[InvoiceItem] = {
-    val entity = InvoiceItem(
+  def create(item: CreateData): Future[StripeInvoiceItem] = {
+    val entity = StripeInvoiceItem(
       stripeAccountId = item.stripeAccountId,
       liveMode = item.liveMode,
       id = item.id,
@@ -80,7 +80,7 @@ class InvoiceItemService @Inject() (
     }
   }
 
-  def update(entity: InvoiceItem): Future[Unit] = {
+  def update(entity: StripeInvoiceItem): Future[Unit] = {
     db
       .run {
         query.filter(_.id === entity.id).update(entity)
@@ -88,31 +88,31 @@ class InvoiceItemService @Inject() (
       .map(_ => ())
   }
 
-  def getAll(): Future[Seq[InvoiceItem]] = {
+  def getAll(): Future[Seq[StripeInvoiceItem]] = {
     db.run {
       query.result
     }
   }
 
-  def getByIds(ids: Set[String]): Future[Seq[InvoiceItem]] = {
+  def getByIds(ids: Set[String]): Future[Seq[StripeInvoiceItem]] = {
     db.run {
       query.filter(_.id.inSet(ids)).result
     }
   }
 
-  def getById(id: String): Future[Option[InvoiceItem]] = {
+  def getById(id: String): Future[Option[StripeInvoiceItem]] = {
     getByIds(Set(id)).map(_.headOption)
   }
 
-  def getRichById(id: String): Future[Option[RichInvoiceItem]] = {
+  def getRichById(id: String): Future[Option[RichStripeInvoiceItem]] = {
     getRichByIds(Set(id)).map(_.headOption)
   }
 
-  def getRichByIds(ids: Set[String]): Future[Seq[RichInvoiceItem]] = {
+  def getRichByIds(ids: Set[String]): Future[Seq[RichStripeInvoiceItem]] = {
     getByIds(ids).flatMap(hydrate)
   }
 
-  private[this] def hydrate(items: Seq[InvoiceItem]): Future[Seq[RichInvoiceItem]] = {
+  private[this] def hydrate(items: Seq[StripeInvoiceItem]): Future[Seq[RichStripeInvoiceItem]] = {
     for {
       discounts <- discountService.getRichByIds(items.flatMap(_.discountIds).toSet)
       taxRates <- taxRateService.getByIds(items.flatMap(_.taxRateIds).toSet)
@@ -120,7 +120,7 @@ class InvoiceItemService @Inject() (
       val discountsById = discounts.map { d => d.base.id -> d }.toMap
       val taxRatesById = taxRates.map { t => t.id -> t }.toMap
       items.map { item =>
-       RichInvoiceItem(
+       RichStripeInvoiceItem(
          base = item,
          discounts = item.discountIds.flatMap(discountsById.get),
          taxRates = item.taxRateIds.flatMap(taxRatesById.get),
@@ -129,26 +129,26 @@ class InvoiceItemService @Inject() (
     }
   }
 
-  def getByInvoice(invoiceId: String): Future[Seq[InvoiceItem]] = {
+  def getByInvoice(invoiceId: String): Future[Seq[StripeInvoiceItem]] = {
     getByInvoiceIds(Set(invoiceId))
   }
 
-  def getByInvoiceIds(invoiceIds: Set[String]): Future[Seq[InvoiceItem]] = {
+  def getByInvoiceIds(invoiceIds: Set[String]): Future[Seq[StripeInvoiceItem]] = {
     db.run {
       query.filter(_.invoiceId.inSet(invoiceIds)).result
     }
   }
 
-  def getAllUnbilledInvoiceItemSources(): Future[Seq[database.models.RevRecTransaction.Source]] = {
+  def getAllUnbilledInvoiceItemSources(): Future[Seq[database.models.Transaction.Source]] = {
     db.run {
       sql"""
             SELECT
               invoice_item.id, invoice_item.stripe_account_id, invoice_item.live_mode, invoice_item.customer_id
-            FROM invoice_item
-            LEFT JOIN invoice_line_item ON invoice_item.id = invoice_line_item.invoice_item_id
-            LEFT JOIN invoice ON invoice_line_item.invoice_id = invoice.id
+            FROM stripe.invoice_item
+            LEFT JOIN stripe.invoice_line_item ON invoice_item.id = invoice_line_item.invoice_item_id
+            LEFT JOIN stripe.invoice ON invoice_line_item.invoice_id = invoice.id
             WHERE invoice_line_item.id IS NULL OR invoice.id IS NULL OR invoice.finalized_at IS NULL;
           """.as[(String, String, Boolean, Option[String])]
-    }.map(_.map { case (id, accountId, liveMode, customerId) => database.models.RevRecTransaction.Source(id, accountId, liveMode, customerId) })
+    }.map(_.map { case (id, accountId, liveMode, customerId) => database.models.Transaction.Source(id, accountId, liveMode, customerId) })
   }
 }

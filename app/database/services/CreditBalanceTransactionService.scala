@@ -1,6 +1,7 @@
 package database.services
 
-import database.models.{RevRecTransaction, CreditBalanceTransaction, CreditBalanceTransactionTable, RichCreditBalanceTransaction}
+import database.models.Transaction
+import database.models.stripe.{StripeCreditBalanceTransaction, StripeCreditBalanceTransactionTable, RichStripeCreditBalanceTransaction}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -42,10 +43,10 @@ class CreditBalanceTransactionService @Inject() (
   import CreditBalanceTransactionService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[CreditBalanceTransactionTable] = TableQuery[CreditBalanceTransactionTable]
+  val query: TableQuery[StripeCreditBalanceTransactionTable] = TableQuery[StripeCreditBalanceTransactionTable]
 
-  def create(data: CreateData): Future[CreditBalanceTransaction] = {
-    val entity = CreditBalanceTransaction(
+  def create(data: CreateData): Future[StripeCreditBalanceTransaction] = {
+    val entity = StripeCreditBalanceTransaction(
       stripeAccountId = data.stripeAccountId,
       liveMode = data.liveMode,
       id = data.id,
@@ -82,7 +83,7 @@ class CreditBalanceTransactionService @Inject() (
     }
   }
 
-  def update(entity: CreditBalanceTransaction): Future[Unit] = {
+  def update(entity: StripeCreditBalanceTransaction): Future[Unit] = {
     db
       .run {
         query.filter(_.id === entity.id).update(entity)
@@ -90,42 +91,42 @@ class CreditBalanceTransactionService @Inject() (
       .map(_ => ())
   }
 
-  def getById(id: String): Future[Option[CreditBalanceTransaction]] = {
+  def getById(id: String): Future[Option[StripeCreditBalanceTransaction]] = {
     getByIds(Set(id)).map(_.headOption)
   }
 
-  def getAll(): Future[Seq[CreditBalanceTransaction]] = {
+  def getAll(): Future[Seq[StripeCreditBalanceTransaction]] = {
     db.run {
       query.result
     }
   }
 
-  def getByIds(ids: Set[String]): Future[Seq[CreditBalanceTransaction]] = {
+  def getByIds(ids: Set[String]): Future[Seq[StripeCreditBalanceTransaction]] = {
     db.run {
       query.filter(_.id.inSet(ids)).result
     }
   }
 
-  def getRichById(transactionId: String): Future[Option[RichCreditBalanceTransaction]] = {
+  def getRichById(transactionId: String): Future[Option[RichStripeCreditBalanceTransaction]] = {
     getRichByIds(Set(transactionId)).map(_.headOption)
   }
 
-  def getRichByIds(ids: Set[String]): Future[Seq[RichCreditBalanceTransaction]] = {
+  def getRichByIds(ids: Set[String]): Future[Seq[RichStripeCreditBalanceTransaction]] = {
     getByIds(ids).flatMap(hydrate)
   }
 
-  def getRichByCreditInvoiceVoidedInvoiceLineItemIds(invoiceLineItemIds: Set[String]): Future[Seq[RichCreditBalanceTransaction]] = {
+  def getRichByCreditInvoiceVoidedInvoiceLineItemIds(invoiceLineItemIds: Set[String]): Future[Seq[RichStripeCreditBalanceTransaction]] = {
     db.run {
       query.filter(_.creditInvoiceVoidedInvoiceLineItemId.inSet(invoiceLineItemIds)).result
     }.flatMap(hydrate)
   }
 
-  private[this] def hydrate(items: Seq[CreditBalanceTransaction]): Future[Seq[RichCreditBalanceTransaction]] = {
+  private[this] def hydrate(items: Seq[StripeCreditBalanceTransaction]): Future[Seq[RichStripeCreditBalanceTransaction]] = {
     creditGrantService.getByIds(items.map(_.creditGrantId).toSet).map { creditGrants =>
       val creditGrantsById = creditGrants.map { g => g.id -> g }.toMap
 
       items.map { item =>
-        RichCreditBalanceTransaction(
+        RichStripeCreditBalanceTransaction(
           base = item,
           creditGrant = creditGrantsById.get(item.creditGrantId)
         )
@@ -133,15 +134,15 @@ class CreditBalanceTransactionService @Inject() (
     }
   }
 
-  def getAllCreditBalanceTransactionSources(): Future[Seq[RevRecTransaction.Source]] = {
+  def getAllCreditBalanceTransactionSources(): Future[Seq[Transaction.Source]] = {
     db.run {
       sql"""
         SELECT txn.id, txn.stripe_account_id, txn.live_mode, credit_grant.customer_id
-        FROM credit_balance_transaction txn
-        LEFT JOIN credit_grant ON credit_grant.id = txn.credit_grant_id
+        FROM stripe.credit_balance_transaction txn
+        LEFT JOIN stripe.credit_grant ON credit_grant.id = txn.credit_grant_id
         WHERE txn.credit_invoice_voided_invoice_id IS NULL AND txn.debit_credits_applied_invoice_id IS NULL;
       """.as[(String, String, Boolean, Option[String])]
-    }.map(_.map { case (id, accountId, liveMode, customerId) => database.models.RevRecTransaction.Source(id, accountId, liveMode, customerId) })
+    }.map(_.map { case (id, accountId, liveMode, customerId) => database.models.Transaction.Source(id, accountId, liveMode, customerId) })
   }
 
 }

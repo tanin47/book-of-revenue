@@ -128,26 +128,26 @@ case class JournalEntry(
   event: JournalEntry.Event,
   reversedEvent: Option[JournalEntry.Event],
   principleAccount: JournalEntry.Account,
-  revRecTransactionId: String,
-  revRecTransactionType: RevRecTransaction.Type,
-  customerId: Option[String],
-  invoiceId: Option[String],
-  invoiceLineItemId: Option[String],
-  invoiceItemId: Option[String],
-  chargeId: Option[String],
-  balanceTransactionId: Option[String],
-  disputeId: Option[String],
-  refundId: Option[String],
-  customerBalanceTransactionId: Option[String],
-  paymentIntentId: Option[String],
-  paymentRecordId: Option[String],
-  subscriptionId: Option[String],
-  subscriptionItemId: Option[String],
-  creditBalanceTransactionId: Option[String],
-  creditNoteId: Option[String],
-  creditNoteLineItemId: Option[String],
-  productId: Option[String],
-  priceId: Option[String],
+  transactionId: String,
+  transactionType: Transaction.Type,
+  stripeCustomerId: Option[String],
+  stripeInvoiceId: Option[String],
+  stripeInvoiceLineItemId: Option[String],
+  stripeInvoiceItemId: Option[String],
+  stripeChargeId: Option[String],
+  stripeBalanceTransactionId: Option[String],
+  stripeDisputeId: Option[String],
+  stripeRefundId: Option[String],
+  stripeCustomerBalanceTransactionId: Option[String],
+  stripePaymentIntentId: Option[String],
+  stripePaymentRecordId: Option[String],
+  stripeSubscriptionId: Option[String],
+  stripeSubscriptionItemId: Option[String],
+  stripeCreditBalanceTransactionId: Option[String],
+  stripeCreditNoteId: Option[String],
+  stripeCreditNoteLineItemId: Option[String],
+  stripeProductId: Option[String],
+  stripePriceId: Option[String],
   createdAt: Instant
 ) extends Jsonable {
   def swap(): JournalEntry = copy(
@@ -166,23 +166,23 @@ case class JournalEntry(
     "presentmentAmount" -> presentmentAmount,
     "presentmentCurrency" -> presentmentCurrency,
     "occurredAt" -> occurredAt,
-    "revRecTransactionId" -> revRecTransactionId,
-    "revRecTransactionType" -> revRecTransactionType.toString,
-    "customerId" -> customerId,
+    "transactionId" -> transactionId,
+    "transactionType" -> transactionType.toString,
+    "customerId" -> stripeCustomerId,
     "event" -> event.toString,
-    "invoiceId" -> invoiceId,
-    "invoiceLineItemId" -> invoiceLineItemId,
-    "invoiceItemId" -> invoiceItemId,
-    "chargeId" -> chargeId,
-    "balanceTransactionId" -> balanceTransactionId,
-    "disputeId" -> disputeId,
-    "refundId" -> refundId,
-    "customerBalanceTransactionId" -> customerBalanceTransactionId,
-    "paymentIntentId" -> paymentIntentId,
-    "paymentRecordId" -> paymentRecordId,
-    "subscriptionId" -> subscriptionId,
-    "subscriptionItemId" -> subscriptionItemId,
-    "creditBalanceTransactionId" -> creditBalanceTransactionId,
+    "invoiceId" -> stripeInvoiceId,
+    "invoiceLineItemId" -> stripeInvoiceLineItemId,
+    "invoiceItemId" -> stripeInvoiceItemId,
+    "chargeId" -> stripeChargeId,
+    "balanceTransactionId" -> stripeBalanceTransactionId,
+    "disputeId" -> stripeDisputeId,
+    "refundId" -> stripeRefundId,
+    "customerBalanceTransactionId" -> stripeCustomerBalanceTransactionId,
+    "paymentIntentId" -> stripePaymentIntentId,
+    "paymentRecordId" -> stripePaymentRecordId,
+    "subscriptionId" -> stripeSubscriptionId,
+    "subscriptionItemId" -> stripeSubscriptionItemId,
+    "creditBalanceTransactionId" -> stripeCreditBalanceTransactionId,
     "createdAt" -> createdAt
   )
 }
@@ -202,8 +202,8 @@ class JournalEntryTable(tag: Tag) extends Table[JournalEntry](tag, "journal_entr
   def event: Rep[JournalEntry.Event] = column[JournalEntry.Event]("event")
   def reversedEvent: Rep[Option[JournalEntry.Event]] = column[Option[JournalEntry.Event]]("reversed_event")
   def principleAccount: Rep[JournalEntry.Account] = column[JournalEntry.Account]("principle_account")
-  def revRecTransactionId: Rep[String] = column[String]("rev_rec_transaction_id")
-  def revRecTransactionType: Rep[RevRecTransaction.Type] = column[RevRecTransaction.Type]("rev_rec_transaction_type")
+  def transactionId: Rep[String] = column[String]("transaction_id")
+  def transactionType: Rep[Transaction.Type] = column[Transaction.Type]("transaction_type")
   def customerId: Rep[Option[String]] = column[Option[String]]("customer_id")
   def invoiceId: Rep[Option[String]] = column[Option[String]]("invoice_id")
   def invoiceLineItemId: Rep[Option[String]] = column[Option[String]]("invoice_line_item_id")
@@ -239,8 +239,8 @@ class JournalEntryTable(tag: Tag) extends Table[JournalEntry](tag, "journal_entr
     event ::
     reversedEvent ::
     principleAccount ::
-    revRecTransactionId ::
-    revRecTransactionType ::
+    transactionId ::
+    transactionType ::
     customerId ::
     invoiceId ::
     invoiceLineItemId ::

@@ -164,7 +164,7 @@ function computeLink(
     case 'Customer':
       return `/net-revenue?${generateQueryString({...opts, groupBy: 'Transaction', customerId: dataRow[dataColumnIndexById.CustomerId]})}`
     case 'Transaction':
-      return `/net-revenue?${generateQueryString({...opts, groupBy: 'LineItem', transactionId: dataRow[dataColumnIndexById.RevRecTransactionId]})}`
+      return `/net-revenue?${generateQueryString({...opts, groupBy: 'LineItem', transactionId: dataRow[dataColumnIndexById.TransactionId]})}`
     case 'LineItem':
       return null
     default:

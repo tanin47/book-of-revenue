@@ -15,10 +15,10 @@ object NetAmount {
     val amounts = entries
       .filter { entry =>
         endPeriod.forall(_.toEpochMilli >= entry.accountingPeriod.toEpochMilli) &&
-          lineItemId.forall(entry.invoiceLineItemId.contains) &&
-          creditNoteId.forall(entry.creditNoteId.contains) &&
-          creditNoteLineItemId.forall(entry.creditNoteLineItemId.contains) &&
-          refundId.forall(entry.refundId.contains) &&
+          lineItemId.forall(entry.stripeInvoiceLineItemId.contains) &&
+          creditNoteId.forall(entry.stripeCreditNoteId.contains) &&
+          creditNoteLineItemId.forall(entry.stripeCreditNoteLineItemId.contains) &&
+          refundId.forall(entry.stripeRefundId.contains) &&
           principleAccount.forall(entry.principleAccount == _)
       }
       .flatMap { entry =>

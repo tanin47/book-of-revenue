@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{StripeImporterJobCursor, StripeImporterJobCursorTable}
+import database.models.stripe.{StripeImporterJobCursor, StripeImporterJobCursorTable}
 import framework.PlayConfig
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import slick.jdbc.JdbcProfile

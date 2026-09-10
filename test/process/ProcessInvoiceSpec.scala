@@ -19,7 +19,7 @@ class ProcessInvoiceSpec extends Base {
     )
 
     val transaction = makeProcessInvoice(
-      transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+      transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
       invoice = makeRichInvoice(
         base = invoice,
         lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -75,7 +75,7 @@ class ProcessInvoiceSpec extends Base {
     )
 
     val transaction = makeProcessInvoice(
-      transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+      transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
       invoice = makeRichInvoice(
         base = invoice,
         lineItems = lineItems,
@@ -134,7 +134,7 @@ class ProcessInvoiceSpec extends Base {
     )
 
     val transaction = makeProcessInvoice(
-      transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+      transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
       invoice = makeRichInvoice(
         base = invoice,
         lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -172,7 +172,7 @@ class ProcessInvoiceSpec extends Base {
     )
 
     val transaction = makeProcessInvoice(
-      transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+      transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
       invoice = makeRichInvoice(
         base = invoice,
         lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -216,7 +216,7 @@ class ProcessInvoiceSpec extends Base {
     ))
 
     val transaction = makeProcessInvoice(
-      transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+      transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
       invoice = makeRichInvoice(
         base = invoice,
         lineItems = Seq(lineItem),
@@ -240,7 +240,7 @@ class ProcessInvoiceSpec extends Base {
     )
 
     val transaction = makeProcessInvoice(
-      transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+      transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
       invoice = makeRichInvoice(
         base = invoice,
         lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -274,7 +274,7 @@ class ProcessInvoiceSpec extends Base {
     )
 
     val transaction = makeProcessInvoice(
-      transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+      transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
       invoice = makeRichInvoice(
         base = invoice,
         lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -303,7 +303,7 @@ class ProcessInvoiceSpec extends Base {
     )
 
     val transaction = makeProcessInvoice(
-      transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+      transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
       invoice = makeRichInvoice(
         base = invoice,
         lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -344,7 +344,7 @@ class ProcessInvoiceSpec extends Base {
     )
 
     val transaction = makeProcessInvoice(
-      transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+      transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
       invoice = makeRichInvoice(
         base = invoice,
         lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -386,7 +386,7 @@ class ProcessInvoiceSpec extends Base {
     )
 
     val transaction = makeProcessInvoice(
-      transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+      transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
       invoice = makeRichInvoice(
         base = invoice,
         lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -424,7 +424,7 @@ class ProcessInvoiceSpec extends Base {
     )
 
     val transaction = makeProcessInvoice(
-      transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+      transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
       invoice = makeRichInvoice(
         base = invoice,
         lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -468,7 +468,7 @@ class ProcessInvoiceSpec extends Base {
     )
 
     val transaction = makeProcessInvoice(
-      transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+      transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
       invoice = makeRichInvoice(
         base = invoice,
         lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -505,7 +505,7 @@ class ProcessInvoiceSpec extends Base {
     )
 
     val transaction = makeProcessInvoice(
-      transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+      transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
       invoice = makeRichInvoice(
         base = invoice,
         lineItems = Seq(
@@ -551,7 +551,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       var transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(makeRichInvoiceLineItem(
@@ -628,7 +628,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       val transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(makeRichInvoiceLineItem(
@@ -694,7 +694,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       var transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(lineItem),
@@ -771,7 +771,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       val transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = lineItems,
@@ -852,7 +852,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       val transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = lineItems,
@@ -948,7 +948,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       val transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = lineItems,
@@ -1017,7 +1017,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       val transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = lineItems,
@@ -1078,7 +1078,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       val transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = lineItems,
@@ -1124,7 +1124,7 @@ class ProcessInvoiceSpec extends Base {
       val price = makeRichPrice(base = makePrice(billingScheme = "per_unit", unitAmount = 5, currency = "usd", recurringUsageType = Some("metered")))
 
       val transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(
@@ -1199,7 +1199,7 @@ class ProcessInvoiceSpec extends Base {
       val price = makeRichPrice(base = makePrice(billingScheme = "per_unit", unitAmount = 5, currency = "usd", recurringUsageType = Some("metered")))
 
       val transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(
@@ -1273,7 +1273,7 @@ class ProcessInvoiceSpec extends Base {
       val price = makeRichPrice(base = makePrice(billingScheme = "per_unit", unitAmount = 5, currency = "usd", recurringUsageType = Some("metered")))
 
       val transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(
@@ -1341,7 +1341,7 @@ class ProcessInvoiceSpec extends Base {
       val price = makeRichPrice(base = makePrice(billingScheme = "per_unit", unitAmount = 5, currency = "usd", recurringUsageType = Some("metered")))
 
       val transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(
@@ -1409,7 +1409,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       val transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -1447,7 +1447,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       val transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -1491,7 +1491,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       var transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -1571,7 +1571,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       val transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -1622,7 +1622,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       val transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -1660,7 +1660,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       val transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -1703,7 +1703,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       val transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -1745,7 +1745,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       var transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -1799,7 +1799,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       var transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -1859,7 +1859,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       var transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -1889,7 +1889,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       var transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -1955,7 +1955,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       var transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -1980,7 +1980,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       var transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -2062,7 +2062,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       val transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(
@@ -2112,7 +2112,7 @@ class ProcessInvoiceSpec extends Base {
       )
 
       val transaction = makeProcessInvoice(
-        transaction = makeRevRecTransaction(id = invoice.id, tpe = RevRecTransaction.Type.Invoice),
+        transaction = makeTransaction(id = invoice.id, tpe = Transaction.Type.Invoice),
         invoice = makeRichInvoice(
           base = invoice,
           lineItems = Seq(makeRichInvoiceLineItem(base = makeInvoiceLineItem(

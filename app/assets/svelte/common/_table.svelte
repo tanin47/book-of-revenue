@@ -3,8 +3,8 @@
   import TransactionStatus from "./_transaction_status.svelte"
 
   export const DEFAULT_COLUMN_RENDERING_SETTINGS: {[key: string]: ColumnSetting} = {
-    RevRecTransactionId: {computeLink: (value) => `/customer/transaction/${value}`},
-    RevRecTransactionTitle: {computeLink: (value, data, dataIndexById) => `/customer/transaction/${data[dataIndexById.RevRecTransactionId]}`, maxCharacterLength: 24},
+    TransactionId: {computeLink: (value) => `/customer/transaction/${value}`},
+    TransactionTitle: {computeLink: (value, data, dataIndexById) => `/customer/transaction/${data[dataIndexById.TransactionId]}`, maxCharacterLength: 24},
     ProductId: {computeLink: (value) => value ? `https://dashboard.stripe.com/${CURRENT_STRIPE_ACCOUNT!.stripeAccount.id}/products/${value}` : null},
     ProductName: {computeLink: (value, data, dataIndexById) => data[dataIndexById.ProductId] ? `https://dashboard.stripe.com/${CURRENT_STRIPE_ACCOUNT!.stripeAccount.id}/products/${data[dataIndexById.ProductId]}` : null},
     CustomerId: {computeLink: (value) => `/customer/${value ?? 'empty'}`},
@@ -24,8 +24,8 @@
     {id: 'AttributionPeriod', name: 'Attributed period'},
     {id: 'BookedAccountingPeriod', name: 'Booked'},
     {id: 'Category', name: 'Category'},
-    {id: 'RevRecTransactionId', name: 'Transaction ID'},
-    {id: 'RevRecTransactionTitle', name: 'Transaction', dependsOn: ['RevRecTransactionId']},
+    {id: 'TransactionId', name: 'Transaction ID'},
+    {id: 'TransactionTitle', name: 'Transaction', dependsOn: ['TransactionId']},
     {id: 'Credit', name: 'Credit'},
     {id: 'CreditNotes', name: 'Credit notes'},
     {id: 'Currency', name: 'Currency'},

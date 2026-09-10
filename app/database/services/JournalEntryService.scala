@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{RevRecTransaction, JournalEntry, JournalEntryTable}
+import database.models.{Transaction, JournalEntry, JournalEntryTable}
 import framework.{Instant, Jsonable, PlayConfig}
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import play.api.libs.json.{JsObject, Json}
@@ -112,8 +112,8 @@ class JournalEntryService @Inject() (
     query ++= items
   }
 
-  def getDeleteByTransactionAction(transactionId: String, revRecTransactionType: RevRecTransaction.Type): DBIOAction[_, NoStream, Effect.Write] = {
-    query.filter { q => q.revRecTransactionId === transactionId && q.revRecTransactionType === revRecTransactionType }.delete
+  def getDeleteByTransactionAction(transactionId: String, transactionType: Transaction.Type): DBIOAction[_, NoStream, Effect.Write] = {
+    query.filter { q => q.transactionId === transactionId && q.transactionType === transactionType }.delete
   }
 
   def getFirst(): Future[Option[JournalEntry]] = {
@@ -189,9 +189,9 @@ class JournalEntryService @Inject() (
     )
   }
 
-  def deleteByRevRecTransactionId(transactionId: String): Future[Unit] = {
+  def deleteByTransactionId(transactionId: String): Future[Unit] = {
     db
-      .run { query.filter(_.revRecTransactionId === transactionId).delete }
+      .run { query.filter(_.transactionId === transactionId).delete }
       .map { _ => () }
   }
 
@@ -206,7 +206,7 @@ class JournalEntryService @Inject() (
         DELETE FROM journal_entry
         WHERE rev_rec_transaction_id IN (
           SELECT j.rev_rec_transaction_id
-          FROM transaction_ids j LEFT JOIN rev_rec_transaction t ON t.id = j.rev_rec_transaction_id
+          FROM transaction_ids j LEFT JOIN transaction t ON t.id = j.rev_rec_transaction_id
           WHERE t.id IS NULL
         )
       """
@@ -293,7 +293,7 @@ class JournalEntryService @Inject() (
       }
   }
 
-  def getByRevRecTransactionId(
+  def getByTransactionId(
     stripeAccountId: String,
     liveMode: Boolean,
     transactionId: String,
@@ -306,7 +306,7 @@ class JournalEntryService @Inject() (
             case Some(lineItemId) => q.invoiceLineItemId === lineItemId
             case None => LiteralColumn(true).?
           }
-          q.revRecTransactionId === transactionId &&
+          q.transactionId === transactionId &&
             lineItemIdCond &&
             q.stripeAccountId === stripeAccountId &&
             q.liveMode === liveMode

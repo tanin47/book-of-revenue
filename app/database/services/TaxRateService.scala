@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{TaxRate, TaxRateTable}
+import database.models.stripe.{StripeTaxRate, StripeTaxRateTable}
 import framework.{BaseDbService, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -30,10 +30,10 @@ class TaxRateService @Inject() (
   import TaxRateService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[TaxRateTable] = TableQuery[TaxRateTable]
+  val query: TableQuery[StripeTaxRateTable] = TableQuery[StripeTaxRateTable]
 
-  def create(data: CreateData): Future[TaxRate] = {
-    val entity = TaxRate(
+  def create(data: CreateData): Future[StripeTaxRate] = {
+    val entity = StripeTaxRate(
       stripeAccountId = data.stripeAccountId,
       liveMode = data.liveMode,
       id = data.id,
@@ -60,7 +60,7 @@ class TaxRateService @Inject() (
     }
   }
 
-  def update(entity: TaxRate): Future[Unit] = {
+  def update(entity: StripeTaxRate): Future[Unit] = {
     db
       .run {
         query.filter(_.id === entity.id).update(entity)
@@ -68,17 +68,17 @@ class TaxRateService @Inject() (
       .map(_ => ())
   }
 
-  def getById(id: String): Future[Option[TaxRate]] = {
+  def getById(id: String): Future[Option[StripeTaxRate]] = {
     getByIds(Set(id)).map(_.headOption)
   }
 
-  def getAll(): Future[Seq[TaxRate]] = {
+  def getAll(): Future[Seq[StripeTaxRate]] = {
     db.run {
       query.result
     }
   }
 
-  def getByIds(ids: Set[String]): Future[Seq[TaxRate]] = {
+  def getByIds(ids: Set[String]): Future[Seq[StripeTaxRate]] = {
     db.run {
       query.filter(_.id.inSet(ids)).result
     }

@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{StripeImporterJob, StripeImporterJobTable}
+import database.models.stripe.{StripeImporterJob, StripeImporterJobTable}
 import framework.{Instant, PlayConfig}
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import slick.jdbc.JdbcProfile

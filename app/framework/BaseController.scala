@@ -1,6 +1,7 @@
 package framework
 
-import database.models.{StripeAccount, User}
+import database.models.User
+import database.models.stripe.StripeAccount
 import database.services.{JournalEntryService, StripeAccountService, UserService}
 import play.api.http.FileMimeTypes
 import play.api.i18n.{Langs, MessagesApi}

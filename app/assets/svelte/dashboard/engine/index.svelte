@@ -1,7 +1,7 @@
 <script lang="ts">
 import Layout from '../_layout.svelte'
 import {formatAmount, formatDateTime, formatNumber} from '../../common/globals'
-import type {RevRecTransaction, TrackedException} from "../../common/models";
+import type {Transaction, TrackedException} from "../../common/models";
 import {onMount} from "svelte";
 import {post} from "../../common/form";
 
@@ -46,7 +46,7 @@ interface StageData {
 let isLoading = false;
 let stageData: {[key: string]: StageData} = {}
 let recentExceptions: TrackedException[] = []
-let recentTransactions: RevRecTransaction[] = []
+let recentTransactions: Transaction[] = []
 let isRunningAll = false
 let loadTimeoutId: number | null = null
 let isRunEngineTriggered = false

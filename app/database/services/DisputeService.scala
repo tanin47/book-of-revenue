@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{Dispute, DisputeTable, RichDispute}
+import database.models.stripe.{StripeDispute, StripeDisputeTable, RichStripeDispute}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -34,10 +34,10 @@ class DisputeService @Inject() (
   import DisputeService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[DisputeTable] = TableQuery[DisputeTable]
+  val query: TableQuery[StripeDisputeTable] = TableQuery[StripeDisputeTable]
 
-  def create(data: CreateData): Future[Dispute] = {
-    val entity = Dispute(
+  def create(data: CreateData): Future[StripeDispute] = {
+    val entity = StripeDispute(
       stripeAccountId = data.stripeAccountId,
       liveMode = data.liveMode,
       id = data.id,
@@ -67,7 +67,7 @@ class DisputeService @Inject() (
     }
   }
 
-  def update(entity: Dispute): Future[Unit] = {
+  def update(entity: StripeDispute): Future[Unit] = {
     db
       .run {
         query.filter(_.id === entity.id).update(entity)
@@ -75,41 +75,41 @@ class DisputeService @Inject() (
       .map(_ => ())
   }
 
-  def getById(id: String): Future[Option[Dispute]] = {
+  def getById(id: String): Future[Option[StripeDispute]] = {
     db.run {
       query.filter(_.id === id).result.headOption
     }
   }
 
-  def getAll(): Future[Seq[Dispute]] = {
+  def getAll(): Future[Seq[StripeDispute]] = {
     db.run {
       query.result
     }
   }
 
-  def getByChargeIdsOrPaymentIntentIds(chargeIds: Set[String], paymentIntentIds: Set[String]): Future[Seq[Dispute]] = {
+  def getByChargeIdsOrPaymentIntentIds(chargeIds: Set[String], paymentIntentIds: Set[String]): Future[Seq[StripeDispute]] = {
     db.run {
       query.filter(r => r.chargeId.inSet(chargeIds) || r.paymentIntentId.inSet(paymentIntentIds)).result
     }
   }
 
-  def getByChargeIds(chargeIds: Set[String]): Future[Seq[Dispute]] = {
+  def getByChargeIds(chargeIds: Set[String]): Future[Seq[StripeDispute]] = {
     db.run {
       query.filter(_.chargeId.inSet(chargeIds)).result
     }
   }
 
-  def getRichByChargeIds(chargeIds: Set[String]): Future[Seq[RichDispute]] = {
+  def getRichByChargeIds(chargeIds: Set[String]): Future[Seq[RichStripeDispute]] = {
     getByChargeIds(chargeIds).flatMap(hydrate)
   }
 
-  private[this] def hydrate(items: Seq[Dispute]): Future[Seq[RichDispute]] = {
+  private[this] def hydrate(items: Seq[StripeDispute]): Future[Seq[RichStripeDispute]] = {
     for {
       balanceTransactions <- balanceTransactionService.getByIds(items.flatMap(_.balanceTransactionIds).toSet)
     } yield {
       val btById = balanceTransactions.map(bt => bt.id -> bt).toMap
       items.map { item =>
-        RichDispute(
+        RichStripeDispute(
           base = item,
           balanceTransactions = item.balanceTransactionIds.flatMap(btById.get),
         )

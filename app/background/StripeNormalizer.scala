@@ -1,6 +1,6 @@
 package background
 
-import database.models.RawStripeObject
+import database.models.stripe.StripeRawObject
 import database.services.{BalanceTransactionService, ChargeService, CouponService, CreditBalanceTransactionService, CreditGrantService, CreditNoteLineItemPretaxCreditAmountService, CreditNoteLineItemService, CreditNoteLineItemTaxService, CreditNoteRefundService, CreditNoteService, CustomerBalanceTransactionService, CustomerService, DiscountService, DisputeService, InvoiceItemService, InvoiceLineItemDiscountAmountService, InvoiceLineItemPretaxCreditAmountService, InvoiceLineItemService, InvoiceLineItemTaxService, InvoicePaymentService, InvoiceService, MeterEventSummaryService, PaymentIntentService, PriceService, PriceTierService, ProductService, RawStripeObjectService, RefundService, SubscriptionItemService, SubscriptionService, TaxRateService, TrackedExceptionService}
 import framework.Helpers.await
 import framework.Instant

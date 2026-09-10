@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{InvoiceLineItem, InvoiceLineItemTable, RichInvoiceLineItem}
+import database.models.stripe.{StripeInvoiceLineItem, StripeInvoiceLineItemTable, RichStripeInvoiceLineItem}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -47,10 +47,10 @@ class InvoiceLineItemService @Inject() (
   import InvoiceLineItemService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[InvoiceLineItemTable] = TableQuery[InvoiceLineItemTable]
+  val query: TableQuery[StripeInvoiceLineItemTable] = TableQuery[StripeInvoiceLineItemTable]
 
-  def create(item: CreateData): Future[InvoiceLineItem] = {
-    val entity = InvoiceLineItem(
+  def create(item: CreateData): Future[StripeInvoiceLineItem] = {
+    val entity = StripeInvoiceLineItem(
       stripeAccountId = item.stripeAccountId,
       liveMode = item.liveMode,
       id = item.id,
@@ -85,7 +85,7 @@ class InvoiceLineItemService @Inject() (
     }
   }
 
-  def update(entity: InvoiceLineItem): Future[Unit] = {
+  def update(entity: StripeInvoiceLineItem): Future[Unit] = {
     db
       .run {
         query.filter(_.id === entity.id).update(entity)
@@ -93,33 +93,33 @@ class InvoiceLineItemService @Inject() (
       .map(_ => ())
   }
 
-  def getById(id: String): Future[Option[InvoiceLineItem]] = {
+  def getById(id: String): Future[Option[StripeInvoiceLineItem]] = {
     db.run {
       query.filter(_.id === id).result.headOption
     }
   }
 
-  def getAll(): Future[Seq[InvoiceLineItem]] = {
+  def getAll(): Future[Seq[StripeInvoiceLineItem]] = {
     db.run {
       query.result
     }
   }
 
-  def getByInvoice(invoiceId: String): Future[Seq[InvoiceLineItem]] = {
+  def getByInvoice(invoiceId: String): Future[Seq[StripeInvoiceLineItem]] = {
     getByInvoiceIds(Set(invoiceId))
   }
 
-  def getByInvoiceIds(invoiceIds: Set[String]): Future[Seq[InvoiceLineItem]] = {
+  def getByInvoiceIds(invoiceIds: Set[String]): Future[Seq[StripeInvoiceLineItem]] = {
     db.run {
       query.filter(_.invoiceId.inSet(invoiceIds)).sortBy(_.rank.asc).result
     }
   }
 
-  def getRichByInvoiceIds(invoiceIds: Set[String]): Future[Seq[RichInvoiceLineItem]] = {
+  def getRichByInvoiceIds(invoiceIds: Set[String]): Future[Seq[RichStripeInvoiceLineItem]] = {
     getByInvoiceIds(invoiceIds).flatMap(hydrate)
   }
 
-  private[this] def hydrate(items: Seq[InvoiceLineItem]): Future[Seq[RichInvoiceLineItem]] = {
+  private[this] def hydrate(items: Seq[StripeInvoiceLineItem]): Future[Seq[RichStripeInvoiceLineItem]] = {
     val futureBareRichItems = for {
       invoiceItems <- invoiceItemService.getRichByIds(items.flatMap(_.invoiceItemId).toSet)
       subscriptionItems <- subscriptionItemService.getByIds(items.flatMap(_.subscriptionItemId).toSet)
@@ -137,7 +137,7 @@ class InvoiceLineItemService @Inject() (
         val settlementCurrency = item.currency // TODO: replace with the account config. Exchange rate should be chosen at a later time to be honest
         val timestamp = item.startedAt.getOrElse(item.syncedAt)
         exchangeRateService.get(None, item.currency, settlementCurrency, timestamp).map { exchangeRate =>
-          RichInvoiceLineItem(
+          RichStripeInvoiceLineItem(
             base = item,
             invoiceItem = item.invoiceItemId.flatMap(invoiceItemsMap.get),
             subscriptionItem = item.subscriptionItemId.flatMap(subscriptionItemsMap.get),

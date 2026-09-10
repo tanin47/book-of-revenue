@@ -21,9 +21,9 @@ object NetRevenueService {
   enum Column extends Enum[Column] {
     case
     AccountingPeriod,
-    RevRecTransactionId,
-    RevRecTransactionTitle,
-    RevRecTransactionType,
+    TransactionId,
+    TransactionTitle,
+    TransactionType,
     TransactionValue,
     TransactionStatus,
     TransactionDate,
@@ -174,9 +174,9 @@ class NetRevenueService @Inject() (
     val sortClauses = sorts.map { sort =>
       val name = sort.column match {
         case Column.AccountingPeriod => "accounting_period"
-        case Column.RevRecTransactionId => "rev_rec_transaction_id"
-        case Column.RevRecTransactionTitle => "rev_rec_transaction_title"
-        case Column.RevRecTransactionType => "rev_rec_transaction_type"
+        case Column.TransactionId => "rev_rec_transaction_id"
+        case Column.TransactionTitle => "rev_rec_transaction_title"
+        case Column.TransactionType => "rev_rec_transaction_type"
         case Column.TransactionDate => "transaction_started_at"
         case Column.TransactionValue => "transaction_settlement_total_value"
         case Column.TransactionStatus => "transaction_status"
@@ -222,9 +222,9 @@ class NetRevenueService @Inject() (
       if (params.groupBy.isEmpty) {
         computedColumns.map {
           case Column.AccountingPeriod => sql"accounting_period"
-          case Column.RevRecTransactionId => sql"rev_rec_transaction_id"
-          case Column.RevRecTransactionTitle => sql"rev_rec_transaction_title"
-          case Column.RevRecTransactionType => sql"rev_rec_transaction_type"
+          case Column.TransactionId => sql"rev_rec_transaction_id"
+          case Column.TransactionTitle => sql"rev_rec_transaction_title"
+          case Column.TransactionType => sql"rev_rec_transaction_type"
           case Column.TransactionDate => sql"transaction_started_at"
           case Column.TransactionValue => sql"transaction_settlement_total_value"
           case Column.TransactionStatus => sql"transaction_status"
@@ -251,9 +251,9 @@ class NetRevenueService @Inject() (
       } else {
         computedColumns.map {
           case Column.AccountingPeriod => sql"accounting_period"
-          case Column.RevRecTransactionId => sql"MAX(rev_rec_transaction_id) AS rev_rec_transaction_id"
-          case Column.RevRecTransactionTitle => sql"MAX(rev_rec_transaction_title) AS rev_rec_transaction_title"
-          case Column.RevRecTransactionType => sql"MAX(rev_rec_transaction_type) AS rev_rec_transaction_type"
+          case Column.TransactionId => sql"MAX(rev_rec_transaction_id) AS rev_rec_transaction_id"
+          case Column.TransactionTitle => sql"MAX(rev_rec_transaction_title) AS rev_rec_transaction_title"
+          case Column.TransactionType => sql"MAX(rev_rec_transaction_type) AS rev_rec_transaction_type"
           case Column.TransactionDate => sql"MAX(transaction_started_at) AS transaction_started_at"
           case Column.TransactionValue => sql"MAX(transaction_settlement_total_value) AS transaction_settlement_total_value"
           case Column.TransactionStatus => sql"MAX(transaction_status) AS transaction_status"
@@ -300,9 +300,9 @@ class NetRevenueService @Inject() (
           case Column.CustomerId => ColumnType.String
           case Column.CustomerName => ColumnType.String
           case Column.CustomerEmail => ColumnType.String
-          case Column.RevRecTransactionId => ColumnType.String
-          case Column.RevRecTransactionTitle => ColumnType.String
-          case Column.RevRecTransactionType => ColumnType.String
+          case Column.TransactionId => ColumnType.String
+          case Column.TransactionTitle => ColumnType.String
+          case Column.TransactionType => ColumnType.String
           case Column.TransactionDate => ColumnType.Timestamp
           case Column.TransactionValue => ColumnType.Amount
           case Column.TransactionStatus => ColumnType.String
@@ -418,15 +418,15 @@ class NetRevenueService @Inject() (
             il.ended_at AS invoice_line_item_ended_at,
             product.name AS product_name
           FROM raw_entries j
-          LEFT JOIN rev_rec_transaction con
+          LEFT JOIN transaction con
           ON con.id = j.rev_rec_transaction_id
-          LEFT JOIN customer cus
+          LEFT JOIN stripe.customer cus
           ON cus.id = j.customer_id
-          LEFT JOIN invoice inv
+          LEFT JOIN stripe.invoice inv
           ON inv.id = j.invoice_id
-          LEFT JOIN invoice_line_item il
+          LEFT JOIN stripe.invoice_line_item il
           ON il.id = j.invoice_line_item_id
-          LEFT JOIN product
+          LEFT JOIN stripe.product
           ON product.id = j.product_id
       """,
       sql"""
@@ -627,7 +627,7 @@ class NetRevenueService @Inject() (
         columns = Seq(
           Column.AccountingPeriod,
           Column.CustomerId,
-          Column.RevRecTransactionId,
+          Column.TransactionId,
           Column.ProductId,
           Column.NetRevenue,
         ),
@@ -662,7 +662,7 @@ class NetRevenueService @Inject() (
           sql"""
               FROM
                 raw_revenue_by_month_groups r
-                LEFT JOIN product p
+                LEFT JOIN stripe.product p
                 ON p.id = r.product_id
           """,
           keywordCond,
@@ -696,7 +696,7 @@ class NetRevenueService @Inject() (
           periodColumnsSql,
           sql"""
               FROM
-                customer c
+                stripe.customer c
                 FULL OUTER JOIN raw_revenue_by_month_groups r
                 ON c.id = r.customer_id
               WHERE c.stripe_account_id = $stripeAccountId AND c.live_mode = $liveMode
@@ -738,7 +738,7 @@ class NetRevenueService @Inject() (
           periodColumnsSql,
           sql"""
               FROM
-                rev_rec_transaction c
+                transaction c
                 FULL OUTER JOIN raw_revenue_by_month_groups r
                 ON c.id = r.rev_rec_transaction_id
               WHERE c.stripe_account_id = $stripeAccountId AND c.live_mode = $liveMode AND
@@ -786,10 +786,10 @@ class NetRevenueService @Inject() (
         )
       case GroupBy.Transaction =>
         Seq(
-          RevenueByMonthResultColumn(id = Column.RevRecTransactionId, tpe = ColumnType.String),
-          RevenueByMonthResultColumn(id = Column.RevRecTransactionTitle, tpe = ColumnType.String),
+          RevenueByMonthResultColumn(id = Column.TransactionId, tpe = ColumnType.String),
+          RevenueByMonthResultColumn(id = Column.TransactionTitle, tpe = ColumnType.String),
           RevenueByMonthResultColumn(id = Column.TransactionValue, tpe = ColumnType.Amount),
-          RevenueByMonthResultColumn(id = Column.RevRecTransactionType, tpe = ColumnType.String),
+          RevenueByMonthResultColumn(id = Column.TransactionType, tpe = ColumnType.String),
           RevenueByMonthResultColumn(id = Column.TransactionStatus, tpe = ColumnType.String),
           RevenueByMonthResultColumn(id = Column.TransactionDate, tpe = ColumnType.Timestamp),
         )

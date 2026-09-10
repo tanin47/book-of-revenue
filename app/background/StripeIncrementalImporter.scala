@@ -1,6 +1,6 @@
 package background
 
-import database.models.StripeImporterJob
+import database.models.stripe.StripeImporterJob
 import database.services.*
 import framework.Helpers.await
 import org.jobrunr.jobs.lambdas.JobRequest

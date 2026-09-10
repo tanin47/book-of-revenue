@@ -1,6 +1,6 @@
 <script lang="ts">
 import Layout from '../_layout.svelte'
-import type {RevRecTransaction} from "../../common/models";
+import type {Transaction} from "../../common/models";
 import TransactionDetail from "./_transaction_detail.svelte";
 import DebitsAndCreditsView from "./_debits_and_credits_view.svelte";
 import Button from "../../common/_button.svelte";
@@ -8,9 +8,9 @@ import AccountSummaryView from './_account_summary_view.svelte';
 import {post} from "../../common/form";
 import {onMount} from "svelte";
 
-export let transaction: RevRecTransaction
+export let transaction: Transaction
 
-function getStripeUrl(c: RevRecTransaction): string {
+function getStripeUrl(c: Transaction): string {
   const prefix = c.liveMode ? '' : 'test/'
   const base = `https://dashboard.stripe.com/${prefix}`
   switch (c.type) {

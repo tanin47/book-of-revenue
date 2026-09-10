@@ -26,7 +26,7 @@ class ProcessStandaloneChargeSpec extends Base {
     )
 
     val transaction = makeProcessStandaloneCharge(
-      transaction = makeRevRecTransaction(id = charge.id, tpe = RevRecTransaction.Type.StandaloneCharge),
+      transaction = makeTransaction(id = charge.id, tpe = Transaction.Type.StandaloneCharge),
       charge = makeRichCharge(base = charge, balanceTransaction = Some(bt)),
     )
 
@@ -56,7 +56,7 @@ class ProcessStandaloneChargeSpec extends Base {
     )
 
     val transaction = makeProcessStandaloneCharge(
-      transaction = makeRevRecTransaction(id = charge.id, tpe = RevRecTransaction.Type.StandaloneCharge),
+      transaction = makeTransaction(id = charge.id, tpe = Transaction.Type.StandaloneCharge),
       charge = makeRichCharge(base = charge, balanceTransaction = Some(bt)),
     )
 
@@ -89,7 +89,7 @@ class ProcessStandaloneChargeSpec extends Base {
     )
 
     val transaction = makeProcessStandaloneCharge(
-      transaction = makeRevRecTransaction(id = charge.id, tpe = RevRecTransaction.Type.StandaloneCharge),
+      transaction = makeTransaction(id = charge.id, tpe = Transaction.Type.StandaloneCharge),
       charge = makeRichCharge(base = charge, balanceTransaction = Some(bt)),
     )
 
@@ -121,7 +121,7 @@ class ProcessStandaloneChargeSpec extends Base {
         ))
       )
       var transaction = makeProcessStandaloneCharge(
-        transaction = makeRevRecTransaction(id = charge.base.id, tpe = RevRecTransaction.Type.StandaloneCharge),
+        transaction = makeTransaction(id = charge.base.id, tpe = Transaction.Type.StandaloneCharge),
         charge = charge,
       )
       val entries = transaction.generateRawJournalEntries()
@@ -183,7 +183,7 @@ class ProcessStandaloneChargeSpec extends Base {
         ))
       )
       var transaction = makeProcessStandaloneCharge(
-        transaction = makeRevRecTransaction(id = charge.base.id, tpe = RevRecTransaction.Type.StandaloneCharge),
+        transaction = makeTransaction(id = charge.base.id, tpe = Transaction.Type.StandaloneCharge),
         charge = charge,
       )
       NetAmount.compute(transaction.generateRawJournalEntries()) should be(Seq(
@@ -248,7 +248,7 @@ class ProcessStandaloneChargeSpec extends Base {
         ))
       )
       var transaction = makeProcessStandaloneCharge(
-        transaction = makeRevRecTransaction(id = charge.base.id, tpe = RevRecTransaction.Type.StandaloneCharge),
+        transaction = makeTransaction(id = charge.base.id, tpe = Transaction.Type.StandaloneCharge),
         charge = charge,
       )
       NetAmount.compute(transaction.generateRawJournalEntries()) should be(Seq(
@@ -315,7 +315,7 @@ class ProcessStandaloneChargeSpec extends Base {
         )),
       )
       var transaction = makeProcessStandaloneCharge(
-        transaction = makeRevRecTransaction(id = charge.base.id, tpe = RevRecTransaction.Type.StandaloneCharge),
+        transaction = makeTransaction(id = charge.base.id, tpe = Transaction.Type.StandaloneCharge),
         charge = charge
       )
       NetAmount.compute(transaction.generateRawJournalEntries()) should be(Seq(
@@ -397,7 +397,7 @@ class ProcessStandaloneChargeSpec extends Base {
         ))
       )
       var transaction = makeProcessStandaloneCharge(
-        transaction = makeRevRecTransaction(id = charge.base.id, tpe = RevRecTransaction.Type.StandaloneCharge),
+        transaction = makeTransaction(id = charge.base.id, tpe = Transaction.Type.StandaloneCharge),
         charge = charge,
       )
       NetAmount.compute(transaction.generateRawJournalEntries()) should be(Seq(
@@ -443,7 +443,7 @@ class ProcessStandaloneChargeSpec extends Base {
         ))
       )
       var transaction = makeProcessStandaloneCharge(
-        transaction = makeRevRecTransaction(id = charge.base.id, tpe = RevRecTransaction.Type.StandaloneCharge),
+        transaction = makeTransaction(id = charge.base.id, tpe = Transaction.Type.StandaloneCharge),
         charge = charge,
       )
       NetAmount.compute(transaction.generateRawJournalEntries()) should be(Seq(
@@ -489,7 +489,7 @@ class ProcessStandaloneChargeSpec extends Base {
         ))
       )
       var transaction = makeProcessStandaloneCharge(
-        transaction = makeRevRecTransaction(id = charge.base.id, tpe = RevRecTransaction.Type.StandaloneCharge),
+        transaction = makeTransaction(id = charge.base.id, tpe = Transaction.Type.StandaloneCharge),
         charge = charge,
       )
       NetAmount.compute(transaction.generateRawJournalEntries()) should be(Seq(
@@ -536,7 +536,7 @@ class ProcessStandaloneChargeSpec extends Base {
         )),
       )
       var transaction = makeProcessStandaloneCharge(
-        transaction = makeRevRecTransaction(id = charge.base.id, tpe = RevRecTransaction.Type.StandaloneCharge),
+        transaction = makeTransaction(id = charge.base.id, tpe = Transaction.Type.StandaloneCharge),
         charge = charge
       )
       NetAmount.compute(transaction.generateRawJournalEntries()) should be(Seq(
@@ -565,7 +565,7 @@ class ProcessStandaloneChargeSpec extends Base {
         )),
       )
       var transaction = makeProcessStandaloneCharge(
-        transaction = makeRevRecTransaction(id = charge.base.id, tpe = RevRecTransaction.Type.StandaloneCharge),
+        transaction = makeTransaction(id = charge.base.id, tpe = Transaction.Type.StandaloneCharge),
         charge = charge
       )
       NetAmount.compute(transaction.generateRawJournalEntries()) should be(Seq(
@@ -647,7 +647,7 @@ class ProcessStandaloneChargeSpec extends Base {
         ))
       )
       var transaction = makeProcessStandaloneCharge(
-        transaction = makeRevRecTransaction(id = charge.base.id, tpe = RevRecTransaction.Type.StandaloneCharge),
+        transaction = makeTransaction(id = charge.base.id, tpe = Transaction.Type.StandaloneCharge),
         charge = charge,
       )
       NetAmount.compute(transaction.generateRawJournalEntries()) should be(Seq(
@@ -693,7 +693,7 @@ class ProcessStandaloneChargeSpec extends Base {
         ))
       )
       var transaction = makeProcessStandaloneCharge(
-        transaction = makeRevRecTransaction(id = charge.base.id, tpe = RevRecTransaction.Type.StandaloneCharge),
+        transaction = makeTransaction(id = charge.base.id, tpe = Transaction.Type.StandaloneCharge),
         charge = charge,
       )
       NetAmount.compute(transaction.generateRawJournalEntries()) should be(Seq(
@@ -739,7 +739,7 @@ class ProcessStandaloneChargeSpec extends Base {
         ))
       )
       var transaction = makeProcessStandaloneCharge(
-        transaction = makeRevRecTransaction(id = charge.base.id, tpe = RevRecTransaction.Type.StandaloneCharge),
+        transaction = makeTransaction(id = charge.base.id, tpe = Transaction.Type.StandaloneCharge),
         charge = charge,
       )
       NetAmount.compute(transaction.generateRawJournalEntries()) should be(Seq(

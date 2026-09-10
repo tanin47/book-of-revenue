@@ -1,6 +1,7 @@
 package database.services
 
 import database.models.*
+import database.models.stripe.*
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -39,10 +40,10 @@ class SubscriptionItemService @Inject() (
   import SubscriptionItemService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[SubscriptionItemTable] = TableQuery[SubscriptionItemTable]
+  val query: TableQuery[StripeSubscriptionItemTable] = TableQuery[StripeSubscriptionItemTable]
 
-  def create(data: CreateData): Future[SubscriptionItem] = {
-    val entity = SubscriptionItem(
+  def create(data: CreateData): Future[StripeSubscriptionItem] = {
+    val entity = StripeSubscriptionItem(
       stripeAccountId = data.stripeAccountId,
       liveMode = data.liveMode,
       id = data.id,
@@ -72,7 +73,7 @@ class SubscriptionItemService @Inject() (
     }
   }
 
-  def update(entity: SubscriptionItem): Future[Unit] = {
+  def update(entity: StripeSubscriptionItem): Future[Unit] = {
     db
       .run {
         query.filter(_.id === entity.id).update(entity)
@@ -80,37 +81,37 @@ class SubscriptionItemService @Inject() (
       .map(_ => ())
   }
 
-  def getById(id: String): Future[Option[SubscriptionItem]] = {
+  def getById(id: String): Future[Option[StripeSubscriptionItem]] = {
     getByIds(Set(id)).map(_.headOption)
   }
 
-  def getAll(stripeAccountId: String, liveMode: Boolean): Future[Seq[SubscriptionItem]] = {
+  def getAll(stripeAccountId: String, liveMode: Boolean): Future[Seq[StripeSubscriptionItem]] = {
     db.run {
       query.filter { q => q.stripeAccountId === stripeAccountId && q.liveMode === liveMode }.result
     }
   }
 
-  def getBySubscriptionIds(subscriptionIds: Set[String]): Future[Seq[SubscriptionItem]] = {
+  def getBySubscriptionIds(subscriptionIds: Set[String]): Future[Seq[StripeSubscriptionItem]] = {
     db.run {
       query.filter(_.subscriptionId.inSet(subscriptionIds)).result
     }
   }
 
-  def getByIds(ids: Set[String]): Future[Seq[SubscriptionItem]] = {
+  def getByIds(ids: Set[String]): Future[Seq[StripeSubscriptionItem]] = {
     db.run {
       query.filter(_.id.inSet(ids)).result
     }
   }
 
-  def getAllUnbilledUsageSubscriptionSources(): Future[Seq[database.models.RevRecTransaction.Source]] = {
+  def getAllUnbilledUsageSubscriptionSources(): Future[Seq[database.models.Transaction.Source]] = {
     db.run {
       sql"""
         SELECT
           si.id, si.stripe_account_id, si.live_mode, s.customer_id
-        FROM subscription_item si
-        LEFT JOIN price p ON si.price_id = p.id
-        LEFT JOIN subscription s ON si.subscription_id = s.id
-        LEFT JOIN invoice_line_item il ON il.subscription_item_id = si.id
+        FROM stripe.subscription_item si
+        LEFT JOIN stripe.price p ON si.price_id = p.id
+        LEFT JOIN stripe.subscription s ON si.subscription_id = s.id
+        LEFT JOIN stripe.invoice_line_item il ON il.subscription_item_id = si.id
         WHERE
           p.recurring_meter_id IS NOT NULL
           AND p.recurring_usage_type = 'metered'
@@ -119,17 +120,17 @@ class SubscriptionItemService @Inject() (
             OR il.started_at < si.current_period_start
           )
       """.as[(String, String, Boolean, Option[String])]
-    }.map(_.map { case (id, accountId, liveMode, customerId) => database.models.RevRecTransaction.Source(id, accountId, liveMode, customerId) })
+    }.map(_.map { case (id, accountId, liveMode, customerId) => database.models.Transaction.Source(id, accountId, liveMode, customerId) })
   }
 
-  def getRichById(id: String): Future[Option[RichSubscriptionItem]] = {
+  def getRichById(id: String): Future[Option[RichStripeSubscriptionItem]] = {
     db.run(query.filter(_.id === id).result.headOption).flatMap {
       case None => Future.successful(None)
       case Some(item) => hydrate(item)
     }
   }
 
-  private[this] def hydrate(item: SubscriptionItem): Future[Option[RichSubscriptionItem]] = {
+  private[this] def hydrate(item: StripeSubscriptionItem): Future[Option[RichStripeSubscriptionItem]] = {
     for {
       subscriptionOpt <- subscriptionService.getRichById(item.subscriptionId)
       price <- priceService.getRichById(item.priceId)
@@ -137,14 +138,14 @@ class SubscriptionItemService @Inject() (
       taxRates <- taxRateService.getByIds(item.taxRateIds.toSet)
       meterEventSummaries <- (price.flatMap(_.base.recurringMeterId), subscriptionOpt) match {
         case (Some(meterId), Some(subscription)) => meterEventSummaryService.getByMeterIdAndCustomerId(meterId, subscription.base.customerId)
-        case _ => Future.successful(Seq.empty[MeterEventSummary])
+        case _ => Future.successful(Seq.empty[StripeMeterEventSummary])
       }
     } yield {
       val discountsById = discounts.map { d => d.base.id -> d }.toMap
       val taxRatesById = taxRates.map { t => t.id -> t }.toMap
 
       subscriptionOpt.map { subscription =>
-        RichSubscriptionItem(
+        RichStripeSubscriptionItem(
           base = item,
           subscription = subscription,
           price = price,

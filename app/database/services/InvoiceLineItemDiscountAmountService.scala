@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{InvoiceLineItemDiscountAmount, InvoiceLineItemDiscountAmountTable}
+import database.models.stripe.{StripeInvoiceLineItemDiscountAmount, StripeInvoiceLineItemDiscountAmountTable}
 import framework.{BaseDbService, PlayConfig}
 import play.api.db.slick.DatabaseConfigProvider
 import slick.jdbc.JdbcProfile
@@ -28,12 +28,12 @@ class InvoiceLineItemDiscountAmountService @Inject() (
   import InvoiceLineItemDiscountAmountService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[InvoiceLineItemDiscountAmountTable] = TableQuery[InvoiceLineItemDiscountAmountTable]
+  val query: TableQuery[StripeInvoiceLineItemDiscountAmountTable] = TableQuery[StripeInvoiceLineItemDiscountAmountTable]
 
   // A discount amount has no natural id, so we replace all discount amounts for a given invoice line item.
-  def replaceByInvoiceLineItem(invoiceLineItemId: String, discountAmounts: Seq[CreateData]): Future[Seq[InvoiceLineItemDiscountAmount]] = {
+  def replaceByInvoiceLineItem(invoiceLineItemId: String, discountAmounts: Seq[CreateData]): Future[Seq[StripeInvoiceLineItemDiscountAmount]] = {
     val entities = discountAmounts.map { discountAmount =>
-      InvoiceLineItemDiscountAmount(
+      StripeInvoiceLineItemDiscountAmount(
         stripeAccountId = discountAmount.stripeAccountId,
         liveMode = discountAmount.liveMode,
         rank = discountAmount.rank,
@@ -51,7 +51,7 @@ class InvoiceLineItemDiscountAmountService @Inject() (
     db.run(action.transactionally).map(_ => entities)
   }
 
-  def getByInvoiceLineItemIds(invoiceLineItemIds: Set[String]): Future[Seq[InvoiceLineItemDiscountAmount]] = {
+  def getByInvoiceLineItemIds(invoiceLineItemIds: Set[String]): Future[Seq[StripeInvoiceLineItemDiscountAmount]] = {
     db.run {
       query.filter(_.invoiceLineItemId.inSet(invoiceLineItemIds)).result
     }

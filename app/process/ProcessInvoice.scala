@@ -1,7 +1,8 @@
 package process
 
 import database.models.*
-import database.models.RevRecTransaction.Status
+import database.models.stripe.*
+import database.models.Transaction.Status
 import framework.Helpers.await
 import framework.Instant
 import play.api.Logger
@@ -11,18 +12,18 @@ import services.{ExchangeRate, ExchangeRateService}
 
 case class ProcessCustomerBalance(
   amount: JournalEntryAmount,
-  customerBalanceTransaction: Option[CustomerBalanceTransaction]
+  customerBalanceTransaction: Option[StripeCustomerBalanceTransaction]
 )
 
 case class ProcessCreditBalanceTransactionOnVoid(
   amount: JournalEntryAmount,
-  creditBalanceTransaction: RichCreditBalanceTransaction
+  creditBalanceTransaction: RichStripeCreditBalanceTransaction
 )
 
 case class ProcessInvoiceLineItemComponent(
-  transaction: RevRecTransaction,
-  invoice: RichInvoice,
-  invoiceLineItem: RichInvoiceLineItem,
+  transaction: Transaction,
+  invoice: RichStripeInvoice,
+  invoiceLineItem: RichStripeInvoiceLineItem,
   principleAccount: JournalEntry.Account,
   settlementAmount: Amount,
   presentmentAmount: Amount,
@@ -45,16 +46,16 @@ case class ProcessInvoiceLineItemComponent(
       .map { entry =>
         entry.copy(
           principleAccount = principleAccount,
-          invoiceId = Some(invoice.base.id),
-          invoiceLineItemId = Some(invoiceLineItem.base.id),
-          invoiceItemId = invoiceLineItem.invoiceItem.map(_.base.id),
-          productId = invoiceLineItem.price.map(_.base.productId),
-          priceId = invoiceLineItem.base.priceId,
+          stripeInvoiceId = Some(invoice.base.id),
+          stripeInvoiceLineItemId = Some(invoiceLineItem.base.id),
+          stripeInvoiceItemId = invoiceLineItem.invoiceItem.map(_.base.id),
+          stripeProductId = invoiceLineItem.price.map(_.base.productId),
+          stripePriceId = invoiceLineItem.base.priceId,
           stripeAccountId = transaction.stripeAccountId,
           liveMode = transaction.liveMode,
-          revRecTransactionId = transaction.id,
-          revRecTransactionType = transaction.tpe,
-          customerId = Some(invoice.base.customerId),
+          transactionId = transaction.id,
+          transactionType = transaction.tpe,
+          stripeCustomerId = Some(invoice.base.customerId),
           createdAt = syncedAt
         )
       }
@@ -96,26 +97,26 @@ case class ProcessInvoiceLineItemComponent(
       principleAccount = principleAccount,
       stripeAccountId = transaction.stripeAccountId,
       liveMode = transaction.liveMode,
-      revRecTransactionId = transaction.id,
-      revRecTransactionType = transaction.tpe,
-      customerId = Some(invoice.base.customerId),
-      invoiceId = Some(invoice.base.id),
-      invoiceLineItemId = Some(invoiceLineItem.base.id),
-      invoiceItemId = invoiceLineItem.invoiceItem.map(_.base.id),
-      chargeId = chargeId,
-      balanceTransactionId = balanceTransactionId,
-      disputeId = disputeId,
-      refundId = refundId,
-      customerBalanceTransactionId = customerBalanceTransactionId,
-      paymentIntentId = paymentIntentId,
-      paymentRecordId = paymentRecordId,
-      subscriptionId = invoiceLineItem.subscriptionItem.map(_.subscriptionId),
-      subscriptionItemId = invoiceLineItem.base.subscriptionItemId,
-      creditBalanceTransactionId = creditBalanceTransactionId,
-      creditNoteId = creditNoteId,
-      creditNoteLineItemId = creditNoteLineItemId,
-      productId = invoiceLineItem.price.map(_.base.productId),
-      priceId = invoiceLineItem.base.priceId,
+      transactionId = transaction.id,
+      transactionType = transaction.tpe,
+      stripeCustomerId = Some(invoice.base.customerId),
+      stripeInvoiceId = Some(invoice.base.id),
+      stripeInvoiceLineItemId = Some(invoiceLineItem.base.id),
+      stripeInvoiceItemId = invoiceLineItem.invoiceItem.map(_.base.id),
+      stripeChargeId = chargeId,
+      stripeBalanceTransactionId = balanceTransactionId,
+      stripeDisputeId = disputeId,
+      stripeRefundId = refundId,
+      stripeCustomerBalanceTransactionId = customerBalanceTransactionId,
+      stripePaymentIntentId = paymentIntentId,
+      stripePaymentRecordId = paymentRecordId,
+      stripeSubscriptionId = invoiceLineItem.subscriptionItem.map(_.subscriptionId),
+      stripeSubscriptionItemId = invoiceLineItem.base.subscriptionItemId,
+      stripeCreditBalanceTransactionId = creditBalanceTransactionId,
+      stripeCreditNoteId = creditNoteId,
+      stripeCreditNoteLineItemId = creditNoteLineItemId,
+      stripeProductId = invoiceLineItem.price.map(_.base.productId),
+      stripePriceId = invoiceLineItem.base.priceId,
       createdAt = syncedAt
     )
   }
@@ -519,9 +520,9 @@ case class ProcessInvoiceLineItemComponent(
 }
 
 case class ProcessInvoiceLineItem(
-  transaction: RevRecTransaction,
-  invoice: RichInvoice,
-  invoiceLineItem: RichInvoiceLineItem,
+  transaction: Transaction,
+  invoice: RichStripeInvoice,
+  invoiceLineItem: RichStripeInvoiceLineItem,
   settlementAmount: Amount,
   appliedCustomerBalances: Seq[ProcessCustomerBalance],
   unappliedCustomerBalances: Seq[ProcessCustomerBalance],
@@ -662,7 +663,7 @@ case class ProcessInvoiceLineItem(
 
 object ProcessInvoice {
   def selectInvoiceFinalizedAtExchangeRate(
-    invoice: RichInvoice,
+    invoice: RichStripeInvoice,
     exchangeRateService: ExchangeRateService,
     defaultSettlementCurrency: String,
   ): ExchangeRate = {
@@ -680,12 +681,12 @@ object ProcessInvoice {
 }
 
 case class ProcessInvoice(
-  transaction: RevRecTransaction,
-  invoice: RichInvoice,
-) extends ProcessRevRecTransaction {
+  transaction: Transaction,
+  invoice: RichStripeInvoice,
+) extends ProcessTransaction {
   lazy val syncedAt: Instant = invoice.syncedAt
   lazy val startedAt: Option[Instant] = invoice.base.finalizedAt
-  lazy val status: RevRecTransaction.Status = invoice.base.status match {
+  lazy val status: Transaction.Status = invoice.base.status match {
     case "draft" => Status.Draft
     case "open" => Status.Open
     case "paid" => Status.Paid
@@ -860,10 +861,10 @@ case class ProcessInvoice(
         entry.copy(
           stripeAccountId = transaction.stripeAccountId,
           liveMode = transaction.liveMode,
-          revRecTransactionId = transaction.id,
-          revRecTransactionType = transaction.tpe,
-          customerId = Some(invoice.base.customerId),
-          invoiceId = Some(invoice.base.id),
+          transactionId = transaction.id,
+          transactionType = transaction.tpe,
+          stripeCustomerId = Some(invoice.base.customerId),
+          stripeInvoiceId = Some(invoice.base.id),
           createdAt = syncedAt
         )
       }
@@ -906,26 +907,26 @@ case class ProcessInvoice(
       principleAccount = principleAccount,
       stripeAccountId = transaction.stripeAccountId,
       liveMode = transaction.liveMode,
-      revRecTransactionId = transaction.id,
-      revRecTransactionType = transaction.tpe,
-      customerId = Some(invoice.base.customerId),
-      invoiceId = Some(invoice.base.id),
-      invoiceLineItemId = invoiceLineItemId,
-      invoiceItemId = invoiceItemId,
-      chargeId = chargeId,
-      balanceTransactionId = balanceTransactionId,
-      disputeId = disputeId,
-      refundId = refundId,
-      customerBalanceTransactionId = customerBalanceTransactionId,
-      paymentIntentId = paymentIntentId,
-      paymentRecordId = paymentRecordId,
-      subscriptionId = None,
-      subscriptionItemId = None,
-      creditBalanceTransactionId = None,
-      creditNoteId = None,
-      creditNoteLineItemId = None,
-      productId = None,
-      priceId = None,
+      transactionId = transaction.id,
+      transactionType = transaction.tpe,
+      stripeCustomerId = Some(invoice.base.customerId),
+      stripeInvoiceId = Some(invoice.base.id),
+      stripeInvoiceLineItemId = invoiceLineItemId,
+      stripeInvoiceItemId = invoiceItemId,
+      stripeChargeId = chargeId,
+      stripeBalanceTransactionId = balanceTransactionId,
+      stripeDisputeId = disputeId,
+      stripeRefundId = refundId,
+      stripeCustomerBalanceTransactionId = customerBalanceTransactionId,
+      stripePaymentIntentId = paymentIntentId,
+      stripePaymentRecordId = paymentRecordId,
+      stripeSubscriptionId = None,
+      stripeSubscriptionItemId = None,
+      stripeCreditBalanceTransactionId = None,
+      stripeCreditNoteId = None,
+      stripeCreditNoteLineItemId = None,
+      stripeProductId = None,
+      stripePriceId = None,
       createdAt = syncedAt
     )
   }
@@ -1002,7 +1003,7 @@ case class ProcessInvoice(
   }
 
   private[this] def makeMoneyMovementEvents(
-    charge: RichCharge,
+    charge: RichStripeCharge,
     paymentIntentId: Option[String],
     payAndMoveMoney: Boolean
   ): Seq[ProcessBillingEvent.MoneyMovementBillingEvent] = {

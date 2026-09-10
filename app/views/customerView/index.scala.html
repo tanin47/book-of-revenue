@@ -1,6 +1,6 @@
-@import database.models.Customer
+@import database.models.stripe.StripeCustomer
 @import play.api.libs.json.JsString
-@(customerId: Option[String], customer: Option[Customer])(implicit req: framework.Request[_])
+@(customerId: Option[String], customer: Option[StripeCustomer])(implicit req: framework.Request[_])
 
 @main(s"Customer: ${customer.flatMap(_.name).orElse(customer.flatMap(_.email)).orElse(customerId).getOrElse("No name")}") {
   <script src='@routes.AssetsController.versioned("svelte/dashboard/customerView/index.js")'></script>

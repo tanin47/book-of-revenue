@@ -43,8 +43,8 @@ object AccountChangeByEventService {
   enum Column extends Enum[Column] {
     case
     AccountingPeriod,
-    RevRecTransactionId,
-    RevRecTransactionTitle,
+    TransactionId,
+    TransactionTitle,
     CustomerEmail,
     CustomerId,
     CustomerName,
@@ -330,12 +330,12 @@ class AccountChangeByEventService @Inject() (
             price.product_id AS product_id,
             product.name AS product_name
           FROM groups main
-          LEFT JOIN rev_rec_transaction con ON con.id = main.rev_rec_transaction_id
-          LEFT JOIN customer cus ON cus.id = main.customer_id
-          LEFT JOIN invoice inv ON inv.id = main.invoice_id
-          LEFT JOIN invoice_line_item il ON il.id = main.invoice_line_item_id
-          LEFT JOIN price ON price.id = il.price_id
-          LEFT JOIN product ON product.id = price.product_id
+          LEFT JOIN transaction con ON con.id = main.rev_rec_transaction_id
+          LEFT JOIN stripe.customer cus ON cus.id = main.customer_id
+          LEFT JOIN stripe.invoice inv ON inv.id = main.invoice_id
+          LEFT JOIN stripe.invoice_line_item il ON il.id = main.invoice_line_item_id
+          LEFT JOIN stripe.price ON price.id = il.price_id
+          LEFT JOIN stripe.product ON product.id = price.product_id
         )
 
         SELECT
@@ -378,8 +378,8 @@ class AccountChangeByEventService @Inject() (
         case Column.CustomerId => sql"customer_id"
         case Column.CustomerName => sql"customer_name"
         case Column.CustomerEmail => sql"customer_email"
-        case Column.RevRecTransactionId => sql"rev_rec_transaction_id"
-        case Column.RevRecTransactionTitle => sql"rev_rec_transaction_title"
+        case Column.TransactionId => sql"rev_rec_transaction_id"
+        case Column.TransactionTitle => sql"rev_rec_transaction_title"
         case Column.InvoiceId => sql"invoice_id"
         case Column.InvoiceNumber => sql"invoice_number"
         case Column.InvoiceLineItemDescription => sql"invoice_line_item_description"
@@ -406,8 +406,8 @@ class AccountChangeByEventService @Inject() (
         case Column.CustomerId => "customer_id"
         case Column.CustomerName => "customer_name"
         case Column.CustomerEmail => "customer_email"
-        case Column.RevRecTransactionId => "rev_rec_transaction_id"
-        case Column.RevRecTransactionTitle => "rev_rec_transaction_title"
+        case Column.TransactionId => "rev_rec_transaction_id"
+        case Column.TransactionTitle => "rev_rec_transaction_title"
         case Column.InvoiceId => "invoice_id"
         case Column.InvoiceNumber => "invoice_number"
         case Column.InvoiceLineItemId => "invoice_line_item_id"
@@ -435,8 +435,8 @@ class AccountChangeByEventService @Inject() (
           case Column.CustomerId => ColumnType.String
           case Column.CustomerName => ColumnType.String
           case Column.CustomerEmail => ColumnType.String
-          case Column.RevRecTransactionId => ColumnType.String
-          case Column.RevRecTransactionTitle => ColumnType.String
+          case Column.TransactionId => ColumnType.String
+          case Column.TransactionTitle => ColumnType.String
           case Column.InvoiceId => ColumnType.String
           case Column.InvoiceNumber => ColumnType.String
           case Column.InvoiceLineItemDescription => ColumnType.String

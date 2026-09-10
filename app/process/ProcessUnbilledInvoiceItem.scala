@@ -1,6 +1,7 @@
 package process
 
-import database.models.{JournalEntry, RevRecTransaction, RichInvoiceItem}
+import database.models.{JournalEntry, Transaction}
+import database.models.stripe.RichStripeInvoiceItem
 import framework.Helpers.await
 import framework.Instant
 import process.Helpers.{amortize, getAccountingPeriod}
@@ -75,32 +76,32 @@ object ProcessUnbilledInvoiceItem {
       principleAccount = JournalEntry.Account.Revenue,
       stripeAccountId = null,
       liveMode = false,
-      revRecTransactionId = null,
-      revRecTransactionType = null,
-      customerId = None,
-      invoiceId = None,
-      invoiceLineItemId = None,
-      invoiceItemId = None,
-      chargeId = None,
-      balanceTransactionId = None,
-      disputeId = None,
-      refundId = None,
-      customerBalanceTransactionId = None,
-      paymentIntentId = None,
-      paymentRecordId = None,
-      subscriptionId = None,
-      subscriptionItemId = None,
-      creditBalanceTransactionId = None,
-      creditNoteId = None,
-      creditNoteLineItemId = None,
-      productId = None,
-      priceId = None,
+      transactionId = null,
+      transactionType = null,
+      stripeCustomerId = None,
+      stripeInvoiceId = None,
+      stripeInvoiceLineItemId = None,
+      stripeInvoiceItemId = None,
+      stripeChargeId = None,
+      stripeBalanceTransactionId = None,
+      stripeDisputeId = None,
+      stripeRefundId = None,
+      stripeCustomerBalanceTransactionId = None,
+      stripePaymentIntentId = None,
+      stripePaymentRecordId = None,
+      stripeSubscriptionId = None,
+      stripeSubscriptionItemId = None,
+      stripeCreditBalanceTransactionId = None,
+      stripeCreditNoteId = None,
+      stripeCreditNoteLineItemId = None,
+      stripeProductId = None,
+      stripePriceId = None,
       createdAt = null
     )
   }
 
   def selectInvoiceItemCreatedAtExchangeRate(
-    invoiceItem: RichInvoiceItem,
+    invoiceItem: RichStripeInvoiceItem,
     exchangeRateService: ExchangeRateService,
     defaultSettlementCurrency: String,
   ): ExchangeRate = {
@@ -109,12 +110,12 @@ object ProcessUnbilledInvoiceItem {
 }
 
 case class ProcessUnbilledInvoiceItem(
-  transaction: RevRecTransaction,
-  invoiceItem: RichInvoiceItem,
-) extends ProcessRevRecTransaction {
+  transaction: Transaction,
+  invoiceItem: RichStripeInvoiceItem,
+) extends ProcessTransaction {
   lazy val syncedAt: Instant = invoiceItem.base.syncedAt
   lazy val startedAt: Option[Instant] = invoiceItem.base.startedAt
-  lazy val status: RevRecTransaction.Status = RevRecTransaction.Status.Open
+  lazy val status: Transaction.Status = Transaction.Status.Open
 
   def generateRawJournalEntries(): Seq[JournalEntry] = {
     val startedAt = invoiceItem.base.startedAt.getOrElse(invoiceItem.base.createdAt)
@@ -134,12 +135,12 @@ case class ProcessUnbilledInvoiceItem(
         entry.copy(
           stripeAccountId = transaction.stripeAccountId,
           liveMode = transaction.liveMode,
-          revRecTransactionId = transaction.id,
-          revRecTransactionType = transaction.tpe,
-          customerId = Some(invoiceItem.base.customerId),
-          invoiceItemId = Some(invoiceItem.base.id),
-          productId = invoiceItem.base.productId,
-          priceId = invoiceItem.base.priceId,
+          transactionId = transaction.id,
+          transactionType = transaction.tpe,
+          stripeCustomerId = Some(invoiceItem.base.customerId),
+          stripeInvoiceItemId = Some(invoiceItem.base.id),
+          stripeProductId = invoiceItem.base.productId,
+          stripePriceId = invoiceItem.base.priceId,
           createdAt = syncedAt
         )
       }

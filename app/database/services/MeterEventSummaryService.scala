@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{MeterEventSummary, MeterEventSummaryTable}
+import database.models.stripe.{StripeMeterEventSummary, StripeMeterEventSummaryTable}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -32,10 +32,10 @@ class MeterEventSummaryService @Inject() (
   import MeterEventSummaryService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[MeterEventSummaryTable] = TableQuery[MeterEventSummaryTable]
+  val query: TableQuery[StripeMeterEventSummaryTable] = TableQuery[StripeMeterEventSummaryTable]
 
-  def create(data: CreateData): Future[MeterEventSummary] = {
-    val entity = MeterEventSummary(
+  def create(data: CreateData): Future[StripeMeterEventSummary] = {
+    val entity = StripeMeterEventSummary(
       stripeAccountId = data.stripeAccountId,
       liveMode = data.liveMode,
       id = data.id,
@@ -63,7 +63,7 @@ class MeterEventSummaryService @Inject() (
     }
   }
 
-  def update(entity: MeterEventSummary): Future[Unit] = {
+  def update(entity: StripeMeterEventSummary): Future[Unit] = {
     db
       .run {
         query.filter(_.id === entity.id).update(entity)
@@ -71,25 +71,25 @@ class MeterEventSummaryService @Inject() (
       .map(_ => ())
   }
 
-  def getById(id: String): Future[Option[MeterEventSummary]] = {
+  def getById(id: String): Future[Option[StripeMeterEventSummary]] = {
     db.run {
       query.filter(_.id === id).result.headOption
     }
   }
 
-  def getAll(): Future[Seq[MeterEventSummary]] = {
+  def getAll(): Future[Seq[StripeMeterEventSummary]] = {
     db.run {
       query.result
     }
   }
 
-  def getByMeterIds(meterIds: Set[String]): Future[Seq[MeterEventSummary]] = {
+  def getByMeterIds(meterIds: Set[String]): Future[Seq[StripeMeterEventSummary]] = {
     db.run {
       query.filter(_.meterId.inSet(meterIds)).result
     }
   }
 
-  def getByMeterIdAndCustomerId(meterId: String, customerId: String): Future[Seq[MeterEventSummary]] = {
+  def getByMeterIdAndCustomerId(meterId: String, customerId: String): Future[Seq[StripeMeterEventSummary]] = {
     db.run {
       query.filter { q => q.meterId === meterId && q.customerId === customerId }.result
     }

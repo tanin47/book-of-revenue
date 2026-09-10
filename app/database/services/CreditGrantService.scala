@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{CreditGrant, CreditGrantTable}
+import database.models.stripe.{StripeCreditGrant, StripeCreditGrantTable}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -33,10 +33,10 @@ class CreditGrantService @Inject() (
   import CreditGrantService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[CreditGrantTable] = TableQuery[CreditGrantTable]
+  val query: TableQuery[StripeCreditGrantTable] = TableQuery[StripeCreditGrantTable]
 
-  def create(data: CreateData): Future[CreditGrant] = {
-    val entity = CreditGrant(
+  def create(data: CreateData): Future[StripeCreditGrant] = {
+    val entity = StripeCreditGrant(
       stripeAccountId = data.stripeAccountId,
       liveMode = data.liveMode,
       id = data.id,
@@ -66,7 +66,7 @@ class CreditGrantService @Inject() (
     }
   }
 
-  def update(entity: CreditGrant): Future[Unit] = {
+  def update(entity: StripeCreditGrant): Future[Unit] = {
     db
       .run {
         query.filter(_.id === entity.id).update(entity)
@@ -74,17 +74,17 @@ class CreditGrantService @Inject() (
       .map(_ => ())
   }
 
-  def getById(id: String): Future[Option[CreditGrant]] = {
+  def getById(id: String): Future[Option[StripeCreditGrant]] = {
     getByIds(Set(id)).map(_.headOption)
   }
 
-  def getAll(): Future[Seq[CreditGrant]] = {
+  def getAll(): Future[Seq[StripeCreditGrant]] = {
     db.run {
       query.result
     }
   }
 
-  def getByIds(ids: Set[String]): Future[Seq[CreditGrant]] = {
+  def getByIds(ids: Set[String]): Future[Seq[StripeCreditGrant]] = {
     db.run {
       query.filter(_.id.inSet(ids)).result
     }

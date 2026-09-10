@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{RevRecTransaction, RevRecTransactionTable, ListableRevRecTransaction, RichRevRecTransaction}
+import database.models.{Transaction, TransactionTable, ListableTransaction, RichTransaction}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -8,12 +8,12 @@ import play.api.db.slick.DatabaseConfigProvider
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
-object RevRecTransactionService {
+object TransactionService {
   case class CreateData(
     stripeAccountId: String,
     liveMode: Boolean,
     transactionId: String,
-    revRecTransactionType: RevRecTransaction.Type,
+    transactionType: Transaction.Type,
     customerId: Option[String],
     startedAt: Option[Instant],
     batchTimestamp: Instant
@@ -26,7 +26,7 @@ object RevRecTransactionService {
 }
 
 @Singleton
-class RevRecTransactionService @Inject() (
+class TransactionService @Inject() (
   val dbConfigProvider: DatabaseConfigProvider,
   config: PlayConfig,
   invoiceService: InvoiceService,
@@ -38,18 +38,18 @@ class RevRecTransactionService @Inject() (
   creditBalanceTransactionService: CreditBalanceTransactionService,
   customerService: CustomerService,
 )(implicit ec: ExecutionContext) extends BaseDbService {
-  import RevRecTransactionService.*
+  import TransactionService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[RevRecTransactionTable] = TableQuery[RevRecTransactionTable]
+  val query: TableQuery[TransactionTable] = TableQuery[TransactionTable]
 
-  def create(data: CreateData): Future[RevRecTransaction] = {
-    val entity = RevRecTransaction(
+  def create(data: CreateData): Future[Transaction] = {
+    val entity = Transaction(
       stripeAccountId = data.stripeAccountId,
       liveMode = data.liveMode,
       id = data.transactionId,
-      tpe = data.revRecTransactionType,
-      status = RevRecTransaction.Status.Undetermined,
+      tpe = data.transactionType,
+      status = Transaction.Status.Undetermined,
       customerId = data.customerId,
       title = None,
       settlementTotalValue = None,
@@ -69,13 +69,13 @@ class RevRecTransactionService @Inject() (
 
   def createIfNotExist(
     id: String,
-    tpe: RevRecTransaction.Type,
+    tpe: Transaction.Type,
     stripeAccountId: String,
     liveMode: Boolean,
     customerId: Option[String],
     batchTimestamp: Instant,
-  ): Future[RevRecTransaction] = {
-    def updateAndGet(): Future[RevRecTransaction] = {
+  ): Future[Transaction] = {
+    def updateAndGet(): Future[Transaction] = {
       updateBatchTimestamp(stripeAccountId, liveMode, id, batchTimestamp).flatMap { _ =>
         getById(stripeAccountId, liveMode, id).map(_.get)
       }
@@ -90,13 +90,13 @@ class RevRecTransactionService @Inject() (
             stripeAccountId = stripeAccountId,
             liveMode = liveMode,
             transactionId = id,
-            revRecTransactionType = tpe,
+            transactionType = tpe,
             customerId = customerId,
             startedAt = None,
             batchTimestamp = batchTimestamp
           ))
             .recoverWith {
-              case e: PSQLException if matchUniqueConstraintException(e, "rev_rec_transaction__id__type") =>
+              case e: PSQLException if matchUniqueConstraintException(e, "transaction__id__type") =>
                 updateAndGet()
             }
       }
@@ -127,7 +127,7 @@ class RevRecTransactionService @Inject() (
       .map(_.toLong)
   }
 
-  def getAll(stripeAccountId: String, liveMode: Boolean, offset: Int, limit: Int): Future[Seq[RevRecTransaction]] = {
+  def getAll(stripeAccountId: String, liveMode: Boolean, offset: Int, limit: Int): Future[Seq[Transaction]] = {
     db.run {
       query
         .filter { q =>
@@ -145,32 +145,32 @@ class RevRecTransactionService @Inject() (
   }
 
 
-  def getAllListable(stripeAccountId: String, liveMode: Boolean, offset: Int, limit: Int): Future[Seq[ListableRevRecTransaction]] = {
+  def getAllListable(stripeAccountId: String, liveMode: Boolean, offset: Int, limit: Int): Future[Seq[ListableTransaction]] = {
     getAll(stripeAccountId, liveMode, offset, limit).flatMap(hydrateListable)
   }
 
-  def getById(stripeAccountId: String, liveMode: Boolean, transactionId: String): Future[Option[RevRecTransaction]] = {
+  def getById(stripeAccountId: String, liveMode: Boolean, transactionId: String): Future[Option[Transaction]] = {
     db.run {
       query.filter { q => q.id === transactionId && q.stripeAccountId === stripeAccountId && q.liveMode === liveMode }.result.headOption
     }
   }
 
-  def getRichById(stripeAccountId: String, liveMode: Boolean, transactionId: String): Future[Option[RichRevRecTransaction]] = {
+  def getRichById(stripeAccountId: String, liveMode: Boolean, transactionId: String): Future[Option[RichTransaction]] = {
     getById(stripeAccountId, liveMode, transactionId).flatMap { transaction => hydrate(transaction.toSeq) }.map(_.headOption)
   }
 
-  private[this] def hydrate(transactions: Seq[RevRecTransaction]): Future[Seq[RichRevRecTransaction]] = {
-    def idsOf(tpe: RevRecTransaction.Type): Set[String] =
+  private[this] def hydrate(transactions: Seq[Transaction]): Future[Seq[RichTransaction]] = {
+    def idsOf(tpe: Transaction.Type): Set[String] =
       transactions.filter(_.tpe == tpe).map(_.id).toSet
 
     for {
-      invoices <- invoiceService.getRichByIds(idsOf(RevRecTransaction.Type.Invoice))
-      charges <- chargeService.getRichByIds(idsOf(RevRecTransaction.Type.StandaloneCharge))
-      paymentIntents <- paymentIntentService.getRichByIds(idsOf(RevRecTransaction.Type.StandalonePaymentIntent))
-      invoiceItems <- invoiceItemService.getRichByIds(idsOf(RevRecTransaction.Type.UnbilledInvoiceItem))
-      subscriptionItems <- Future.sequence(idsOf(RevRecTransaction.Type.UnbilledUsageSubscriptionItem).toSeq.map(subscriptionItemService.getRichById)).map(_.flatten)
-      customerBalanceTransactions <- customerBalanceTransactionService.getByIds(idsOf(RevRecTransaction.Type.StandaloneCustomerBalanceTransaction))
-      creditBalanceTransactions <- creditBalanceTransactionService.getRichByIds(idsOf(RevRecTransaction.Type.StandaloneCreditBalanceTransaction))
+      invoices <- invoiceService.getRichByIds(idsOf(Transaction.Type.Invoice))
+      charges <- chargeService.getRichByIds(idsOf(Transaction.Type.StandaloneCharge))
+      paymentIntents <- paymentIntentService.getRichByIds(idsOf(Transaction.Type.StandalonePaymentIntent))
+      invoiceItems <- invoiceItemService.getRichByIds(idsOf(Transaction.Type.UnbilledInvoiceItem))
+      subscriptionItems <- Future.sequence(idsOf(Transaction.Type.UnbilledUsageSubscriptionItem).toSeq.map(subscriptionItemService.getRichById)).map(_.flatten)
+      customerBalanceTransactions <- customerBalanceTransactionService.getByIds(idsOf(Transaction.Type.StandaloneCustomerBalanceTransaction))
+      creditBalanceTransactions <- creditBalanceTransactionService.getRichByIds(idsOf(Transaction.Type.StandaloneCreditBalanceTransaction))
       customers <- customerService.getByIds(transactions.flatMap(_.customerId).toSet)
     } yield {
       val invoicesById = invoices.map { i => i.base.id -> i }.toMap
@@ -184,7 +184,7 @@ class RevRecTransactionService @Inject() (
 
       transactions.map { transaction =>
         val id = transaction.id
-        RichRevRecTransaction(
+        RichTransaction(
           base = transaction,
           customer = transaction.customerId.flatMap(customersById.get),
           invoice = invoicesById.get(id),
@@ -205,7 +205,7 @@ class RevRecTransactionService @Inject() (
       .map { _ => () }
   }
 
-  def getOutdateds(currentBatchTimestamp: Instant, limit: Int): Future[Seq[RevRecTransaction]] = {
+  def getOutdateds(currentBatchTimestamp: Instant, limit: Int): Future[Seq[Transaction]] = {
     db.run {
       query
         .filter { q => q.batchTimestamp < currentBatchTimestamp }
@@ -214,14 +214,14 @@ class RevRecTransactionService @Inject() (
     }
   }
 
-  private[this] def hydrateListable(transactions: Seq[RevRecTransaction]): Future[Seq[ListableRevRecTransaction]] = {
+  private[this] def hydrateListable(transactions: Seq[Transaction]): Future[Seq[ListableTransaction]] = {
     for {
       customers <- customerService.getByIds(transactions.flatMap(_.customerId).toSet)
     } yield {
       val customersById = customers.map { c => c.id -> c }.toMap
 
       transactions.map { transaction =>
-        ListableRevRecTransaction(
+        ListableTransaction(
           base = transaction,
           customer = transaction.customerId.flatMap(customersById.get),
         )
@@ -231,8 +231,8 @@ class RevRecTransactionService @Inject() (
 
   def getUpdateAction(
     transactionId: String,
-    tpe: RevRecTransaction.Type,
-    status: RevRecTransaction.Status,
+    tpe: Transaction.Type,
+    status: Transaction.Status,
     startedAt: Option[Instant],
     processedAt: Option[Instant],
     journalEntriesGeneratedAt: Option[Instant],
@@ -264,7 +264,7 @@ class RevRecTransactionService @Inject() (
       ))
   }
 
-  def updateProcessedAt(transactionId: String, tpe: RevRecTransaction.Type, processedAt: Option[Instant]): Future[Unit] = {
+  def updateProcessedAt(transactionId: String, tpe: Transaction.Type, processedAt: Option[Instant]): Future[Unit] = {
     db
       .run {
         query
@@ -275,7 +275,7 @@ class RevRecTransactionService @Inject() (
       .map { _ => ()}
   }
 
-  def getUnprocesseds(batchTimestamp: Instant, limit: Int): Future[Seq[RevRecTransaction]] = {
+  def getUnprocesseds(batchTimestamp: Instant, limit: Int): Future[Seq[Transaction]] = {
     db.run {
       query
         .filter { q => q.processedAt.isEmpty && q.batchTimestamp === batchTimestamp }
@@ -289,7 +289,7 @@ class RevRecTransactionService @Inject() (
     db.run {
       sql"""
         SELECT COUNT(*) AS count, MAX(processed_at) AS max_processed_at
-        FROM rev_rec_transaction
+        FROM transaction
         WHERE stripe_account_id = $stripeAccountId AND live_mode = $liveMode;
       """.as[(Option[Long], Option[Instant])]
     }

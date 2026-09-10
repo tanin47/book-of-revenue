@@ -1,6 +1,6 @@
 package background
 
-import database.models.{StripeAccount, StripeImporterJob, StripeImporterJobCursor}
+import database.models.stripe.{StripeAccount, StripeImporterJob, StripeImporterJobCursor}
 import database.services.{RawStripeObjectService, StripeAccountService, StripeImporterJobCursorService, StripeImporterJobService, TrackedExceptionService}
 import framework.Helpers.await
 import framework.PlayConfig

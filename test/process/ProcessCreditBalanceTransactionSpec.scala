@@ -12,7 +12,7 @@ class ProcessCreditBalanceTransactionSpec extends Base {
   describe("granting credits") {
     it("books a paid credit grant") {
       val transaction = makeProcessCreditBalanceTransaction(
-        transaction = makeRevRecTransaction(),
+        transaction = makeTransaction(),
         creditBalanceTransaction = makeGrantedCreditBalanceTransaction(
           id = "cbtxn_1",
           amount = 100,
@@ -24,7 +24,7 @@ class ProcessCreditBalanceTransactionSpec extends Base {
       val entries = transaction.generateRawJournalEntries()
 
       entries.map(_.event) should be(Seq(JournalEntry.Event.CreateCreditGrant))
-      entries.map(_.creditBalanceTransactionId) should be(Seq(Some("cbtxn_1")))
+      entries.map(_.stripeCreditBalanceTransactionId) should be(Seq(Some("cbtxn_1")))
       NetAmount.compute(entries) should be(Seq(
         NetAmount(100, PaidCreditGrantContraAsset),
         NetAmount(100, PaidCreditGrants),
@@ -33,7 +33,7 @@ class ProcessCreditBalanceTransactionSpec extends Base {
 
     it("books a promotional credit grant") {
       val transaction = makeProcessCreditBalanceTransaction(
-        transaction = makeRevRecTransaction(),
+        transaction = makeTransaction(),
         creditBalanceTransaction = makeGrantedCreditBalanceTransaction(
           amount = 50,
           category = "promotional",
@@ -54,7 +54,7 @@ class ProcessCreditBalanceTransactionSpec extends Base {
   describe("expiring credits") {
     it("reverses a paid credit grant") {
       val transaction = makeProcessCreditBalanceTransaction(
-        transaction = makeRevRecTransaction(),
+        transaction = makeTransaction(),
         creditBalanceTransaction = makeExpiredCreditBalanceTransaction(
           amount = 100,
           category = "paid",
@@ -73,7 +73,7 @@ class ProcessCreditBalanceTransactionSpec extends Base {
 
     it("reverses a promotional credit grant") {
       val transaction = makeProcessCreditBalanceTransaction(
-        transaction = makeRevRecTransaction(),
+        transaction = makeTransaction(),
         creditBalanceTransaction = makeExpiredCreditBalanceTransaction(
           amount = 50,
           category = "promotional",
@@ -94,7 +94,7 @@ class ProcessCreditBalanceTransactionSpec extends Base {
   describe("voiding credits") {
     it("reverses a voided paid credit grant") {
       val transaction = makeProcessCreditBalanceTransaction(
-        transaction = makeRevRecTransaction(),
+        transaction = makeTransaction(),
         creditBalanceTransaction = makeVoidedCreditBalanceTransaction(
           amount = 100,
           category = "paid",
@@ -115,7 +115,7 @@ class ProcessCreditBalanceTransactionSpec extends Base {
   describe("delegated transactions") {
     it("skips a transaction returned from a voided invoice") {
       val transaction = makeProcessCreditBalanceTransaction(
-        transaction = makeRevRecTransaction(),
+        transaction = makeTransaction(),
         creditBalanceTransaction = makeRichCreditBalanceTransaction(
           base = makeCreditBalanceTransaction(
             `type` = "credit",
@@ -132,7 +132,7 @@ class ProcessCreditBalanceTransactionSpec extends Base {
 
     it("skips a transaction applied to an invoice") {
       val transaction = makeProcessCreditBalanceTransaction(
-        transaction = makeRevRecTransaction(),
+        transaction = makeTransaction(),
         creditBalanceTransaction = makeRichCreditBalanceTransaction(
           base = makeCreditBalanceTransaction(
             `type` = "debit",
