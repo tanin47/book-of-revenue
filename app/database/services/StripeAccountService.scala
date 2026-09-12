@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{StripeAccount, StripeAccountTable}
+import database.models.stripe.{StripeAccount, StripeAccountTable}
 import framework.Helpers.{makeValidationException, queueBootstrapJobs}
 import framework.{BaseDbService, ExternalServiceException}
 import org.jobrunr.scheduling.JobRequestScheduler

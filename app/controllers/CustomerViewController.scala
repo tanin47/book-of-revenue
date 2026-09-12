@@ -1,6 +1,7 @@
 package controllers
 
-import database.models.{Customer, JournalEntry}
+import database.models.JournalEntry
+import database.models.stripe.StripeCustomer
 import database.services.{CustomerService, ExportedFileService}
 import database.services.JournalEntryService.SortDirection
 import framework.*
@@ -122,7 +123,7 @@ class CustomerViewController @Inject() (
     }
   }
 
-  private[this] def getCustomer(customerId: String)(implicit req: AuthRequest[_]): Future[(Option[String], Option[Customer])] = {
+  private[this] def getCustomer(customerId: String)(implicit req: AuthRequest[_]): Future[(Option[String], Option[StripeCustomer])] = {
     val sanitizedCustomerId = Some(customerId).filter(_ != "empty")
     for {
       customer <- sanitizedCustomerId match {

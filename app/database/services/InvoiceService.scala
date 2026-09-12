@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{Invoice, InvoiceTable, RichInvoice}
+import database.models.stripe.{StripeInvoice, StripeInvoiceTable, RichStripeInvoice}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -47,10 +47,10 @@ class InvoiceService @Inject() (
   import InvoiceService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[InvoiceTable] = TableQuery[InvoiceTable]
+  val query: TableQuery[StripeInvoiceTable] = TableQuery[StripeInvoiceTable]
 
-  def create(data: CreateData): Future[Invoice] = {
-    val entity = Invoice(
+  def create(data: CreateData): Future[StripeInvoice] = {
+    val entity = StripeInvoice(
       stripeAccountId = data.stripeAccountId,
       liveMode = data.liveMode,
       id = data.id,
@@ -88,7 +88,7 @@ class InvoiceService @Inject() (
     }
   }
 
-  def update(entity: Invoice): Future[Unit] = {
+  def update(entity: StripeInvoice): Future[Unit] = {
     db
       .run {
         query.filter(_.id === entity.id).update(entity)
@@ -96,39 +96,39 @@ class InvoiceService @Inject() (
       .map(_ => ())
   }
 
-  def getAll(): Future[Seq[Invoice]] = {
+  def getAll(): Future[Seq[StripeInvoice]] = {
     db.run {
       query.result
     }
   }
 
-  def getAllInvoiceSources(): Future[Seq[database.models.RevRecTransaction.Source]] = {
+  def getAllInvoiceSources(): Future[Seq[database.models.Transaction.Source]] = {
     db.run {
       query.map(q => (q.id, q.stripeAccountId, q.liveMode, q.customerId)).result
-    }.map(_.map { case (id, accountId, liveMode, customerId) => database.models.RevRecTransaction.Source(id, accountId, liveMode, Some(customerId)) })
+    }.map(_.map { case (id, accountId, liveMode, customerId) => database.models.Transaction.Source(id, accountId, liveMode, Some(customerId)) })
   }
 
-  def getById(id: String): Future[Option[Invoice]] = {
+  def getById(id: String): Future[Option[StripeInvoice]] = {
     db.run {
       query.filter(_.id === id).result.headOption
     }
   }
 
-  def getByIds(ids: Set[String]): Future[Seq[Invoice]] = {
+  def getByIds(ids: Set[String]): Future[Seq[StripeInvoice]] = {
     db.run {
       query.filter(_.id.inSet(ids)).result
     }
   }
 
-  def getRichById(id: String): Future[Option[RichInvoice]] = {
+  def getRichById(id: String): Future[Option[RichStripeInvoice]] = {
     getById(id).flatMap { item => hydrate(item.toList) }.map(_.headOption)
   }
 
-  def getRichByIds(ids: Set[String]): Future[Seq[RichInvoice]] = {
+  def getRichByIds(ids: Set[String]): Future[Seq[RichStripeInvoice]] = {
     getByIds(ids).flatMap { items => hydrate(items.toList) }
   }
 
-  private[this] def hydrate(items: List[Invoice]): Future[Seq[RichInvoice]] = {
+  private[this] def hydrate(items: List[StripeInvoice]): Future[Seq[RichStripeInvoice]] = {
     val invoiceIds = items.map(_.id).toSet
 
     for {
@@ -142,7 +142,7 @@ class InvoiceService @Inject() (
       creditNotesByInvoice = creditNotes.groupBy(_.base.invoiceId)
     } yield {
       items.map { item =>
-        RichInvoice(
+        RichStripeInvoice(
           base = item,
           lineItems = lineItemsByInvoice.getOrElse(item.id, Seq.empty).sortBy(_.base.rank),
           payments = paymentsByInvoice.getOrElse(item.id, Seq.empty).sortBy(_.base.createdAt),

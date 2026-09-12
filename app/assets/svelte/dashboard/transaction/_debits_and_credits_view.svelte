@@ -1,5 +1,5 @@
 <script lang="ts">
-import type {RevRecTransaction} from "../../common/models";
+import type {Transaction} from "../../common/models";
 import Table from "../../common/_table.svelte";
 import {type FetchResult, makeSortParam, parseSortParam} from "../../common/table_models";
 import {post} from "../../common/form";
@@ -8,7 +8,7 @@ import {CURRENT_CURRENCY, formatNumber} from "../../common/globals";
 import {onMount} from "svelte";
 import FilterDialog, {BASE_COLUMNS, type Params} from "./_debits_and_credits_filter_dialog.svelte";
 
-export let transaction: RevRecTransaction
+export let transaction: Transaction
 export let onSwitchToAccountSummary: () => void
 
 let totalNumberOfRows = 0

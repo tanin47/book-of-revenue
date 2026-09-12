@@ -1,7 +1,7 @@
 package framework
 
-import database.models.RevRecTransaction.Status
-import database.models.{RevRecTransaction, RichRevRecTransaction}
+import database.models.Transaction.Status
+import database.models.{Transaction, RichTransaction}
 import play.api.libs.json.{JsObject, Json}
 
 object TransactionDetail {
@@ -201,43 +201,43 @@ object TransactionDetail {
 }
 
 case class TransactionDetail(
-  transaction: RichRevRecTransaction
+  transaction: RichTransaction
 ) extends Jsonable {
   import TransactionDetail.*
 
   val currency: String = {
     val c = transaction.base.tpe match {
-      case RevRecTransaction.Type.Invoice => transaction.invoice.map(_.base.currency)
-      case RevRecTransaction.Type.StandalonePaymentIntent => transaction.paymentIntent.map(_.base.currency)
-      case RevRecTransaction.Type.StandaloneCharge => transaction.charge.map(_.base.currency)
-      case RevRecTransaction.Type.UnbilledInvoiceItem => transaction.invoiceItem.map(_.base.currency)
-      case RevRecTransaction.Type.UnbilledUsageSubscriptionItem => transaction.subscriptionItem.flatMap(_.price).map(_.base.currency)
-      case RevRecTransaction.Type.StandaloneCustomerBalanceTransaction => transaction.customerBalanceTransaction.map(_.currency)
-      case RevRecTransaction.Type.StandaloneCreditBalanceTransaction => transaction.creditBalanceTransaction.flatMap { t => t.base.creditCurrency.orElse(t.base.debitCurrency) }
+      case Transaction.Type.Invoice => transaction.invoice.map(_.base.currency)
+      case Transaction.Type.StandalonePaymentIntent => transaction.paymentIntent.map(_.base.currency)
+      case Transaction.Type.StandaloneCharge => transaction.charge.map(_.base.currency)
+      case Transaction.Type.UnbilledInvoiceItem => transaction.invoiceItem.map(_.base.currency)
+      case Transaction.Type.UnbilledUsageSubscriptionItem => transaction.subscriptionItem.flatMap(_.price).map(_.base.currency)
+      case Transaction.Type.StandaloneCustomerBalanceTransaction => transaction.customerBalanceTransaction.map(_.currency)
+      case Transaction.Type.StandaloneCreditBalanceTransaction => transaction.creditBalanceTransaction.flatMap { t => t.base.creditCurrency.orElse(t.base.debitCurrency) }
     }
     c.getOrElse("usd")
   }
   val total: Option[Long] = transaction.base.tpe match {
-    case RevRecTransaction.Type.Invoice => transaction.invoice.map(_.base.total)
-    case RevRecTransaction.Type.StandalonePaymentIntent => transaction.paymentIntent.map(_.base.amount)
-    case RevRecTransaction.Type.StandaloneCharge => transaction.charge.map(_.base.amount)
-    case RevRecTransaction.Type.UnbilledInvoiceItem => transaction.invoiceItem.map(_.base.amount)
-    case RevRecTransaction.Type.UnbilledUsageSubscriptionItem => None
-    case RevRecTransaction.Type.StandaloneCustomerBalanceTransaction => transaction.customerBalanceTransaction.map(_.amount)
-    case RevRecTransaction.Type.StandaloneCreditBalanceTransaction => transaction.creditBalanceTransaction.flatMap { t => t.base.creditAmount.orElse(t.base.debitAmount) }
+    case Transaction.Type.Invoice => transaction.invoice.map(_.base.total)
+    case Transaction.Type.StandalonePaymentIntent => transaction.paymentIntent.map(_.base.amount)
+    case Transaction.Type.StandaloneCharge => transaction.charge.map(_.base.amount)
+    case Transaction.Type.UnbilledInvoiceItem => transaction.invoiceItem.map(_.base.amount)
+    case Transaction.Type.UnbilledUsageSubscriptionItem => None
+    case Transaction.Type.StandaloneCustomerBalanceTransaction => transaction.customerBalanceTransaction.map(_.amount)
+    case Transaction.Type.StandaloneCreditBalanceTransaction => transaction.creditBalanceTransaction.flatMap { t => t.base.creditAmount.orElse(t.base.debitAmount) }
   }
   val outstanding: Option[Long] = transaction.base.tpe match {
-    case RevRecTransaction.Type.Invoice => transaction.invoice.map(_.base.amountRemaining)
+    case Transaction.Type.Invoice => transaction.invoice.map(_.base.amountRemaining)
     case _ => None
   }
   val paid: Option[Long] = transaction.base.tpe match {
-    case RevRecTransaction.Type.Invoice => transaction.invoice.map(_.base.amountPaid)
-    case RevRecTransaction.Type.StandalonePaymentIntent => if (transaction.paymentIntent.flatMap(_.charge).flatMap(_.balanceTransaction).isDefined) {
+    case Transaction.Type.Invoice => transaction.invoice.map(_.base.amountPaid)
+    case Transaction.Type.StandalonePaymentIntent => if (transaction.paymentIntent.flatMap(_.charge).flatMap(_.balanceTransaction).isDefined) {
       transaction.paymentIntent.flatMap(_.charge).map(_.base.amount)
     } else {
       None
     }
-    case RevRecTransaction.Type.StandaloneCharge => if (transaction.charge.flatMap(_.balanceTransaction).isDefined) {
+    case Transaction.Type.StandaloneCharge => if (transaction.charge.flatMap(_.balanceTransaction).isDefined) {
       transaction.charge.map(_.base.amount)
     } else {
       None
@@ -247,7 +247,7 @@ case class TransactionDetail(
   val status: Status = transaction.base.status
 
   val lineItems: Seq[LineItem] = transaction.base.tpe match {
-    case RevRecTransaction.Type.Invoice => transaction.invoice.toList.flatMap(_.lineItems).map { lineItem =>
+    case Transaction.Type.Invoice => transaction.invoice.toList.flatMap(_.lineItems).map { lineItem =>
       LineItem(
         id = Some(lineItem.base.id),
         description = lineItem.base.description,
@@ -263,7 +263,7 @@ case class TransactionDetail(
         total = lineItem.total,
       )
     }
-    case RevRecTransaction.Type.UnbilledInvoiceItem => Seq(
+    case Transaction.Type.UnbilledInvoiceItem => Seq(
       LineItem(
         id = transaction.invoiceItem.map(_.base.id),
         description = transaction.invoiceItem.flatMap(_.base.description),
@@ -279,7 +279,7 @@ case class TransactionDetail(
         total = transaction.invoiceItem.map(_.total).getOrElse(0L),
       )
     )
-    case RevRecTransaction.Type.UnbilledUsageSubscriptionItem => Seq(
+    case Transaction.Type.UnbilledUsageSubscriptionItem => Seq(
       LineItem(
         id = transaction.subscriptionItem.map(_.base.id),
         description = transaction.subscriptionItem.flatMap(_.price).flatMap(_.product).map(_.name),
@@ -299,7 +299,7 @@ case class TransactionDetail(
   }
 
   val usages: Seq[Usage] = transaction.base.tpe match {
-    case RevRecTransaction.Type.Invoice => transaction.invoice.toList.flatMap(_.lineItems).flatMap { lineItem =>
+    case Transaction.Type.Invoice => transaction.invoice.toList.flatMap(_.lineItems).flatMap { lineItem =>
       lineItem.meterEventSummaries.map { meterEventSummary =>
         Usage(
           description = lineItem.base.description,
@@ -309,7 +309,7 @@ case class TransactionDetail(
         )
       }
     }
-    case RevRecTransaction.Type.UnbilledUsageSubscriptionItem => transaction.subscriptionItem.toList.flatMap(_.meterEventSummaries).map { meterEventSummary =>
+    case Transaction.Type.UnbilledUsageSubscriptionItem => transaction.subscriptionItem.toList.flatMap(_.meterEventSummaries).map { meterEventSummary =>
       Usage(
         description = transaction.subscriptionItem.map(_.base.id),
         startedAt = meterEventSummary.startTime,
@@ -321,13 +321,13 @@ case class TransactionDetail(
   }
 
   val billingActivities: Seq[BillingActivity.Value] = transaction.base.tpe match {
-    case RevRecTransaction.Type.Invoice => transaction.invoice.toList.flatMap(_.billingActivities)
-    case RevRecTransaction.Type.StandalonePaymentIntent => transaction.paymentIntent.toList.flatMap(_.billingActivities)
-    case RevRecTransaction.Type.StandaloneCharge => transaction.charge.toList.flatMap(_.billingActivities)
-    case RevRecTransaction.Type.UnbilledInvoiceItem => Seq.empty
-    case RevRecTransaction.Type.UnbilledUsageSubscriptionItem => Seq.empty
-    case RevRecTransaction.Type.StandaloneCustomerBalanceTransaction => transaction.customerBalanceTransaction.toList.flatMap(_.billingActivities)
-    case RevRecTransaction.Type.StandaloneCreditBalanceTransaction => transaction.creditBalanceTransaction.toList.flatMap(_.billingActivities)
+    case Transaction.Type.Invoice => transaction.invoice.toList.flatMap(_.billingActivities)
+    case Transaction.Type.StandalonePaymentIntent => transaction.paymentIntent.toList.flatMap(_.billingActivities)
+    case Transaction.Type.StandaloneCharge => transaction.charge.toList.flatMap(_.billingActivities)
+    case Transaction.Type.UnbilledInvoiceItem => Seq.empty
+    case Transaction.Type.UnbilledUsageSubscriptionItem => Seq.empty
+    case Transaction.Type.StandaloneCustomerBalanceTransaction => transaction.customerBalanceTransaction.toList.flatMap(_.billingActivities)
+    case Transaction.Type.StandaloneCreditBalanceTransaction => transaction.creditBalanceTransaction.toList.flatMap(_.billingActivities)
   }
 
   def toJson(): JsObject = Json.obj(

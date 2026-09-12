@@ -27,8 +27,8 @@ object ArAgingService {
       CustomerId,
       CustomerName,
       CustomerEmail,
-      RevRecTransactionId,
-      RevRecTransactionTitle,
+      TransactionId,
+      TransactionTitle,
       InvoiceId,
       InvoiceNumber
   }
@@ -101,8 +101,8 @@ class ArAgingService @Inject() (
         case Column.CustomerId => "customer_id"
         case Column.CustomerName => "customer_name"
         case Column.CustomerEmail => "customer_email"
-        case Column.RevRecTransactionId => "rev_rec_transaction_id"
-        case Column.RevRecTransactionTitle => "rev_rec_transaction_title"
+        case Column.TransactionId => "rev_rec_transaction_id"
+        case Column.TransactionTitle => "rev_rec_transaction_title"
         case Column.InvoiceId => "invoice_id"
         case Column.InvoiceNumber => "invoice_number"
       }
@@ -135,8 +135,8 @@ class ArAgingService @Inject() (
         case Column.CustomerId => sql"MIN(customer_id) AS customer_id"
         case Column.CustomerName => sql"MIN(customer_name) AS customer_name"
         case Column.CustomerEmail => sql"MIN(customer_email) AS customer_email"
-        case Column.RevRecTransactionId => sql"MIN(rev_rec_transaction_id) AS rev_rec_transaction_id"
-        case Column.RevRecTransactionTitle => sql"MIN(rev_rec_transaction_title) AS rev_rec_transaction_title"
+        case Column.TransactionId => sql"MIN(rev_rec_transaction_id) AS rev_rec_transaction_id"
+        case Column.TransactionTitle => sql"MIN(rev_rec_transaction_title) AS rev_rec_transaction_title"
         case Column.InvoiceId => sql"MIN(invoice_id) AS invoice_id"
         case Column.InvoiceNumber => sql"MIN(invoice_number) AS invoice_number"
       },
@@ -199,9 +199,9 @@ class ArAgingService @Inject() (
             CASE WHEN days_outstanding > 120 THEN e.amount ELSE 0 END AS "days_120_plus",
             e.amount AS total
           FROM entries e
-          LEFT JOIN customer cus ON e.customer_id = cus.id
-          LEFT JOIN rev_rec_transaction con ON e.rev_rec_transaction_id = con.id
-          LEFT JOIN invoice inv ON e.invoice_id = inv.id
+          LEFT JOIN stripe.customer cus ON e.customer_id = cus.id
+          LEFT JOIN transaction con ON e.rev_rec_transaction_id = con.id
+          LEFT JOIN stripe.invoice inv ON e.invoice_id = inv.id
         ),
 
         groups AS (
@@ -231,8 +231,8 @@ class ArAgingService @Inject() (
           case Column.CustomerId => ColumnType.String
           case Column.CustomerName => ColumnType.String
           case Column.CustomerEmail => ColumnType.String
-          case Column.RevRecTransactionId => ColumnType.String
-          case Column.RevRecTransactionTitle => ColumnType.String
+          case Column.TransactionId => ColumnType.String
+          case Column.TransactionTitle => ColumnType.String
           case Column.InvoiceId => ColumnType.String
           case Column.InvoiceNumber => ColumnType.String
         },

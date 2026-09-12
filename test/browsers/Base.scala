@@ -1,7 +1,8 @@
 package browsers
 
 import base.Base.IS_MAC
-import database.models.{StripeAccount, User}
+import database.models.User
+import database.models.stripe.StripeAccount
 import framework.Instant.MockedTimeChangeListener
 import framework.{BaseController, Instant}
 import org.openqa.selenium.*

@@ -186,7 +186,7 @@ export function makeTransactionColumnGroupBy(baseColumns: ColumnSelectionItem[])
   return {
     groupBy: 'Transaction',
     columns: inPlaceSortColumnSelectionItems(baseColumns.concat([
-      {id: 'RevRecTransactionTitle', forceChecked: true},
+      {id: 'TransactionTitle', forceChecked: true},
       {id: 'CustomerName', forceChecked: true},
       {id: 'CustomerEmail'},
       {id: 'InvoiceNumber'}
@@ -202,7 +202,7 @@ export function makeLineItemColumnGroupBy(baseColumns: ColumnSelectionItem[]): C
       {id: 'InvoiceLineItemDescription', forceChecked: true},
       {id: 'InvoiceLineItemStartedAt'},
       {id: 'InvoiceLineItemEndedAt'},
-      {id: 'RevRecTransactionTitle', forceChecked: true},
+      {id: 'TransactionTitle', forceChecked: true},
       {id: 'CustomerName', forceChecked: true},
       {id: 'ProductName'},
     ]))
@@ -217,7 +217,7 @@ export function makeNullColumnGroupBy(baseColumns: ColumnSelectionItem[]): Colum
       {id: 'InvoiceLineItemDescription', forceChecked: true},
       {id: 'InvoiceLineItemStartedAt'},
       {id: 'InvoiceLineItemEndedAt'},
-      {id: 'RevRecTransactionTitle'},
+      {id: 'TransactionTitle'},
       {id: 'CustomerName'},
       {id: 'ProductName'},
       {id: 'OccurredAt', forceChecked: true},

@@ -131,8 +131,8 @@ class ExchangeRateService @Inject() (
           SELECT
             charge.amount,
             balance_transaction.amount
-          FROM charge
-          JOIN balance_transaction ON balance_transaction.id = charge.balance_transaction_id
+          FROM stripe.charge
+          JOIN stripe.balance_transaction ON balance_transaction.id = charge.balance_transaction_id
           WHERE
         """,
         whereSql,

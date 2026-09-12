@@ -9,10 +9,10 @@ import {
   type TableParams
 } from "../../common/table_models";
 import {post} from "../../common/form";
-import type {InvoiceLineItem, RevRecTransaction} from "../../common/models";
+import type {InvoiceLineItem, Transaction} from "../../common/models";
 import {onMount} from "svelte";
 
-export let transaction: RevRecTransaction
+export let transaction: Transaction
 export let onSwitchToDebitsCredits: () => void
 
 const COLUMN_PROPERTIES: ColumnProperty[] = [

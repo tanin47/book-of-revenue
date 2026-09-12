@@ -150,7 +150,7 @@ function computeLink(
     case 'Customer':
       return `/deferred-revenue?${generateQueryString({...opts, groupBy: 'Transaction', customerId: dataRow[dataColumnIndexById.CustomerId]})}`
     case 'Transaction':
-      return `/deferred-revenue?${generateQueryString({...opts, groupBy: 'LineItem', transactionId: dataRow[dataColumnIndexById.RevRecTransactionId]})}`
+      return `/deferred-revenue?${generateQueryString({...opts, groupBy: 'LineItem', transactionId: dataRow[dataColumnIndexById.TransactionId]})}`
     case 'LineItem':
       return null
     default:

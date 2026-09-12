@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{InvoiceLineItemTax, InvoiceLineItemTaxTable}
+import database.models.stripe.{StripeInvoiceLineItemTax, StripeInvoiceLineItemTaxTable}
 import framework.{BaseDbService, PlayConfig}
 import play.api.db.slick.DatabaseConfigProvider
 import slick.jdbc.JdbcProfile
@@ -29,12 +29,12 @@ class InvoiceLineItemTaxService @Inject() (
   import InvoiceLineItemTaxService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[InvoiceLineItemTaxTable] = TableQuery[InvoiceLineItemTaxTable]
+  val query: TableQuery[StripeInvoiceLineItemTaxTable] = TableQuery[StripeInvoiceLineItemTaxTable]
 
   // A tax has no natural id, so we replace all taxes for a given invoice line item.
-  def replaceByInvoiceLineItem(invoiceLineItemId: String, taxes: Seq[CreateData]): Future[Seq[InvoiceLineItemTax]] = {
+  def replaceByInvoiceLineItem(invoiceLineItemId: String, taxes: Seq[CreateData]): Future[Seq[StripeInvoiceLineItemTax]] = {
     val entities = taxes.map { tax =>
-      InvoiceLineItemTax(
+      StripeInvoiceLineItemTax(
         stripeAccountId = tax.stripeAccountId,
         liveMode = tax.liveMode,
         rank = tax.rank,
@@ -53,7 +53,7 @@ class InvoiceLineItemTaxService @Inject() (
     db.run(action.transactionally).map(_ => entities)
   }
 
-  def getByInvoiceLineItemIds(invoiceLineItemIds: Set[String]): Future[Seq[InvoiceLineItemTax]] = {
+  def getByInvoiceLineItemIds(invoiceLineItemIds: Set[String]): Future[Seq[StripeInvoiceLineItemTax]] = {
     db.run {
       query.filter(_.invoiceLineItemId.inSet(invoiceLineItemIds)).result
     }

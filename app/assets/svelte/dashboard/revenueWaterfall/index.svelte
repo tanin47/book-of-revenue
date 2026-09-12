@@ -178,7 +178,7 @@ function computeLink(
     case 'Customer':
       return `/revenue-waterfall?${generateQueryString({...opts, groupBy: 'Transaction', customerId: dataRow[dataColumnIndexById.CustomerId]})}`
     case 'Transaction':
-      return `/revenue-waterfall?${generateQueryString({...opts, groupBy: 'LineItem', transactionId: dataRow[dataColumnIndexById.RevRecTransactionId]})}`
+      return `/revenue-waterfall?${generateQueryString({...opts, groupBy: 'LineItem', transactionId: dataRow[dataColumnIndexById.TransactionId]})}`
     case 'LineItem':
       return null
     default:

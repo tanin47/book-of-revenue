@@ -1,6 +1,6 @@
 package background
 
-import database.models.{JournalEntry, RevRecTransaction}
+import database.models.{JournalEntry, Transaction}
 import database.services.*
 import framework.Helpers.await
 import framework.Instant
@@ -48,7 +48,7 @@ class ProcessTransactionWorker @Inject() (
   invoiceLineItemService: InvoiceLineItemService,
   invoiceItemService: InvoiceItemService,
   journalEntryService: JournalEntryService,
-  revRecTransactionService: RevRecTransactionService,
+  transactionService: TransactionService,
   invoicePaymentService: InvoicePaymentService,
   chargeService: ChargeService,
   paymentIntentService: PaymentIntentService,
@@ -68,50 +68,50 @@ class ProcessTransactionWorker @Inject() (
     val unbilledUsageSubscriptionItemSources = await(subscriptionItemService.getAllUnbilledUsageSubscriptionSources())
     logger.info(s"Found ${unbilledUsageSubscriptionItemSources.size} unbilled usage subscription items")
     unbilledUsageSubscriptionItemSources.foreach { src =>
-      await(revRecTransactionService.createIfNotExist(src.id, RevRecTransaction.Type.UnbilledUsageSubscriptionItem, src.stripeAccountId, src.liveMode, src.customerId, batchTimestamp))
+      await(transactionService.createIfNotExist(src.id, Transaction.Type.UnbilledUsageSubscriptionItem, src.stripeAccountId, src.liveMode, src.customerId, batchTimestamp))
     }
 
     val unbilledInvoiceItemSources = await(invoiceItemService.getAllUnbilledInvoiceItemSources())
     logger.info(s"Found ${unbilledInvoiceItemSources.size} unbilled invoice items")
     unbilledInvoiceItemSources.foreach { src =>
-      await(revRecTransactionService.createIfNotExist(src.id, RevRecTransaction.Type.UnbilledInvoiceItem, src.stripeAccountId, src.liveMode, src.customerId, batchTimestamp))
+      await(transactionService.createIfNotExist(src.id, Transaction.Type.UnbilledInvoiceItem, src.stripeAccountId, src.liveMode, src.customerId, batchTimestamp))
     }
 
     val invoiceSources = await(invoiceService.getAllInvoiceSources())
     logger.info(s"Found ${invoiceSources.size} invoices")
     invoiceSources.foreach { src =>
-      await(revRecTransactionService.createIfNotExist(src.id, RevRecTransaction.Type.Invoice, src.stripeAccountId, src.liveMode, src.customerId, batchTimestamp))
+      await(transactionService.createIfNotExist(src.id, Transaction.Type.Invoice, src.stripeAccountId, src.liveMode, src.customerId, batchTimestamp))
     }
 
     val standaloneChargeSources = await(chargeService.getAllStandaloneChargeSources())
     logger.info(s"Found ${standaloneChargeSources.size} standalone charges")
     standaloneChargeSources.foreach { src =>
-      await(revRecTransactionService.createIfNotExist(src.id, RevRecTransaction.Type.StandaloneCharge, src.stripeAccountId, src.liveMode, src.customerId, batchTimestamp))
+      await(transactionService.createIfNotExist(src.id, Transaction.Type.StandaloneCharge, src.stripeAccountId, src.liveMode, src.customerId, batchTimestamp))
     }
 
     val standalonePaymentIntentSources = await(paymentIntentService.getAllStandalonePaymentIntentSources())
     logger.info(s"Found ${standalonePaymentIntentSources.size} standalone payment intents")
     standalonePaymentIntentSources.foreach { src =>
-      await(revRecTransactionService.createIfNotExist(src.id, RevRecTransaction.Type.StandalonePaymentIntent, src.stripeAccountId, src.liveMode, src.customerId, batchTimestamp))
+      await(transactionService.createIfNotExist(src.id, Transaction.Type.StandalonePaymentIntent, src.stripeAccountId, src.liveMode, src.customerId, batchTimestamp))
     }
 
     val customerBalanceTransactionSources = await(customerBalanceTransactionService.getAllCustomerBalanceTransactionSources())
     logger.info(s"Found ${customerBalanceTransactionSources.size} customer balance transactions")
     customerBalanceTransactionSources.foreach { src =>
-      await(revRecTransactionService.createIfNotExist(src.id, RevRecTransaction.Type.StandaloneCustomerBalanceTransaction, src.stripeAccountId, src.liveMode, src.customerId, batchTimestamp))
+      await(transactionService.createIfNotExist(src.id, Transaction.Type.StandaloneCustomerBalanceTransaction, src.stripeAccountId, src.liveMode, src.customerId, batchTimestamp))
     }
 
     val creditBalanceTransactionSources = await(creditBalanceTransactionService.getAllCreditBalanceTransactionSources())
     logger.info(s"Found ${creditBalanceTransactionSources.size} credit balance transactions")
     creditBalanceTransactionSources.foreach { src =>
-      await(revRecTransactionService.createIfNotExist(src.id, RevRecTransaction.Type.StandaloneCreditBalanceTransaction, src.stripeAccountId, src.liveMode, src.customerId, batchTimestamp))
+      await(transactionService.createIfNotExist(src.id, Transaction.Type.StandaloneCreditBalanceTransaction, src.stripeAccountId, src.liveMode, src.customerId, batchTimestamp))
     }
 
     deleteOutdateds(batchTimestamp)
 
     var done = false
     while (!done) {
-      val transactions = await(revRecTransactionService.getUnprocesseds(batchTimestamp, 100))
+      val transactions = await(transactionService.getUnprocesseds(batchTimestamp, 100))
       done = transactions.isEmpty
       logger.info(s"Process ${transactions.size} unprocessed transactions")
 
@@ -120,7 +120,7 @@ class ProcessTransactionWorker @Inject() (
 
         processTransaction match {
           case Some(processTransaction) => generateJournalEntries(processTransaction)
-          case None => await(revRecTransactionService.updateProcessedAt(transaction.id, transaction.tpe, Some(Instant.now())))
+          case None => await(transactionService.updateProcessedAt(transaction.id, transaction.tpe, Some(Instant.now())))
         }
       }
     }
@@ -130,13 +130,13 @@ class ProcessTransactionWorker @Inject() (
     // Delete outdated transactions
     var done = false
     while (!done) {
-      val outdateds = await(revRecTransactionService.getOutdateds(currentBatchTimestamp, 100))
+      val outdateds = await(transactionService.getOutdateds(currentBatchTimestamp, 100))
       logger.info(s"Deleting ${outdateds.size} outdated transactions")
       done = outdateds.isEmpty
 
       outdateds.foreach { transaction =>
-        await(journalEntryService.deleteByRevRecTransactionId(transaction.id))
-        await(revRecTransactionService.deleteById(transaction.id))
+        await(journalEntryService.deleteByTransactionId(transaction.id))
+        await(transactionService.deleteById(transaction.id))
       }
     }
 
@@ -144,19 +144,19 @@ class ProcessTransactionWorker @Inject() (
     await(journalEntryService.deleteStaleJournalEntries())
   }
 
-  def makeProcessTransaction(transaction: RevRecTransaction): Option[ProcessRevRecTransaction] = {
+  def makeProcessTransaction(transaction: Transaction): Option[ProcessTransaction] = {
     transaction.tpe match {
-      case RevRecTransaction.Type.Invoice => makeProcessInvoice(transaction)
-      case RevRecTransaction.Type.StandaloneCharge => makeProcessStandaloneCharge(transaction)
-      case RevRecTransaction.Type.StandalonePaymentIntent => makeProcessStandalonePaymentIntent(transaction)
-      case RevRecTransaction.Type.UnbilledInvoiceItem => makeProcessUnbilledInvoiceItem(transaction)
-      case RevRecTransaction.Type.UnbilledUsageSubscriptionItem => makeProcessUnbilledUsageSubscriptionItem(transaction)
-      case RevRecTransaction.Type.StandaloneCustomerBalanceTransaction => makeProcessStandaloneCustomerBalanceTransaction(transaction)
-      case RevRecTransaction.Type.StandaloneCreditBalanceTransaction => makeProcessStandaloneCreditBalanceTransaction(transaction)
+      case Transaction.Type.Invoice => makeProcessInvoice(transaction)
+      case Transaction.Type.StandaloneCharge => makeProcessStandaloneCharge(transaction)
+      case Transaction.Type.StandalonePaymentIntent => makeProcessStandalonePaymentIntent(transaction)
+      case Transaction.Type.UnbilledInvoiceItem => makeProcessUnbilledInvoiceItem(transaction)
+      case Transaction.Type.UnbilledUsageSubscriptionItem => makeProcessUnbilledUsageSubscriptionItem(transaction)
+      case Transaction.Type.StandaloneCustomerBalanceTransaction => makeProcessStandaloneCustomerBalanceTransaction(transaction)
+      case Transaction.Type.StandaloneCreditBalanceTransaction => makeProcessStandaloneCreditBalanceTransaction(transaction)
     }
   }
 
-  private def makeProcessStandaloneCustomerBalanceTransaction(transaction: RevRecTransaction): Option[ProcessCustomerBalanceTransaction] = {
+  private def makeProcessStandaloneCustomerBalanceTransaction(transaction: Transaction): Option[ProcessCustomerBalanceTransaction] = {
     val customerBalanceTransactionOpt = await(customerBalanceTransactionService.getById(transaction.id))
     if (customerBalanceTransactionOpt.isEmpty) {
       return None
@@ -168,7 +168,7 @@ class ProcessTransactionWorker @Inject() (
     ))
   }
 
-  private def makeProcessStandaloneCreditBalanceTransaction(transaction: RevRecTransaction): Option[ProcessCreditBalanceTransaction] = {
+  private def makeProcessStandaloneCreditBalanceTransaction(transaction: Transaction): Option[ProcessCreditBalanceTransaction] = {
     val creditBalanceTransactionOpt = await(creditBalanceTransactionService.getRichById(transaction.id))
     if (creditBalanceTransactionOpt.isEmpty) {
       return None
@@ -180,7 +180,7 @@ class ProcessTransactionWorker @Inject() (
     ))
   }
 
-  private def makeProcessUnbilledUsageSubscriptionItem(transaction: RevRecTransaction): Option[ProcessRevRecTransaction] = {
+  private def makeProcessUnbilledUsageSubscriptionItem(transaction: Transaction): Option[ProcessTransaction] = {
     val subscriptionItemOpt = await(subscriptionItemService.getRichById(transaction.id))
     if (subscriptionItemOpt.isEmpty) {
       return None
@@ -192,7 +192,7 @@ class ProcessTransactionWorker @Inject() (
     ))
   }
 
-  private def makeProcessStandalonePaymentIntent(transaction: RevRecTransaction): Option[ProcessRevRecTransaction] = {
+  private def makeProcessStandalonePaymentIntent(transaction: Transaction): Option[ProcessTransaction] = {
     val paymentIntentOpt = await(paymentIntentService.getRichById(transaction.id))
     if (paymentIntentOpt.isEmpty) {
       return None
@@ -204,7 +204,7 @@ class ProcessTransactionWorker @Inject() (
     ))
   }
 
-  private def makeProcessStandaloneCharge(transaction: RevRecTransaction): Option[ProcessRevRecTransaction] = {
+  private def makeProcessStandaloneCharge(transaction: Transaction): Option[ProcessTransaction] = {
     val chargeOpt = await(chargeService.getRichById(transaction.id))
     if (chargeOpt.isEmpty) {
       return None
@@ -218,7 +218,7 @@ class ProcessTransactionWorker @Inject() (
     ))
   }
 
-  private def makeProcessUnbilledInvoiceItem(transaction: RevRecTransaction): Option[ProcessRevRecTransaction] = {
+  private def makeProcessUnbilledInvoiceItem(transaction: Transaction): Option[ProcessTransaction] = {
     val invoiceItemOpt = await(invoiceItemService.getRichById(transaction.id))
     if (invoiceItemOpt.isEmpty) {
       return None
@@ -238,7 +238,7 @@ class ProcessTransactionWorker @Inject() (
     ))
   }
 
-  private[this] def makeProcessInvoice(transaction: RevRecTransaction): Option[ProcessRevRecTransaction] = {
+  private[this] def makeProcessInvoice(transaction: Transaction): Option[ProcessTransaction] = {
     val invoiceOpt = await(invoiceService.getRichById(transaction.id))
     if (invoiceOpt.isEmpty) {
       logger.info(s"The invoice ${transaction.id} does not exist. Skipping.")
@@ -274,11 +274,11 @@ class ProcessTransactionWorker @Inject() (
   }
 
   def generateJournalEntries(
-    transaction: ProcessRevRecTransaction,
+    transaction: ProcessTransaction,
     force: Boolean = false
   ): Unit = {
     if (!force && transaction.transaction.syncedAt.exists(_.toEpochMilli >= transaction.syncedAt.toEpochMilli)) {
-      await(revRecTransactionService.updateProcessedAt(transaction.transaction.id, transaction.transaction.tpe, Some(Instant.now())))
+      await(transactionService.updateProcessedAt(transaction.transaction.id, transaction.transaction.tpe, Some(Instant.now())))
       return
     }
 
@@ -288,19 +288,19 @@ class ProcessTransactionWorker @Inject() (
     val revenue = Helpers.sumAccountCategory(journalEntries, JournalEntry.AccountCategory.Revenue)
     val contractLiability = Helpers.sumAccountCategory(journalEntries, JournalEntry.AccountCategory.ContractLiability)
     val tcv = transaction.transaction.tpe match {
-      case RevRecTransaction.Type.Invoice => revenue
-      case RevRecTransaction.Type.StandalonePaymentIntent => revenue
-      case RevRecTransaction.Type.StandaloneCharge => revenue
-      case RevRecTransaction.Type.UnbilledInvoiceItem => revenue
-      case RevRecTransaction.Type.UnbilledUsageSubscriptionItem => revenue
-      case RevRecTransaction.Type.StandaloneCustomerBalanceTransaction => contractLiability
-      case RevRecTransaction.Type.StandaloneCreditBalanceTransaction => contractLiability
+      case Transaction.Type.Invoice => revenue
+      case Transaction.Type.StandalonePaymentIntent => revenue
+      case Transaction.Type.StandaloneCharge => revenue
+      case Transaction.Type.UnbilledInvoiceItem => revenue
+      case Transaction.Type.UnbilledUsageSubscriptionItem => revenue
+      case Transaction.Type.StandaloneCustomerBalanceTransaction => contractLiability
+      case Transaction.Type.StandaloneCreditBalanceTransaction => contractLiability
     }
 
     val actions = DBIO.seq(
       journalEntryService.getDeleteByTransactionAction(transaction.transaction.id, transaction.transaction.tpe),
       journalEntryService.getCreateAction(journalEntries),
-      revRecTransactionService.getUpdateAction(
+      transactionService.getUpdateAction(
         transactionId = transaction.transaction.id,
         tpe = transaction.transaction.tpe,
         status = transaction.status,
@@ -318,7 +318,7 @@ class ProcessTransactionWorker @Inject() (
     await(db.run(actions.transactionally))
   }
 
-  def computeTitle(transaction: ProcessRevRecTransaction): String = transaction match {
+  def computeTitle(transaction: ProcessTransaction): String = transaction match {
     case con: ProcessInvoice =>
       s"${formatAmount(con.invoice.base.total, con.invoice.base.currency, false)} ${con.invoice.base.number.getOrElse(con.invoice.base.id)}"
     case con: ProcessStandalonePaymentIntent =>

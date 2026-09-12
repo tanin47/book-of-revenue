@@ -1,6 +1,7 @@
 package process
 
 import database.models.*
+import database.models.stripe.*
 import framework.Instant
 import process.Helpers.{amortize, generatePeriods}
 import process.ProcessBillingEvent.{Amount, JournalEntryAmount}
@@ -10,11 +11,11 @@ object ProcessUnbilledUsageSubscriptionItem {
   def generateUsageBasedJournalEntries(
     startedAt: Instant,
     endedAt: Instant,
-    price: RichPrice,
-    meterEventSummaries: Seq[MeterEventSummary],
+    price: RichStripePrice,
+    meterEventSummaries: Seq[StripeMeterEventSummary],
     exchangeRate: ExchangeRate,
-    discounts: Seq[RichDiscount],
-    taxRates: Seq[TaxRate],
+    discounts: Seq[RichStripeDiscount],
+    taxRates: Seq[StripeTaxRate],
     invoiceLineItemTotalDiscountAmount: Long,
     invoiceLineItemTotalCreditGrantAmount: Long,
     invoiceLineItemTotalInclusiveTaxAmount: Long
@@ -62,26 +63,26 @@ object ProcessUnbilledUsageSubscriptionItem {
         principleAccount = JournalEntry.Account.Revenue,
         stripeAccountId = null,
         liveMode = false,
-        revRecTransactionId = null,
-        revRecTransactionType = null,
-        customerId = None,
-        invoiceId = None,
-        invoiceLineItemId = None,
-        invoiceItemId = None,
-        chargeId = None,
-        balanceTransactionId = None,
-        disputeId = None,
-        refundId = None,
-        customerBalanceTransactionId = None,
-        paymentIntentId = None,
-        paymentRecordId = None,
-        subscriptionId = None,
-        subscriptionItemId = None,
-        creditBalanceTransactionId = None,
-        creditNoteId = None,
-        creditNoteLineItemId = None,
-        productId = Some(price.base.productId),
-        priceId = Some(price.base.id),
+        transactionId = null,
+        transactionType = null,
+        stripeCustomerId = None,
+        stripeInvoiceId = None,
+        stripeInvoiceLineItemId = None,
+        stripeInvoiceItemId = None,
+        stripeChargeId = None,
+        stripeBalanceTransactionId = None,
+        stripeDisputeId = None,
+        stripeRefundId = None,
+        stripeCustomerBalanceTransactionId = None,
+        stripePaymentIntentId = None,
+        stripePaymentRecordId = None,
+        stripeSubscriptionId = None,
+        stripeSubscriptionItemId = None,
+        stripeCreditBalanceTransactionId = None,
+        stripeCreditNoteId = None,
+        stripeCreditNoteLineItemId = None,
+        stripeProductId = Some(price.base.productId),
+        stripePriceId = Some(price.base.id),
         createdAt = null
       )
     }
@@ -92,10 +93,10 @@ object ProcessUnbilledUsageSubscriptionItem {
   def generateFlatFeeJournalEntries(
     startedAt: Instant,
     endedAt: Instant,
-    price: RichPrice,
-    meterEventSummaries: Seq[MeterEventSummary],
+    price: RichStripePrice,
+    meterEventSummaries: Seq[StripeMeterEventSummary],
     exchangeRate: ExchangeRate,
-    subscriptionItem: RichSubscriptionItem
+    subscriptionItem: RichStripeSubscriptionItem
   ): Seq[JournalEntry] = {
 
     val discounts = subscriptionItem.discounts ++ subscriptionItem.subscription.discounts
@@ -124,8 +125,8 @@ object ProcessUnbilledUsageSubscriptionItem {
 
   private[this] def computeNetRevenue(
     amount: Long,
-    discounts: Seq[RichDiscount],
-    taxRates: Seq[TaxRate],
+    discounts: Seq[RichStripeDiscount],
+    taxRates: Seq[StripeTaxRate],
   ): Long = {
     val discount = discounts.map(_.computeDiscount(amount)).sum
     val subtotal = amount - discount
@@ -136,7 +137,7 @@ object ProcessUnbilledUsageSubscriptionItem {
 
   private[this] def computeFlatFee(
     aggregatedValue: Long,
-    price: RichPrice,
+    price: RichStripePrice,
   ): Long = {
     price.base.billingScheme match {
       case "per_unit" => 0L
@@ -149,7 +150,7 @@ object ProcessUnbilledUsageSubscriptionItem {
     }
   }
 
-  private[this] def computeRevenue(aggregatedValue: Long, price: RichPrice): Long = {
+  private[this] def computeRevenue(aggregatedValue: Long, price: RichStripePrice): Long = {
     price.base.billingScheme match {
       case "per_unit" => price.base.unitAmount * aggregatedValue
       case "tiered" =>
@@ -169,7 +170,7 @@ object ProcessUnbilledUsageSubscriptionItem {
     }
   }
 
-  private[this] def getAggregatedValue(startedAt: Instant, endedAt: Instant, meterEventSummaries: Seq[MeterEventSummary]): Long = {
+  private[this] def getAggregatedValue(startedAt: Instant, endedAt: Instant, meterEventSummaries: Seq[StripeMeterEventSummary]): Long = {
     meterEventSummaries
       .filter { summary =>
         // If overlapping at all, we count it. We may double count, and that's fine.
@@ -183,12 +184,12 @@ object ProcessUnbilledUsageSubscriptionItem {
 }
 
 case class ProcessUnbilledUsageSubscriptionItem(
-  transaction: RevRecTransaction,
-  subscriptionItem: RichSubscriptionItem,
-) extends ProcessRevRecTransaction {
+  transaction: Transaction,
+  subscriptionItem: RichStripeSubscriptionItem,
+) extends ProcessTransaction {
   lazy val syncedAt: Instant = subscriptionItem.syncedAt
   lazy val startedAt: Option[Instant] = Some(subscriptionItem.base.currentPeriodStart)
-  lazy val status: RevRecTransaction.Status = RevRecTransaction.Status.Open
+  lazy val status: Transaction.Status = Transaction.Status.Open
 
   def generateRawJournalEntries(): Seq[JournalEntry] = {
     val usageBasedEntries = ProcessUnbilledUsageSubscriptionItem.generateUsageBasedJournalEntries(
@@ -218,13 +219,13 @@ case class ProcessUnbilledUsageSubscriptionItem(
         entry.copy(
           stripeAccountId = transaction.stripeAccountId,
           liveMode = transaction.liveMode,
-          revRecTransactionId = transaction.id,
-          revRecTransactionType = transaction.tpe,
-          customerId = Some(subscriptionItem.subscription.base.customerId),
-          subscriptionId = Some(subscriptionItem.base.subscriptionId),
-          subscriptionItemId = Some(subscriptionItem.base.id),
-          productId = subscriptionItem.price.map(_.base.productId),
-          priceId = Some(subscriptionItem.base.priceId),
+          transactionId = transaction.id,
+          transactionType = transaction.tpe,
+          stripeCustomerId = Some(subscriptionItem.subscription.base.customerId),
+          stripeSubscriptionId = Some(subscriptionItem.base.subscriptionId),
+          stripeSubscriptionItemId = Some(subscriptionItem.base.id),
+          stripeProductId = subscriptionItem.price.map(_.base.productId),
+          stripePriceId = Some(subscriptionItem.base.priceId),
           createdAt = syncedAt
         )
       }

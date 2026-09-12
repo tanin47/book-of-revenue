@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{Customer, CustomerTable}
+import database.models.stripe.{StripeCustomer, StripeCustomerTable}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -28,10 +28,10 @@ class CustomerService @Inject() (
   import CustomerService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[CustomerTable] = TableQuery[CustomerTable]
+  val query: TableQuery[StripeCustomerTable] = TableQuery[StripeCustomerTable]
 
-  def create(data: CreateData): Future[Customer] = {
-    val entity = Customer(
+  def create(data: CreateData): Future[StripeCustomer] = {
+    val entity = StripeCustomer(
       stripeAccountId = data.stripeAccountId,
       liveMode = data.liveMode,
       id = data.id,
@@ -56,7 +56,7 @@ class CustomerService @Inject() (
     }
   }
 
-  def update(entity: Customer): Future[Unit] = {
+  def update(entity: StripeCustomer): Future[Unit] = {
     db
       .run {
         query.filter(_.id === entity.id).update(entity)
@@ -64,25 +64,25 @@ class CustomerService @Inject() (
       .map(_ => ())
   }
 
-  def getAll(): Future[Seq[Customer]] = {
+  def getAll(): Future[Seq[StripeCustomer]] = {
     db.run {
       query.result
     }
   }
 
-  def getById(stripeAccountId: String, liveMode: Boolean, id: String): Future[Option[Customer]] = {
+  def getById(stripeAccountId: String, liveMode: Boolean, id: String): Future[Option[StripeCustomer]] = {
     db.run {
       query.filter { q => q.id === id && q.stripeAccountId === stripeAccountId && q.liveMode === liveMode }.result.headOption
     }
   }
 
-  def getById(id: String): Future[Option[Customer]] = {
+  def getById(id: String): Future[Option[StripeCustomer]] = {
     db.run {
       query.filter(_.id === id).result.headOption
     }
   }
 
-  def getByIds(ids: Set[String]): Future[Seq[Customer]] = {
+  def getByIds(ids: Set[String]): Future[Seq[StripeCustomer]] = {
     db.run {
       query.filter(_.id.inSet(ids)).result
     }

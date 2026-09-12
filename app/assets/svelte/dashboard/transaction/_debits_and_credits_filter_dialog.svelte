@@ -29,9 +29,9 @@ import {post, ValidationError} from "../../common/form";
 import {FIRST_ACCOUNTING_PERIOD, LATEST_ACCOUNTING_PERIOD} from "../../common/globals";
 import {sanitizeSelectedColumns, sanitizeSorts, type Sort} from "../../common/table_models";
     import { COLUMN_NAMES } from "../../common/_table.svelte";
-import type {InvoiceLineItem, RevRecTransaction} from "../../common/models";
+import type {InvoiceLineItem, Transaction} from "../../common/models";
 
-export let transaction: RevRecTransaction
+export let transaction: Transaction
 export let onSubmitted: (params: Params) => Promise<void>
 
 let modal: HTMLDialogElement;

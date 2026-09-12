@@ -1,6 +1,7 @@
 package process
 
 import database.models.*
+import database.models.stripe.*
 import framework.Instant
 import process.Helpers.getAccountingPeriod
 import process.ProcessBillingEvent.{Amount, JournalEntryAmount, MarkPaidBillingEvent, MoneyMovementBillingEvent}
@@ -14,7 +15,7 @@ object ProcessStandaloneCharge {
     paymentIntentId: Option[String],
     refundId: Option[String],
     disputeId: Option[String],
-    balanceTransaction: BalanceTransaction,
+    balanceTransaction: StripeBalanceTransaction,
   )
 
   case class ContraState(
@@ -27,15 +28,15 @@ object ProcessStandaloneCharge {
 }
 
 case class ProcessStandaloneCharge(
-  transaction: RevRecTransaction,
-  charge: RichCharge,
-) extends ProcessRevRecTransaction {
+  transaction: Transaction,
+  charge: RichStripeCharge,
+) extends ProcessTransaction {
   lazy val syncedAt: Instant = charge.syncedAt
   lazy val startedAt: Option[Instant] = charge.balanceTransaction.map(_.createdAt)
-  lazy val status: RevRecTransaction.Status = if (charge.balanceTransaction.isDefined) {
-    RevRecTransaction.Status.Paid
+  lazy val status: Transaction.Status = if (charge.balanceTransaction.isDefined) {
+    Transaction.Status.Paid
   } else {
-    RevRecTransaction.Status.Unpaid
+    Transaction.Status.Unpaid
   }
 
   def generateRawJournalEntries(): Seq[JournalEntry] = {
@@ -52,11 +53,11 @@ case class ProcessStandaloneCharge(
         principleAccount = JournalEntry.Account.Revenue,
         stripeAccountId = transaction.stripeAccountId,
         liveMode = transaction.liveMode,
-        revRecTransactionId = transaction.id,
-        revRecTransactionType = transaction.tpe,
-        customerId = charge.base.customerId,
-        chargeId = Some(charge.base.id),
-        paymentIntentId = charge.base.paymentIntentId,
+        transactionId = transaction.id,
+        transactionType = transaction.tpe,
+        stripeCustomerId = charge.base.customerId,
+        stripeChargeId = Some(charge.base.id),
+        stripePaymentIntentId = charge.base.paymentIntentId,
         createdAt = syncedAt
       ) }
   }
@@ -95,26 +96,26 @@ case class ProcessStandaloneCharge(
       principleAccount = JournalEntry.Account.Revenue,
       stripeAccountId = transaction.stripeAccountId,
       liveMode = transaction.liveMode,
-      revRecTransactionId = transaction.id,
-      revRecTransactionType = transaction.tpe,
-      customerId = charge.base.customerId,
-      invoiceId = invoiceId,
-      invoiceLineItemId = invoiceLineItemId,
-      invoiceItemId = invoiceItemId,
-      chargeId = Some(charge.base.id),
-      balanceTransactionId = balanceTransactionId,
-      disputeId = disputeId,
-      refundId = refundId,
-      customerBalanceTransactionId = customerBalanceTransactionId,
-      paymentIntentId = charge.base.paymentIntentId,
-      paymentRecordId = paymentRecordId,
-      subscriptionId = None,
-      subscriptionItemId = None,
-      creditBalanceTransactionId = None,
-      creditNoteId = None,
-      creditNoteLineItemId = None,
-      productId = None,
-      priceId = None,
+      transactionId = transaction.id,
+      transactionType = transaction.tpe,
+      stripeCustomerId = charge.base.customerId,
+      stripeInvoiceId = invoiceId,
+      stripeInvoiceLineItemId = invoiceLineItemId,
+      stripeInvoiceItemId = invoiceItemId,
+      stripeChargeId = Some(charge.base.id),
+      stripeBalanceTransactionId = balanceTransactionId,
+      stripeDisputeId = disputeId,
+      stripeRefundId = refundId,
+      stripeCustomerBalanceTransactionId = customerBalanceTransactionId,
+      stripePaymentIntentId = charge.base.paymentIntentId,
+      stripePaymentRecordId = paymentRecordId,
+      stripeSubscriptionId = None,
+      stripeSubscriptionItemId = None,
+      stripeCreditBalanceTransactionId = None,
+      stripeCreditNoteId = None,
+      stripeCreditNoteLineItemId = None,
+      stripeProductId = None,
+      stripePriceId = None,
       createdAt = syncedAt
     )
   }

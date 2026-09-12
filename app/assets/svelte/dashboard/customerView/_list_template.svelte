@@ -30,10 +30,10 @@ export let page: Page;
 export let extraColumns: ColumnProperty[] = []
 
 const COLUMN_PROPERTIES: ColumnProperty[] = [
-  {id: 'RevRecTransactionId', name: 'Transaction ID'},
-  {id: 'RevRecTransactionTitle', name: 'Transaction'},
+  {id: 'TransactionId', name: 'Transaction ID'},
+  {id: 'TransactionTitle', name: 'Transaction'},
   {id: 'TransactionValue', name: 'Value'},
-  {id: 'RevRecTransactionType', name: 'Type'},
+  {id: 'TransactionType', name: 'Type'},
   {id: 'TransactionStatus', name: 'Status'},
   {id: 'TransactionDate', name: 'Date'},
   ...extraColumns
@@ -198,7 +198,7 @@ let table: Table
         columnProperties={COLUMN_PROPERTIES}
         columnRenderingSettings={{
           ...DEFAULT_COLUMN_RENDERING_SETTINGS,
-          RevRecTransactionId: {primaryKey: true, hidden: true},
+          TransactionId: {primaryKey: true, hidden: true},
         }}
         onFetch={load}
         onFetchMore={fetch}

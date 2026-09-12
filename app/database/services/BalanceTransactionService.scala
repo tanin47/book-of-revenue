@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{BalanceTransaction, BalanceTransactionTable, RichBalanceTransaction}
+import database.models.stripe.{StripeBalanceTransaction, StripeBalanceTransactionTable, RichStripeBalanceTransaction}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -37,10 +37,10 @@ class BalanceTransactionService @Inject() (
   import BalanceTransactionService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[BalanceTransactionTable] = TableQuery[BalanceTransactionTable]
+  val query: TableQuery[StripeBalanceTransactionTable] = TableQuery[StripeBalanceTransactionTable]
 
-  def create(data: CreateData): Future[BalanceTransaction] = {
-    val entity = BalanceTransaction(
+  def create(data: CreateData): Future[StripeBalanceTransaction] = {
+    val entity = StripeBalanceTransaction(
       stripeAccountId = data.stripeAccountId,
       liveMode = data.liveMode,
       id = data.id,
@@ -72,7 +72,7 @@ class BalanceTransactionService @Inject() (
     }
   }
 
-  def update(entity: BalanceTransaction): Future[Unit] = {
+  def update(entity: StripeBalanceTransaction): Future[Unit] = {
     db
       .run {
         query.filter(_.id === entity.id).update(entity)
@@ -81,37 +81,37 @@ class BalanceTransactionService @Inject() (
   }
 
 
-  def getById(id: String): Future[Option[BalanceTransaction]] = {
+  def getById(id: String): Future[Option[StripeBalanceTransaction]] = {
     getByIds(Set(id)).map(_.headOption)
   }
 
-  def getRichByIds(ids: Set[String]): Future[Seq[RichBalanceTransaction]] = {
+  def getRichByIds(ids: Set[String]): Future[Seq[RichStripeBalanceTransaction]] = {
     getByIds(ids).flatMap(hydrate)
   }
 
-  def getRichById(id: String): Future[Option[RichBalanceTransaction]] = {
+  def getRichById(id: String): Future[Option[RichStripeBalanceTransaction]] = {
     getRichByIds(Set(id)).map(_.headOption)
   }
 
-  def getAll(): Future[Seq[BalanceTransaction]] = {
+  def getAll(): Future[Seq[StripeBalanceTransaction]] = {
     db.run {
       query.result
     }
   }
 
-  def getByIds(ids: Set[String]): Future[Seq[BalanceTransaction]] = {
+  def getByIds(ids: Set[String]): Future[Seq[StripeBalanceTransaction]] = {
     db.run {
       query.filter(bt => bt.id.inSet(ids)).result
     }
   }
 
-  private def hydrate(items: Seq[BalanceTransaction]): Future[Seq[RichBalanceTransaction]] = {
+  private def hydrate(items: Seq[StripeBalanceTransaction]): Future[Seq[RichStripeBalanceTransaction]] = {
     for {
       charges <- chargeService.get().getByIds(items.flatMap(_.source).toSet)
     } yield {
       val chargeById = charges.map(c => c.id -> c).toMap
       items.map { item =>
-        RichBalanceTransaction(
+        RichStripeBalanceTransaction(
           base = item,
           charge = item.source.flatMap(chargeById.get)
         )

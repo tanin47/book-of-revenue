@@ -1,5 +1,6 @@
 package services
 
+import database.models.stripe.*
 import database.models.JournalEntry
 import database.models.JournalEntry.AccountCategory
 import database.services.JournalEntryService.{ColumnType, SortDirection, getValue}
@@ -14,9 +15,9 @@ import scala.concurrent.{ExecutionContext, Future}
 object TransactionListService {
   enum Column extends Enum[Column] {
     case
-      RevRecTransactionType,
-      RevRecTransactionId,
-      RevRecTransactionTitle,
+      TransactionType,
+      TransactionId,
+      TransactionTitle,
       SettlementTotalTransactionValue,
       SettlementCurrency,
       TransactionStartedAt,
@@ -80,9 +81,9 @@ class TransactionListService @Inject() (
 
   private[this] def convertToSqlColumnName(column: Column): SQLActionBuilder = {
     column match {
-      case Column.RevRecTransactionType => sql"rev_rec_transaction_type"
-      case Column.RevRecTransactionId => sql"rev_rec_transaction_id"
-      case Column.RevRecTransactionTitle => sql"rev_rec_transaction_title"
+      case Column.TransactionType => sql"rev_rec_transaction_type"
+      case Column.TransactionId => sql"rev_rec_transaction_id"
+      case Column.TransactionTitle => sql"rev_rec_transaction_title"
       case Column.SettlementTotalTransactionValue => sql"settlement_total_value"
       case Column.SettlementCurrency => sql"settlement_currency"
       case Column.TransactionStartedAt => sql"transaction_started_at"
@@ -161,13 +162,13 @@ class TransactionListService @Inject() (
           MAX(con.started_at) AS transaction_started_at,
           MAX(
             CASE con.type
-            WHEN 'Invoice' THEN 'Invoice'
-            WHEN 'StandaloneCharge' THEN 'Charge'
+            WHEN 'StripeInvoice' THEN 'StripeInvoice'
+            WHEN 'StandaloneCharge' THEN 'StripeCharge'
             WHEN 'StandalonePaymentIntent' THEN 'Payment'
             WHEN 'UnbilledInvoiceItem' THEN 'UnbilledInvoiceItem'
             WHEN 'UnbilledUsageSubscriptionItem' THEN 'UnbilledUsage'
-            WHEN 'StandaloneCustomerBalanceTransaction' THEN 'CustomerBalanceTransaction'
-            WHEN 'StandaloneCreditBalanceTransaction' THEN 'CreditBalanceTransaction'
+            WHEN 'StandaloneCustomerBalanceTransaction' THEN 'StripeCustomerBalanceTransaction'
+            WHEN 'StandaloneCreditBalanceTransaction' THEN 'StripeCreditBalanceTransaction'
             ELSE 'Unknown'
             END
           ) AS rev_rec_transaction_type,
@@ -207,22 +208,22 @@ class TransactionListService @Inject() (
             (CASE WHEN debit = ANY(${gainAccounts.map(_.name)}) THEN -settlement_amount ELSE 0 END)
             + (CASE WHEN credit = ANY(${gainAccounts.map(_.name)}) THEN settlement_amount ELSE 0 END)
           ) AS Gain_amount
-        FROM rev_rec_transaction con
+        FROM transaction con
         LEFT JOIN journal_entry j
         ON j.rev_rec_transaction_id = con.id AND j.accounting_period <= ${Instant.now()}
-        LEFT JOIN invoice inv
-        ON con.id = inv.id AND con.type = 'Invoice'
-        LEFT JOIN charge ch
+        LEFT JOIN stripe.invoice inv
+        ON con.id = inv.id AND con.type = 'StripeInvoice'
+        LEFT JOIN stripe.charge ch
         ON con.id = ch.id AND con.type = 'StandaloneCharge'
-        LEFT JOIN payment_intent pi
+        LEFT JOIN stripe.payment_intent pi
         ON con.id = pi.id AND con.type = 'StandalonePaymentIntent'
-        LEFT JOIN invoice_item ii
+        LEFT JOIN stripe.invoice_item ii
         ON con.id = ii.id AND con.type = 'UnbilledInvoiceItem'
-        LEFT JOIN subscription_item si
+        LEFT JOIN stripe.subscription_item si
         ON con.id = si.id AND con.type = 'UnbilledUsageSubscriptionItem'
-        LEFT JOIN customer_balance_transaction cbtxn
+        LEFT JOIN stripe.customer_balance_transaction cbtxn
         ON con.id = cbtxn.id AND con.type = 'StandaloneCustomerBalanceTransaction'
-        LEFT JOIN credit_balance_transaction crtxn
+        LEFT JOIN stripe.credit_balance_transaction crtxn
         ON con.id = crtxn.id AND con.type = 'StandaloneCreditBalanceTransaction'
         WHERE con.stripe_account_id = $stripeAccountId AND con.live_mode = $liveMode
       """,
@@ -257,12 +258,12 @@ class TransactionListService @Inject() (
       ResultColumn(
         id = column,
         tpe = column match {
-          case Column.RevRecTransactionId => ColumnType.String
+          case Column.TransactionId => ColumnType.String
           case Column.TransactionStartedAt => ColumnType.Date
           case Column.SettlementTotalTransactionValue => ColumnType.Amount
           case Column.SettlementCurrency => ColumnType.String
-          case Column.RevRecTransactionTitle => ColumnType.String
-          case Column.RevRecTransactionType => ColumnType.String
+          case Column.TransactionTitle => ColumnType.String
+          case Column.TransactionType => ColumnType.String
           case Column.RevenueAmount => ColumnType.Amount
           case Column.ContraRevenueAmount => ColumnType.Amount
           case Column.ContractLiabilityAmount => ColumnType.Amount

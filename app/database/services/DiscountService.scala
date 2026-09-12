@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{Discount, DiscountTable, RichDiscount}
+import database.models.stripe.{StripeDiscount, StripeDiscountTable, RichStripeDiscount}
 import framework.{BaseDbService, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -27,10 +27,10 @@ class DiscountService @Inject() (
   import DiscountService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[DiscountTable] = TableQuery[DiscountTable]
+  val query: TableQuery[StripeDiscountTable] = TableQuery[StripeDiscountTable]
 
-  def create(data: CreateData): Future[Discount] = {
-    val entity = Discount(
+  def create(data: CreateData): Future[StripeDiscount] = {
+    val entity = StripeDiscount(
       stripeAccountId = data.stripeAccountId,
       liveMode = data.liveMode,
       id = data.id,
@@ -53,7 +53,7 @@ class DiscountService @Inject() (
     }
   }
 
-  def update(entity: Discount): Future[Unit] = {
+  def update(entity: StripeDiscount): Future[Unit] = {
     db
       .run {
         query.filter(_.id === entity.id).update(entity)
@@ -61,32 +61,32 @@ class DiscountService @Inject() (
       .map(_ => ())
   }
 
-  def getById(id: String): Future[Option[Discount]] = {
+  def getById(id: String): Future[Option[StripeDiscount]] = {
     getByIds(Set(id)).map(_.headOption)
   }
 
-  def getAll(): Future[Seq[Discount]] = {
+  def getAll(): Future[Seq[StripeDiscount]] = {
     db.run {
       query.result
     }
   }
 
-  def getByIds(ids: Set[String]): Future[Seq[Discount]] = {
+  def getByIds(ids: Set[String]): Future[Seq[StripeDiscount]] = {
     db.run {
       query.filter(_.id.inSet(ids)).result
     }
   }
 
-  def getRichByIds(ids: Set[String]): Future[Seq[RichDiscount]] = {
+  def getRichByIds(ids: Set[String]): Future[Seq[RichStripeDiscount]] = {
     getByIds(ids).flatMap(hydrate)
   }
 
-  private[this] def hydrate(items: Seq[Discount]): Future[Seq[RichDiscount]] = {
+  private[this] def hydrate(items: Seq[StripeDiscount]): Future[Seq[RichStripeDiscount]] = {
     couponService.getByIds(items.flatMap(_.couponId).toSet).map { coupons =>
       val couponsById = coupons.map { c => c.id -> c }.toMap
 
       items.map { item =>
-        RichDiscount(
+        RichStripeDiscount(
           base = item,
           coupon = item.couponId.flatMap(couponsById.get)
         )

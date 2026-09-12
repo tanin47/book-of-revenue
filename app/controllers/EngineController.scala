@@ -1,7 +1,7 @@
 package controllers
 
 import background.{ProcessTransactionWorker, StripeEventImporter, StripeImporter, StripeMeterEventSummaryImporter, StripeNormalizer}
-import database.services.{RevRecTransactionService, JournalEntryService, RawStripeObjectService, TrackedExceptionService}
+import database.services.{TransactionService, JournalEntryService, RawStripeObjectService, TrackedExceptionService}
 import database.services.JournalEntryService.ColumnType
 import framework.{BaseController, ControllerComponents, Helpers, Jsonable, PlayConfig, Tuples}
 import givers.form.Form
@@ -20,7 +20,7 @@ import scala.jdk.CollectionConverters.ListHasAsScala
 @Singleton
 class EngineController @Inject() (
   rawStripeObjectService: RawStripeObjectService,
-  revRecTransactionService: RevRecTransactionService,
+  transactionService: TransactionService,
   trackedExceptionService: TrackedExceptionService,
   storageProvider: StorageProvider,
   config: PlayConfig,
@@ -41,8 +41,8 @@ class EngineController @Inject() (
     for {
       importerStats <- rawStripeObjectService.getStats(req.stripeAccountId, req.liveMode, onlyProcessed = false)
       transformerStats <- rawStripeObjectService.getStats(req.stripeAccountId, req.liveMode, onlyProcessed = true)
-      transactionStats <- revRecTransactionService.getStats(req.stripeAccountId, req.liveMode)
-      recentTransactions <- revRecTransactionService.getAllListable(req.stripeAccountId, req.liveMode, 0, 5)
+      transactionStats <- transactionService.getStats(req.stripeAccountId, req.liveMode)
+      recentTransactions <- transactionService.getAllListable(req.stripeAccountId, req.liveMode, 0, 5)
       recentExceptions <- trackedExceptionService.getAll(5)
     } yield {
       val jobClassNames = storageProvider

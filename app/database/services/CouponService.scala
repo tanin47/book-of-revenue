@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{Coupon, CouponTable}
+import database.models.stripe.{StripeCoupon, StripeCouponTable}
 import framework.{BaseDbService, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -28,10 +28,10 @@ class CouponService @Inject() (
   import CouponService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[CouponTable] = TableQuery[CouponTable]
+  val query: TableQuery[StripeCouponTable] = TableQuery[StripeCouponTable]
 
-  def create(data: CreateData): Future[Coupon] = {
-    val entity = Coupon(
+  def create(data: CreateData): Future[StripeCoupon] = {
+    val entity = StripeCoupon(
       stripeAccountId = data.stripeAccountId,
       liveMode = data.liveMode,
       id = data.id,
@@ -56,7 +56,7 @@ class CouponService @Inject() (
     }
   }
 
-  def update(entity: Coupon): Future[Unit] = {
+  def update(entity: StripeCoupon): Future[Unit] = {
     db
       .run {
         query.filter(_.id === entity.id).update(entity)
@@ -64,17 +64,17 @@ class CouponService @Inject() (
       .map(_ => ())
   }
 
-  def getById(id: String): Future[Option[Coupon]] = {
+  def getById(id: String): Future[Option[StripeCoupon]] = {
     getByIds(Set(id)).map(_.headOption)
   }
 
-  def getAll(): Future[Seq[Coupon]] = {
+  def getAll(): Future[Seq[StripeCoupon]] = {
     db.run {
       query.result
     }
   }
 
-  def getByIds(ids: Set[String]): Future[Seq[Coupon]] = {
+  def getByIds(ids: Set[String]): Future[Seq[StripeCoupon]] = {
     db.run {
       query.filter(_.id.inSet(ids)).result
     }

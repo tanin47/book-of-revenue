@@ -1,6 +1,6 @@
 package background
 
-import database.models.{StripeImporterJob, StripeImporterJobCursor}
+import database.models.stripe.{StripeImporterJob, StripeImporterJobCursor}
 import database.services.{RawStripeObjectService, StripeImporterJobCursorService, StripeImporterJobService}
 import framework.Helpers.await
 import org.jobrunr.jobs.lambdas.{JobRequest, JobRequestHandler}

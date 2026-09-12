@@ -12,7 +12,7 @@ class ProcessCustomerBalanceTransactionSpec extends Base {
   describe("manual adjustments") {
     it("books a credit to the customer balance") {
       val transaction = makeProcessCustomerBalanceTransaction(
-        transaction = makeRevRecTransaction(),
+        transaction = makeTransaction(),
         customerBalanceTransaction = makeCustomerBalanceTransaction(
           id = "cbt_1",
           amount = 1000,
@@ -24,7 +24,7 @@ class ProcessCustomerBalanceTransactionSpec extends Base {
       val entries = transaction.generateRawJournalEntries()
 
       entries.map(_.event) should be(Seq(JournalEntry.Event.AdjustCustomerBalanceManually))
-      entries.map(_.customerBalanceTransactionId) should be(Seq(Some("cbt_1")))
+      entries.map(_.stripeCustomerBalanceTransactionId) should be(Seq(Some("cbt_1")))
       NetAmount.compute(entries) should be(Seq(
         NetAmount(-1000, CustomerBalance),
         NetAmount(-1000, CustomerBalanceAdjustment),
@@ -33,7 +33,7 @@ class ProcessCustomerBalanceTransactionSpec extends Base {
 
     it("books a debit that reduces the customer balance") {
       val transaction = makeProcessCustomerBalanceTransaction(
-        transaction = makeRevRecTransaction(),
+        transaction = makeTransaction(),
         customerBalanceTransaction = makeCustomerBalanceTransaction(
           amount = -500,
           created = createdAt,
@@ -52,7 +52,7 @@ class ProcessCustomerBalanceTransactionSpec extends Base {
 
     it("settles in the transaction's currency") {
       val transaction = makeProcessCustomerBalanceTransaction(
-        transaction = makeRevRecTransaction(),
+        transaction = makeTransaction(),
         customerBalanceTransaction = makeCustomerBalanceTransaction(
           amount = 1000,
           currency = "eur",
@@ -71,7 +71,7 @@ class ProcessCustomerBalanceTransactionSpec extends Base {
   describe("delegated transactions") {
     it("skips a transaction tied to an invoice") {
       val transaction = makeProcessCustomerBalanceTransaction(
-        transaction = makeRevRecTransaction(),
+        transaction = makeTransaction(),
         customerBalanceTransaction = makeCustomerBalanceTransaction(
           amount = 1000,
           created = createdAt,
@@ -85,7 +85,7 @@ class ProcessCustomerBalanceTransactionSpec extends Base {
 
     it("skips a transaction tied to a credit note") {
       val transaction = makeProcessCustomerBalanceTransaction(
-        transaction = makeRevRecTransaction(),
+        transaction = makeTransaction(),
         customerBalanceTransaction = makeCustomerBalanceTransaction(
           amount = 1000,
           created = createdAt,

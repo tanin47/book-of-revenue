@@ -55,9 +55,9 @@ object ContractualLiabilityService {
     CustomerEmail,
     CustomerId,
     CustomerName,
-    RevRecTransactionId,
-    RevRecTransactionTitle,
-    RevRecTransactionType,
+    TransactionId,
+    TransactionTitle,
+    TransactionType,
     TransactionDate,
     TransactionStatus,
     TransactionValue,
@@ -275,7 +275,7 @@ class ContractualLiabilityService @Inject() (
         columns = Seq(
           BalanceSheetService.Column.AccountingPeriod,
           BalanceSheetService.Column.CustomerId,
-          BalanceSheetService.Column.RevRecTransactionId,
+          BalanceSheetService.Column.TransactionId,
           BalanceSheetService.Column.ProductId,
           BalanceSheetService.Column.EndingBalance,
         ),
@@ -308,7 +308,7 @@ class ContractualLiabilityService @Inject() (
           sql"""
               FROM
                 revenue_by_month_entries e
-                LEFT JOIN product p
+                LEFT JOIN stripe.product p
                 ON p.id = e.product_id
           """,
           keywordCond,
@@ -340,7 +340,7 @@ class ContractualLiabilityService @Inject() (
           periodColumnsSql,
           sql"""
               FROM
-                customer c
+                stripe.customer c
                 LEFT JOIN revenue_by_month_entries e
                 ON c.id = e.customer_id
               WHERE c.stripe_account_id = $stripeAccountId AND c.live_mode = $liveMode
@@ -381,7 +381,7 @@ class ContractualLiabilityService @Inject() (
           periodColumnsSql,
           sql"""
               FROM
-                rev_rec_transaction c
+                transaction c
                 LEFT JOIN revenue_by_month_entries e
                 ON c.id = e.rev_rec_transaction_id
               WHERE c.stripe_account_id = $stripeAccountId AND c.live_mode = $liveMode AND
@@ -427,10 +427,10 @@ class ContractualLiabilityService @Inject() (
         )
       case GroupBy.Transaction =>
         Seq(
-          ByMonthResultColumn(id = Column.RevRecTransactionId, tpe = ColumnType.String),
-          ByMonthResultColumn(id = Column.RevRecTransactionTitle, tpe = ColumnType.String),
+          ByMonthResultColumn(id = Column.TransactionId, tpe = ColumnType.String),
+          ByMonthResultColumn(id = Column.TransactionTitle, tpe = ColumnType.String),
           ByMonthResultColumn(id = Column.TransactionValue, tpe = ColumnType.Amount),
-          ByMonthResultColumn(id = Column.RevRecTransactionType, tpe = ColumnType.String),
+          ByMonthResultColumn(id = Column.TransactionType, tpe = ColumnType.String),
           ByMonthResultColumn(id = Column.TransactionStatus, tpe = ColumnType.String),
           ByMonthResultColumn(id = Column.TransactionDate, tpe = ColumnType.Timestamp),
         )
@@ -460,9 +460,9 @@ class ContractualLiabilityService @Inject() (
               case Column.CustomerId => "customer_id"
               case Column.CustomerName => "customer_name"
               case Column.CustomerEmail => "customer_email"
-              case Column.RevRecTransactionId => "rev_rec_transaction_id"
-              case Column.RevRecTransactionTitle => "rev_rec_transaction_title"
-              case Column.RevRecTransactionType => "rev_rec_transaction_type"
+              case Column.TransactionId => "rev_rec_transaction_id"
+              case Column.TransactionTitle => "rev_rec_transaction_title"
+              case Column.TransactionType => "rev_rec_transaction_type"
               case Column.TransactionDate => "transaction_started_at"
               case Column.TransactionValue => "transaction_settlement_total_value"
               case Column.TransactionStatus => "transaction_status"

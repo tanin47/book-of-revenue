@@ -29,8 +29,8 @@ object RevenueWaterfallService {
       CustomerId,
       CustomerName,
       CustomerEmail,
-      RevRecTransactionId,
-      RevRecTransactionTitle,
+      TransactionId,
+      TransactionTitle,
       InvoiceId,
       InvoiceNumber,
       InvoiceLineItemId,
@@ -105,8 +105,8 @@ class RevenueWaterfallService @Inject() (
         case Column.CustomerId => "customer_id"
         case Column.CustomerName => "customer_name"
         case Column.CustomerEmail => "customer_email"
-        case Column.RevRecTransactionId => "rev_rec_transaction_id"
-        case Column.RevRecTransactionTitle => "rev_rec_transaction_title"
+        case Column.TransactionId => "rev_rec_transaction_id"
+        case Column.TransactionTitle => "rev_rec_transaction_title"
         case Column.InvoiceId => "invoice_id"
         case Column.InvoiceNumber => "invoice_number"
         case Column.InvoiceLineItemId => "invoice_line_item_id"
@@ -144,8 +144,8 @@ class RevenueWaterfallService @Inject() (
           case Column.CustomerId => sql"customer_id"
           case Column.CustomerName => sql"customer_name"
           case Column.CustomerEmail => sql"customer_email"
-          case Column.RevRecTransactionId => sql"rev_rec_transaction_id"
-          case Column.RevRecTransactionTitle => sql"rev_rec_transaction_title"
+          case Column.TransactionId => sql"rev_rec_transaction_id"
+          case Column.TransactionTitle => sql"rev_rec_transaction_title"
           case Column.InvoiceId => sql"invoice_id"
           case Column.InvoiceNumber => sql"invoice_number"
           case Column.InvoiceLineItemId => sql"invoice_line_item_id"
@@ -316,8 +316,8 @@ class RevenueWaterfallService @Inject() (
             case Column.CustomerId => ColumnType.String
             case Column.CustomerName => ColumnType.String
             case Column.CustomerEmail => ColumnType.String
-            case Column.RevRecTransactionId => ColumnType.String
-            case Column.RevRecTransactionTitle => ColumnType.String
+            case Column.TransactionId => ColumnType.String
+            case Column.TransactionTitle => ColumnType.String
             case Column.InvoiceId => ColumnType.String
             case Column.InvoiceNumber => ColumnType.String
             case Column.InvoiceLineItemId => ColumnType.String
@@ -380,11 +380,11 @@ class RevenueWaterfallService @Inject() (
             il.started_at AS invoice_line_item_started_at,
             il.ended_at AS invoice_line_item_ended_at
           FROM groups AS main
-          LEFT JOIN product AS p ON p.id = main.product_id
-          LEFT JOIN customer AS c ON c.id = main.customer_id
-          LEFT JOIN rev_rec_transaction AS co ON co.id = main.rev_rec_transaction_id
-          LEFT JOIN invoice AS i ON i.id = main.invoice_id
-          LEFT JOIN invoice_line_item AS il ON il.id = main.invoice_line_item_id
+          LEFT JOIN stripe.product AS p ON p.id = main.product_id
+          LEFT JOIN stripe.customer AS c ON c.id = main.customer_id
+          LEFT JOIN transaction AS co ON co.id = main.rev_rec_transaction_id
+          LEFT JOIN stripe.invoice AS i ON i.id = main.invoice_id
+          LEFT JOIN stripe.invoice_line_item AS il ON il.id = main.invoice_line_item_id
         )
 
       """,

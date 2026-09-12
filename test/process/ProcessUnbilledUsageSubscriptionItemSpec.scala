@@ -14,7 +14,7 @@ class ProcessUnbilledUsageSubscriptionItemSpec extends Base {
     )
 
     val transaction = makeProcessUnbilledUsageSubscriptionItem(
-      transaction = makeRevRecTransaction(tpe = RevRecTransaction.Type.UnbilledUsageSubscriptionItem),
+      transaction = makeTransaction(tpe = Transaction.Type.UnbilledUsageSubscriptionItem),
       subscriptionItem = makeRichSubscriptionItem(
         base = subscriptionItemBase,
         price = Some(makeRichPrice(base = makePrice(billingScheme = "per_unit", unitAmount = 5, currency = "usd"))),
@@ -42,7 +42,7 @@ class ProcessUnbilledUsageSubscriptionItemSpec extends Base {
   it("books unbilled usage settled in a different currency") {
     val periodStart = Instant.parse("2026-01-14T00:00:00Z")
     val transaction = makeProcessUnbilledUsageSubscriptionItem(
-      transaction = makeRevRecTransaction(tpe = RevRecTransaction.Type.UnbilledUsageSubscriptionItem),
+      transaction = makeTransaction(tpe = Transaction.Type.UnbilledUsageSubscriptionItem),
       subscriptionItem = makeRichSubscriptionItem(
         base = makeSubscriptionItem(currentPeriodStart = periodStart, currentPeriodEnd = Instant.parse("2026-02-20T00:00:00Z")),
         price = Some(makeRichPrice(base = makePrice(billingScheme = "per_unit", unitAmount = 5, currency = "usd"))),
@@ -64,7 +64,7 @@ class ProcessUnbilledUsageSubscriptionItemSpec extends Base {
 
   it("books unbilled usage with a flat fee") {
     val transaction = makeProcessUnbilledUsageSubscriptionItem(
-      transaction = makeRevRecTransaction(tpe = RevRecTransaction.Type.UnbilledUsageSubscriptionItem),
+      transaction = makeTransaction(tpe = Transaction.Type.UnbilledUsageSubscriptionItem),
       subscriptionItem = makeRichSubscriptionItem(
         base = makeSubscriptionItem(
           currentPeriodStart = Instant.parse("2026-01-01T00:00:00Z"),

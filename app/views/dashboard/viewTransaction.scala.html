@@ -1,5 +1,5 @@
-@import database.models.RichRevRecTransaction
-@(transaction: RichRevRecTransaction)(implicit req: framework.Request[_])
+@import database.models.RichTransaction
+@(transaction: RichTransaction)(implicit req: framework.Request[_])
 
 @main(s"Transaction: ${transaction.base.id}") {
   <script src='@routes.AssetsController.versioned("svelte/dashboard/transaction/view.js")'></script>

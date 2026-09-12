@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{Refund, RefundTable, RichRefund}
+import database.models.stripe.{StripeRefund, StripeRefundTable, RichStripeRefund}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -36,10 +36,10 @@ class RefundService @Inject() (
   import RefundService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[RefundTable] = TableQuery[RefundTable]
+  val query: TableQuery[StripeRefundTable] = TableQuery[StripeRefundTable]
 
-  def create(data: CreateData): Future[Refund] = {
-    val entity = Refund(
+  def create(data: CreateData): Future[StripeRefund] = {
+    val entity = StripeRefund(
       stripeAccountId = data.stripeAccountId,
       liveMode = data.liveMode,
       id = data.id,
@@ -70,7 +70,7 @@ class RefundService @Inject() (
     }
   }
 
-  def update(entity: Refund): Future[Unit] = {
+  def update(entity: StripeRefund): Future[Unit] = {
     db
       .run {
         query.filter(_.id === entity.id).update(entity)
@@ -78,43 +78,43 @@ class RefundService @Inject() (
       .map(_ => ())
   }
 
-  def getById(id: String): Future[Option[Refund]] = {
+  def getById(id: String): Future[Option[StripeRefund]] = {
     getByIds(Set(id)).map(_.headOption)
   }
 
-  def getAll(): Future[Seq[Refund]] = {
+  def getAll(): Future[Seq[StripeRefund]] = {
     db.run {
       query.result
     }
   }
 
-  def getByChargeIdsOrPaymentIntentIds(chargeIds: Set[String], paymentIntentIds: Set[String]): Future[Seq[Refund]] = {
+  def getByChargeIdsOrPaymentIntentIds(chargeIds: Set[String], paymentIntentIds: Set[String]): Future[Seq[StripeRefund]] = {
     db.run {
       query.filter(r => r.chargeId.inSet(chargeIds) || r.paymentIntentId.inSet(paymentIntentIds)).result
     }
   }
 
-  def getByChargeIds(ids: Set[String]): Future[Seq[Refund]] = {
+  def getByChargeIds(ids: Set[String]): Future[Seq[StripeRefund]] = {
     db.run {
       query.filter(_.chargeId.inSet(ids)).result
     }
   }
 
-  def getByIds(ids: Set[String]): Future[Seq[Refund]] = {
+  def getByIds(ids: Set[String]): Future[Seq[StripeRefund]] = {
     db.run {
       query.filter(_.id.inSet(ids)).result
     }
   }
 
-  def getRichByChargeIds(ids: Set[String]): Future[Seq[RichRefund]] = {
+  def getRichByChargeIds(ids: Set[String]): Future[Seq[RichStripeRefund]] = {
     getByChargeIds(ids).flatMap(hydrate)
   }
 
-  def getRichByIds(ids: Set[String]): Future[Seq[RichRefund]] = {
+  def getRichByIds(ids: Set[String]): Future[Seq[RichStripeRefund]] = {
     getByIds(ids).flatMap(hydrate)
   }
 
-  private[this] def hydrate(items: Seq[Refund]): Future[Seq[RichRefund]] = {
+  private[this] def hydrate(items: Seq[StripeRefund]): Future[Seq[RichStripeRefund]] = {
     for {
       bts <- balanceTransactionService.getByIds(items.flatMap { i => Seq(i.balanceTransactionId, i.failureBalanceTransactionId).flatten }.toSet)
       creditNoteRefunds <- creditNoteRefundService.get().getByRefundIds(items.map(_.id).toSet)
@@ -122,7 +122,7 @@ class RefundService @Inject() (
       val btById = bts.map(bt => bt.id -> bt).toMap
       val creditNoteRefundIds = creditNoteRefunds.flatMap(_.refundId).toSet
       items.map { item =>
-        RichRefund(
+        RichStripeRefund(
           base = item,
           balanceTransaction = item.balanceTransactionId.flatMap(btById.get),
           failureBalanceTransaction = item.failureBalanceTransactionId.flatMap(btById.get),

@@ -19,9 +19,9 @@ import scala.concurrent.{ExecutionContext, Future}
 object AccountChangeByMonthService {
   enum Column extends Enum[Column] {
     case
-    RevRecTransactionId,
-    RevRecTransactionTitle,
-    RevRecTransactionType,
+    TransactionId,
+    TransactionTitle,
+    TransactionType,
     TransactionDate,
     TransactionStatus,
     TransactionValue
@@ -180,7 +180,7 @@ class AccountChangeByMonthService @Inject()(
             t.status AS transaction_status,
             t.settlement_total_value AS transaction_value,
             g.*
-          FROM rev_rec_transaction t
+          FROM transaction t
           LEFT JOIN filtered_groups g ON t.id = g.rev_rec_transaction_id
           WHERE t.customer_id = ${params.customerId}
         )
@@ -212,9 +212,9 @@ class AccountChangeByMonthService @Inject()(
     val sortClauses = sorts.map { sort =>
       val name = sort.column match {
         case e: PeriodColumn => e.name
-        case Column.RevRecTransactionId => "transaction_id"
-        case Column.RevRecTransactionType => "transaction_type"
-        case Column.RevRecTransactionTitle => "transaction_title"
+        case Column.TransactionId => "transaction_id"
+        case Column.TransactionType => "transaction_type"
+        case Column.TransactionTitle => "transaction_title"
         case Column.TransactionValue => "transaction_value"
         case Column.TransactionStatus => "transaction_status"
         case Column.TransactionDate => "transaction_date"
@@ -231,10 +231,10 @@ class AccountChangeByMonthService @Inject()(
 
     val columns = (
       Seq(
-        Column.RevRecTransactionId,
-        Column.RevRecTransactionTitle,
+        Column.TransactionId,
+        Column.TransactionTitle,
         Column.TransactionValue,
-        Column.RevRecTransactionType,
+        Column.TransactionType,
         Column.TransactionStatus,
         Column.TransactionDate,
       ) ++ periods.map { period =>
@@ -247,9 +247,9 @@ class AccountChangeByMonthService @Inject()(
         id = column,
         tpe = column match {
           case _: PeriodColumn => ColumnType.DeltaAmount
-          case Column.RevRecTransactionId => ColumnType.String
-          case Column.RevRecTransactionTitle => ColumnType.String
-          case Column.RevRecTransactionType => ColumnType.String
+          case Column.TransactionId => ColumnType.String
+          case Column.TransactionTitle => ColumnType.String
+          case Column.TransactionType => ColumnType.String
           case Column.TransactionValue => ColumnType.Amount
           case Column.TransactionStatus => ColumnType.String
           case Column.TransactionDate => ColumnType.Timestamp
@@ -263,9 +263,9 @@ class AccountChangeByMonthService @Inject()(
       resultColumns.map { col =>
         col.id match {
           case p: PeriodColumn => sql""""#${p.name}""""
-          case Column.RevRecTransactionId => sql"transaction_id"
-          case Column.RevRecTransactionTitle => sql"transaction_title"
-          case Column.RevRecTransactionType => sql"transaction_type"
+          case Column.TransactionId => sql"transaction_id"
+          case Column.TransactionTitle => sql"transaction_title"
+          case Column.TransactionType => sql"transaction_type"
           case Column.TransactionValue => sql"transaction_value"
           case Column.TransactionStatus => sql"transaction_status"
           case Column.TransactionDate => sql"transaction_date"

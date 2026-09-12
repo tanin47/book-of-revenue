@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{CreditNoteRefund, CreditNoteRefundTable}
+import database.models.stripe.{StripeCreditNoteRefund, StripeCreditNoteRefundTable}
 import framework.{BaseDbService, PlayConfig}
 import play.api.db.slick.DatabaseConfigProvider
 
@@ -29,12 +29,12 @@ class CreditNoteRefundService @Inject() (
   import CreditNoteRefundService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[CreditNoteRefundTable] = TableQuery[CreditNoteRefundTable]
+  val query: TableQuery[StripeCreditNoteRefundTable] = TableQuery[StripeCreditNoteRefundTable]
 
   // A credit note refund has no natural id, so we replace all refunds for a given credit note.
-  def replaceByCreditNote(creditNoteId: String, refunds: Seq[CreateData]): Future[Seq[CreditNoteRefund]] = {
+  def replaceByCreditNote(creditNoteId: String, refunds: Seq[CreateData]): Future[Seq[StripeCreditNoteRefund]] = {
     val entities = refunds.map { refund =>
-      CreditNoteRefund(
+      StripeCreditNoteRefund(
         stripeAccountId = refund.stripeAccountId,
         liveMode = refund.liveMode,
         creditNoteId = refund.creditNoteId,
@@ -54,13 +54,13 @@ class CreditNoteRefundService @Inject() (
     db.run(action.transactionally).map(_ => entities)
   }
 
-  def getByCreditNoteIds(creditNoteIds: Set[String]): Future[Seq[CreditNoteRefund]] = {
+  def getByCreditNoteIds(creditNoteIds: Set[String]): Future[Seq[StripeCreditNoteRefund]] = {
     db.run {
       query.filter(_.creditNoteId.inSet(creditNoteIds)).result
     }
   }
 
-  def getByRefundIds(refundIds: Set[String]): Future[Seq[CreditNoteRefund]] = {
+  def getByRefundIds(refundIds: Set[String]): Future[Seq[StripeCreditNoteRefund]] = {
     db.run {
       query.filter(_.refundId.inSet(refundIds)).result
     }

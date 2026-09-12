@@ -15,7 +15,7 @@ export interface Customer {
   email: string | null
 }
 
-export interface RevRecTransaction {
+export interface Transaction {
   stripeAccountId: string
   liveMode: boolean
   id: string
@@ -441,7 +441,7 @@ export interface MeterEventSummary {
   endTime: number
 }
 
-export interface RevRecTransactionDetailLineItem {
+export interface TransactionDetailLineItem {
   id: string | null,
   description: string | null,
   principleAmount: number,
@@ -456,21 +456,21 @@ export interface RevRecTransactionDetailLineItem {
   total: number
 }
 
-export interface RevRecTransactionDetailUsage {
+export interface TransactionDetailUsage {
   description: string | null,
   startedAt: number,
   endedAt: number,
   value: number
 }
 
-export interface RevRecTransactionDetail {
+export interface TransactionDetail {
   currency: string
   total: number | null
   outstanding: number | null
   paid: number | null
   status: string
-  lineItems: RevRecTransactionDetailLineItem[]
-  usages: RevRecTransactionDetailUsage[]
+  lineItems: TransactionDetailLineItem[]
+  usages: TransactionDetailUsage[]
   billingActivities: BillingActivity[]
 }
 

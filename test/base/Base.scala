@@ -2,6 +2,7 @@ package base
 
 import ch.qos.logback.classic.Level
 import database.models.*
+import database.models.stripe.*
 import database.services.*
 import framework.{Instant, PlayConfig}
 import mockws.MockWSHelpers.Action
@@ -98,12 +99,13 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
         sql"SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename ASC;"
           .as[String]
       })
+      tables.foreach { table => await(db.run { sqlu"""DROP TABLE IF EXISTS "#$table" CASCADE;""" }) }
 
-      tables.foreach { table =>
-        await(db.run {
-          sqlu"""DROP TABLE IF EXISTS "#$table" CASCADE;"""
-        })
-      }
+      val schemas = await(db.run {
+        sql"SELECT DISTINCT schemaname FROM pg_tables WHERE schemaname NOT IN ('public', 'pg_catalog') ORDER BY schemaname ASC;"
+          .as[String]
+      })
+      schemas.foreach { schema => await(db.run { sqlu"""DROP SCHEMA IF EXISTS "#$schema" CASCADE;""" }) }
 
       app.injector.instanceOf[EvolutionsApi].applyFor("default")
 
@@ -205,7 +207,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     endingBalance: Option[Long] = None,
     status: String = "open",
     syncedAt: Instant = Instant.now()
-  ): Invoice = Invoice(
+  ): StripeInvoice = StripeInvoice(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -242,7 +244,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     pricingUnitAmountDecimal: Option[String] = None,
     customerId: String = "cus_1",
     syncedAt: Instant = Instant.now()
-  ): InvoiceLineItem = InvoiceLineItem(
+  ): StripeInvoiceLineItem = StripeInvoiceLineItem(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -262,16 +264,16 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   )
 
   def makeRichInvoiceLineItem(
-    base: InvoiceLineItem = makeInvoiceLineItem(),
-    invoiceItem: Option[RichInvoiceItem] = None,
-    subscriptionItem: Option[SubscriptionItem] = None,
-    price: Option[RichPrice] = None,
-    meterEventSummaries: Seq[MeterEventSummary] = Seq.empty,
+    base: StripeInvoiceLineItem = makeInvoiceLineItem(),
+    invoiceItem: Option[RichStripeInvoiceItem] = None,
+    subscriptionItem: Option[StripeSubscriptionItem] = None,
+    price: Option[RichStripePrice] = None,
+    meterEventSummaries: Seq[StripeMeterEventSummary] = Seq.empty,
     startedAtExchangeRate: ExchangeRate = ExchangeRate.sameCurrency("usd"),
-    pretaxCreditAmounts: Seq[RichInvoiceLineItemPretaxCreditAmount] = Seq.empty,
-    taxes: Seq[InvoiceLineItemTax] = Seq.empty,
-    creditBalanceTransactionsAppliedOnVoid: Seq[RichCreditBalanceTransaction] = Seq.empty
-  ): RichInvoiceLineItem = RichInvoiceLineItem(
+    pretaxCreditAmounts: Seq[RichStripeInvoiceLineItemPretaxCreditAmount] = Seq.empty,
+    taxes: Seq[StripeInvoiceLineItemTax] = Seq.empty,
+    creditBalanceTransactionsAppliedOnVoid: Seq[RichStripeCreditBalanceTransaction] = Seq.empty
+  ): RichStripeInvoiceLineItem = RichStripeInvoiceLineItem(
     base = base,
     invoiceItem = invoiceItem,
     subscriptionItem = subscriptionItem,
@@ -288,7 +290,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     invoiceLineItemId: String = s"li_${genId()}",
     amount: Long = 100,
     discountId: String = "discount_test"
-  ): InvoiceLineItemDiscountAmount = InvoiceLineItemDiscountAmount(
+  ): StripeInvoiceLineItemDiscountAmount = StripeInvoiceLineItemDiscountAmount(
     stripeAccountId = "",
     liveMode = false,
     rank = rank,
@@ -303,7 +305,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     amount: Long = 100,
     taxBehaviour: String = "exclusive",
     taxRateId: Option[String] = Some("txr_test")
-  ): InvoiceLineItemTax = InvoiceLineItemTax(
+  ): StripeInvoiceLineItemTax = StripeInvoiceLineItemTax(
     stripeAccountId = "",
     liveMode = false,
     rank = rank,
@@ -318,7 +320,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     creditNoteLineItemId: String = s"cnli_${genId()}",
     amount: Long = 100,
     taxBehavior: String = "exclusive"
-  ): CreditNoteLineItemTax = CreditNoteLineItemTax(
+  ): StripeCreditNoteLineItemTax = StripeCreditNoteLineItemTax(
     stripeAccountId = "",
     liveMode = false,
     rank = rank,
@@ -337,7 +339,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     effectiveAt: Instant = Instant.now(),
     expiresAt: Option[Instant] = None,
     voidedAt: Option[Instant] = None
-  ): CreditGrant = CreditGrant(
+  ): StripeCreditGrant = StripeCreditGrant(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -368,7 +370,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     debitCreditsAppliedInvoiceId: Option[String] = None,
     debitCreditsAppliedInvoiceLineItemId: Option[String] = None,
     syncedAt: Instant = Instant.now(),
-  ): CreditBalanceTransaction = CreditBalanceTransaction(
+  ): StripeCreditBalanceTransaction = StripeCreditBalanceTransaction(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -390,9 +392,9 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   )
 
   def makeRichCreditBalanceTransaction(
-    base: CreditBalanceTransaction = makeCreditBalanceTransaction(),
-    creditGrant: Option[CreditGrant] = None
-  ): RichCreditBalanceTransaction = RichCreditBalanceTransaction(
+    base: StripeCreditBalanceTransaction = makeCreditBalanceTransaction(),
+    creditGrant: Option[StripeCreditGrant] = None
+  ): RichStripeCreditBalanceTransaction = RichStripeCreditBalanceTransaction(
     base = base,
     creditGrant = creditGrant
   )
@@ -405,7 +407,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     category: String = "paid",
     effectiveAt: Instant = Instant.now(),
     syncedAt: Instant = Instant.now(),
-  ): RichCreditBalanceTransaction = makeRichCreditBalanceTransaction(
+  ): RichStripeCreditBalanceTransaction = makeRichCreditBalanceTransaction(
     base = makeCreditBalanceTransaction(
       id = id,
       `type` = "credit",
@@ -426,7 +428,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     category: String = "paid",
     effectiveAt: Instant = Instant.now(),
     syncedAt: Instant = Instant.now(),
-  ): RichCreditBalanceTransaction = makeRichCreditBalanceTransaction(
+  ): RichStripeCreditBalanceTransaction = makeRichCreditBalanceTransaction(
     base = makeCreditBalanceTransaction(
       id = id,
       `type` = "debit",
@@ -447,7 +449,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     category: String = "paid",
     effectiveAt: Instant = Instant.now(),
     syncedAt: Instant = Instant.now(),
-  ): RichCreditBalanceTransaction = makeRichCreditBalanceTransaction(
+  ): RichStripeCreditBalanceTransaction = makeRichCreditBalanceTransaction(
     base = makeCreditBalanceTransaction(
       id = id,
       `type` = "debit",
@@ -467,7 +469,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     discountId: Option[String] = None,
     creditBalanceTransactionId: Option[String] = Some("cbtxn_test"),
     `type`: String = "credit_balance_transaction"
-  ): InvoiceLineItemPretaxCreditAmount = InvoiceLineItemPretaxCreditAmount(
+  ): StripeInvoiceLineItemPretaxCreditAmount = StripeInvoiceLineItemPretaxCreditAmount(
     stripeAccountId = "",
     liveMode = false,
     rank = rank,
@@ -479,10 +481,10 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   )
 
   def makeRichInvoiceLineItemPretaxCreditAmount(
-    base: InvoiceLineItemPretaxCreditAmount = makeInvoiceLineItemPretaxCreditAmount(),
-    discount: Option[Discount] = None,
-    creditBalanceTransaction: Option[RichCreditBalanceTransaction] = None
-  ): RichInvoiceLineItemPretaxCreditAmount = RichInvoiceLineItemPretaxCreditAmount(
+    base: StripeInvoiceLineItemPretaxCreditAmount = makeInvoiceLineItemPretaxCreditAmount(),
+    discount: Option[StripeDiscount] = None,
+    creditBalanceTransaction: Option[RichStripeCreditBalanceTransaction] = None
+  ): RichStripeInvoiceLineItemPretaxCreditAmount = RichStripeInvoiceLineItemPretaxCreditAmount(
     base = base,
     discount = discount,
     creditBalanceTransaction = creditBalanceTransaction
@@ -492,7 +494,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     rank: Int = 0,
     amount: Long = 100,
     discountId: String = "di_test"
-  ): RichInvoiceLineItemPretaxCreditAmount = makeRichInvoiceLineItemPretaxCreditAmount(
+  ): RichStripeInvoiceLineItemPretaxCreditAmount = makeRichInvoiceLineItemPretaxCreditAmount(
     base = makeInvoiceLineItemPretaxCreditAmount(
       rank = rank,
       amount = amount,
@@ -507,7 +509,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     amountOff: Option[Long] = None,
     currency: Option[String] = None,
     percentOff: Option[Double] = None
-  ): Coupon = Coupon(
+  ): StripeCoupon = StripeCoupon(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -518,9 +520,9 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
 
   def makeRichDiscount(
     id: String = s"di_${genId()}",
-    coupon: Option[Coupon] = None
-  ): RichDiscount = RichDiscount(
-    base = Discount(stripeAccountId = "", liveMode = false, id = id, couponId = coupon.map(_.id)),
+    coupon: Option[StripeCoupon] = None
+  ): RichStripeDiscount = RichStripeDiscount(
+    base = StripeDiscount(stripeAccountId = "", liveMode = false, id = id, couponId = coupon.map(_.id)),
     coupon = coupon
   )
 
@@ -531,7 +533,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     flatAmount: Option[Long] = None,
     flatAmountCurrency: Option[String] = None,
     rateType: Option[String] = None
-  ): TaxRate = TaxRate(
+  ): StripeTaxRate = StripeTaxRate(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -543,11 +545,11 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   )
 
   def makeRichInvoiceItem(
-    base: InvoiceItem = makeInvoiceItem(),
-    discounts: Seq[RichDiscount] = Seq.empty,
-    taxRates: Seq[TaxRate] = Seq.empty,
+    base: StripeInvoiceItem = makeInvoiceItem(),
+    discounts: Seq[RichStripeDiscount] = Seq.empty,
+    taxRates: Seq[StripeTaxRate] = Seq.empty,
     createdAtExchangeRate: Option[ExchangeRate] = Some(ExchangeRate.sameCurrency("usd"))
-  ): RichInvoiceItem = RichInvoiceItem(
+  ): RichStripeInvoiceItem = RichStripeInvoiceItem(
     base = base,
     discounts = discounts,
     taxRates = taxRates,
@@ -569,7 +571,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     productId: Option[String] = None,
     createdAt: Instant = Instant.now(),
     syncedAt: Instant = Instant.now()
-  ): InvoiceItem = InvoiceItem(
+  ): StripeInvoiceItem = StripeInvoiceItem(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -589,14 +591,14 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   )
 
   def makeRichInvoice(
-    base: Invoice = makeInvoice(),
-    lineItems: Seq[RichInvoiceLineItem] = Seq.empty,
-    payments: Seq[RichInvoicePayment] = Seq.empty,
-    customerBalanceTransactions: Seq[CustomerBalanceTransaction] = Seq.empty,
-    creditNotes: Seq[RichCreditNote] = Seq.empty,
+    base: StripeInvoice = makeInvoice(),
+    lineItems: Seq[RichStripeInvoiceLineItem] = Seq.empty,
+    payments: Seq[RichStripeInvoicePayment] = Seq.empty,
+    customerBalanceTransactions: Seq[StripeCustomerBalanceTransaction] = Seq.empty,
+    creditNotes: Seq[RichStripeCreditNote] = Seq.empty,
     finalizedAtExchangeRate: Option[ExchangeRate] = Some(ExchangeRate.sameCurrency("usd")),
-  ): RichInvoice = {
-    RichInvoice(
+  ): RichStripeInvoice = {
+    RichStripeInvoice(
       base = base,
       lineItems = lineItems,
       payments = payments,
@@ -618,7 +620,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     creditNoteId: Option[String] = None,
     `type`: String = "invoice_too_large",
     syncedAt: Instant = Instant.now()
-  ): CustomerBalanceTransaction = CustomerBalanceTransaction(
+  ): StripeCustomerBalanceTransaction = StripeCustomerBalanceTransaction(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -646,7 +648,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     createdAt: Instant = Instant.now(),
     effectiveAt: Option[Instant] = None,
     voidedAt: Option[Instant] = None,
-  ): CreditNote = CreditNote(
+  ): StripeCreditNote = StripeCreditNote(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -663,11 +665,11 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   )
 
   def makeRichCreditNote(
-    base: CreditNote = makeCreditNote(),
-    customerBalanceTransaction: Option[CustomerBalanceTransaction] = None,
-    lines: Seq[RichCreditNoteLineItem] = Seq.empty,
-    refunds: Seq[RichCreditNoteRefund] = Seq.empty,
-  ): RichCreditNote = RichCreditNote(
+    base: StripeCreditNote = makeCreditNote(),
+    customerBalanceTransaction: Option[StripeCustomerBalanceTransaction] = None,
+    lines: Seq[RichStripeCreditNoteLineItem] = Seq.empty,
+    refunds: Seq[RichStripeCreditNoteRefund] = Seq.empty,
+  ): RichStripeCreditNote = RichStripeCreditNote(
     base = base,
     customerBalanceTransaction = customerBalanceTransaction,
     lines = lines,
@@ -681,7 +683,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     amount: Long = 1000,
     `type`: String = "credit_note_line_item",
     invoiceLineItemId: Option[String] = None,
-  ): CreditNoteLineItem = CreditNoteLineItem(
+  ): StripeCreditNoteLineItem = StripeCreditNoteLineItem(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -694,10 +696,10 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   )
 
   def makeRichCreditNoteLineItem(
-    base: CreditNoteLineItem = makeCreditNoteLineItem(),
-    pretaxCreditAmounts: Seq[RichCreditNoteLineItemPretaxCreditAmount] = Seq.empty,
-    taxes: Seq[CreditNoteLineItemTax] = Seq.empty,
-  ): RichCreditNoteLineItem = RichCreditNoteLineItem(
+    base: StripeCreditNoteLineItem = makeCreditNoteLineItem(),
+    pretaxCreditAmounts: Seq[RichStripeCreditNoteLineItemPretaxCreditAmount] = Seq.empty,
+    taxes: Seq[StripeCreditNoteLineItemTax] = Seq.empty,
+  ): RichStripeCreditNoteLineItem = RichStripeCreditNoteLineItem(
     base = base,
     pretaxCreditAmounts = pretaxCreditAmounts,
     taxes = taxes
@@ -710,7 +712,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     discountId: Option[String] = None,
     creditBalanceTransactionId: Option[String] = Some("cbtxn_test"),
     `type`: String = "credit_balance_transaction"
-  ): CreditNoteLineItemPretaxCreditAmount = CreditNoteLineItemPretaxCreditAmount(
+  ): StripeCreditNoteLineItemPretaxCreditAmount = StripeCreditNoteLineItemPretaxCreditAmount(
     rank = rank,
     creditNoteLineItemId = creditNoteLineItemId,
     amount = amount,
@@ -720,10 +722,10 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   )
 
   def makeRichCreditNoteLineItemPretaxCreditAmount(
-    base: CreditNoteLineItemPretaxCreditAmount = makeCreditNoteLineItemPretaxCreditAmount(),
-    discount: Option[Discount] = None,
-    creditBalanceTransaction: Option[RichCreditBalanceTransaction] = None
-  ): RichCreditNoteLineItemPretaxCreditAmount = RichCreditNoteLineItemPretaxCreditAmount(
+    base: StripeCreditNoteLineItemPretaxCreditAmount = makeCreditNoteLineItemPretaxCreditAmount(),
+    discount: Option[StripeDiscount] = None,
+    creditBalanceTransaction: Option[RichStripeCreditBalanceTransaction] = None
+  ): RichStripeCreditNoteLineItemPretaxCreditAmount = RichStripeCreditNoteLineItemPretaxCreditAmount(
     base = base,
     discount = discount,
     creditBalanceTransaction = creditBalanceTransaction
@@ -733,7 +735,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     rank: Int = 0,
     amount: Long = 100,
     discountId: String = "di_test"
-  ): RichCreditNoteLineItemPretaxCreditAmount = makeRichCreditNoteLineItemPretaxCreditAmount(
+  ): RichStripeCreditNoteLineItemPretaxCreditAmount = makeRichCreditNoteLineItemPretaxCreditAmount(
     base = makeCreditNoteLineItemPretaxCreditAmount(
       rank = rank,
       amount = amount,
@@ -750,7 +752,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     `type`: String = "refund",
     amountRefunded: Long = 1000,
     paymentRecordRefundId: Option[String] = None,
-  ): CreditNoteRefund = CreditNoteRefund(
+  ): StripeCreditNoteRefund = StripeCreditNoteRefund(
     stripeAccountId = "",
     liveMode = false,
     creditNoteId = creditNoteId,
@@ -762,9 +764,9 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   )
 
   def makeRichCreditNoteRefund(
-    base: CreditNoteRefund = makeCreditNoteRefund(),
-    refund: Option[RichRefund] = None
-  ): RichCreditNoteRefund = RichCreditNoteRefund(
+    base: StripeCreditNoteRefund = makeCreditNoteRefund(),
+    refund: Option[RichStripeRefund] = None
+  ): RichStripeCreditNoteRefund = RichStripeCreditNoteRefund(
     base = base.copy(refundId = refund.map(_.base.id)),
     refund = refund
   )
@@ -784,7 +786,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     paidAt: Option[Instant] = None,
     status: String = "succeeded",
     syncedAt: Instant = Instant.now()
-  ): InvoicePayment = InvoicePayment(
+  ): StripeInvoicePayment = StripeInvoicePayment(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -804,10 +806,10 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   )
 
   def makeRichInvoicePayment(
-    base: InvoicePayment = makeInvoicePayment(),
-    charge: Option[RichCharge] = None,
-    paymentIntent: Option[RichPaymentIntent] = None,
-  ): RichInvoicePayment = RichInvoicePayment(
+    base: StripeInvoicePayment = makeInvoicePayment(),
+    charge: Option[RichStripeCharge] = None,
+    paymentIntent: Option[RichStripePaymentIntent] = None,
+  ): RichStripeInvoicePayment = RichStripeInvoicePayment(
     base = base.copy(
       amountPaid = base.amountPaid
         .orElse(charge.map(_.base.amount))
@@ -826,7 +828,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     description: Option[String] = None,
     latestChargeId: Option[String] = None,
     syncedAt: Instant = Instant.now()
-  ): PaymentIntent = PaymentIntent(
+  ): StripePaymentIntent = StripePaymentIntent(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -839,17 +841,17 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   )
 
   def makeRichPaymentIntent(
-    base: PaymentIntent = makePaymentIntent(),
-    charge: Option[RichCharge] = None
-  ): RichPaymentIntent = RichPaymentIntent(
+    base: StripePaymentIntent = makePaymentIntent(),
+    charge: Option[RichStripeCharge] = None
+  ): RichStripePaymentIntent = RichStripePaymentIntent(
     base = base,
     charge = charge
   )
 
-  def makeRevRecTransaction(
+  def makeTransaction(
     id: String = s"in_${genId()}",
-    tpe: RevRecTransaction.Type = RevRecTransaction.Type.Invoice,
-    status: RevRecTransaction.Status = RevRecTransaction.Status.Undetermined,
+    tpe: Transaction.Type = Transaction.Type.Invoice,
+    status: Transaction.Status = Transaction.Status.Undetermined,
     customerId: Option[String] = Some("cus_1"),
     title: Option[String] = None,
     settlementTotalValue: Option[Long] = None,
@@ -858,7 +860,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     processedAt: Option[Instant] = None,
     syncedAt: Option[Instant] = Some(Instant.now()),
     batchTimestamp: Instant = Instant.now()
-  ): RevRecTransaction = RevRecTransaction(
+  ): Transaction = Transaction(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -875,56 +877,56 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   )
 
   def makeProcessInvoice(
-    transaction: RevRecTransaction,
-    invoice: RichInvoice
+    transaction: Transaction,
+    invoice: RichStripeInvoice
   ): ProcessInvoice = ProcessInvoice(
     transaction = transaction,
     invoice = invoice
   )
 
   def makeProcessStandaloneCharge(
-    transaction: RevRecTransaction,
-    charge: RichCharge
+    transaction: Transaction,
+    charge: RichStripeCharge
   ): ProcessStandaloneCharge = ProcessStandaloneCharge(
     transaction = transaction,
     charge = charge
   )
 
   def makeProcessUnbilledInvoiceItem(
-    transaction: RevRecTransaction,
-    invoiceItem: RichInvoiceItem
+    transaction: Transaction,
+    invoiceItem: RichStripeInvoiceItem
   ): ProcessUnbilledInvoiceItem = ProcessUnbilledInvoiceItem(
     transaction = transaction,
     invoiceItem = invoiceItem
   )
 
   def makeProcessStandalonePaymentIntent(
-    transaction: RevRecTransaction,
-    paymentIntent: RichPaymentIntent
+    transaction: Transaction,
+    paymentIntent: RichStripePaymentIntent
   ): ProcessStandalonePaymentIntent = ProcessStandalonePaymentIntent(
     transaction = transaction,
     paymentIntent = paymentIntent
   )
 
   def makeProcessUnbilledUsageSubscriptionItem(
-    transaction: RevRecTransaction,
-    subscriptionItem: RichSubscriptionItem
+    transaction: Transaction,
+    subscriptionItem: RichStripeSubscriptionItem
   ): ProcessUnbilledUsageSubscriptionItem = ProcessUnbilledUsageSubscriptionItem(
     transaction = transaction,
     subscriptionItem = subscriptionItem
   )
 
   def makeProcessCreditBalanceTransaction(
-    transaction: RevRecTransaction,
-    creditBalanceTransaction: RichCreditBalanceTransaction
+    transaction: Transaction,
+    creditBalanceTransaction: RichStripeCreditBalanceTransaction
   ): ProcessCreditBalanceTransaction = ProcessCreditBalanceTransaction(
     transaction = transaction,
     creditBalanceTransaction = creditBalanceTransaction
   )
 
   def makeProcessCustomerBalanceTransaction(
-    transaction: RevRecTransaction,
-    customerBalanceTransaction: CustomerBalanceTransaction
+    transaction: Transaction,
+    customerBalanceTransaction: StripeCustomerBalanceTransaction
   ): ProcessCustomerBalanceTransaction = ProcessCustomerBalanceTransaction(
     transaction = transaction,
     customerBalanceTransaction = customerBalanceTransaction
@@ -939,7 +941,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     discountIds: List[String] = List.empty,
     defaultTaxRateIds: List[String] = List.empty,
     syncedAt: Instant = Instant.now()
-  ): Subscription = Subscription(
+  ): StripeSubscription = StripeSubscription(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -953,10 +955,10 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   )
 
   def makeRichSubscription(
-    base: Subscription = makeSubscription(),
-    discounts: Seq[RichDiscount] = Seq.empty,
-    defaultTaxRates: Seq[TaxRate] = Seq.empty
-  ): RichSubscription = RichSubscription(
+    base: StripeSubscription = makeSubscription(),
+    discounts: Seq[RichStripeDiscount] = Seq.empty,
+    defaultTaxRates: Seq[StripeTaxRate] = Seq.empty
+  ): RichStripeSubscription = RichStripeSubscription(
     base = base,
     discounts = discounts,
     defaultTaxRates = defaultTaxRates
@@ -972,7 +974,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     discountIds: List[String] = List.empty,
     taxRateIds: List[String] = List.empty,
     syncedAt: Instant = Instant.now()
-  ): SubscriptionItem = SubscriptionItem(
+  ): StripeSubscriptionItem = StripeSubscriptionItem(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -999,7 +1001,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     recurringMeterId: Option[String] = Some("meter_1"),
     recurringUsageType: Option[String] = Some("metered"),
     syncedAt: Instant = Instant.now()
-  ): Price = Price(
+  ): StripePrice = StripePrice(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -1022,7 +1024,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     unitAmount: Option[Long] = None,
     upTo: Option[Long] = None,
     syncedAt: Instant = Instant.now()
-  ): PriceTier = PriceTier(
+  ): StripePriceTier = StripePriceTier(
     stripeAccountId = "",
     liveMode = false,
     priceId = priceId,
@@ -1033,10 +1035,10 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   )
 
   def makeRichPrice(
-    base: Price = makePrice(),
-    product: Option[Product] = None,
-    tiers: Seq[PriceTier] = Seq.empty
-  ): RichPrice = RichPrice(
+    base: StripePrice = makePrice(),
+    product: Option[StripeProduct] = None,
+    tiers: Seq[StripePriceTier] = Seq.empty
+  ): RichStripePrice = RichStripePrice(
     base = base,
     product = product,
     tiers = tiers
@@ -1050,7 +1052,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     startTime: Instant = Instant.now(),
     endTime: Instant = Instant.now().plus(30, ChronoUnit.DAYS),
     syncedAt: Instant = Instant.now()
-  ): MeterEventSummary = MeterEventSummary(
+  ): StripeMeterEventSummary = StripeMeterEventSummary(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -1063,14 +1065,14 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   )
 
   def makeRichSubscriptionItem(
-    base: SubscriptionItem = makeSubscriptionItem(),
-    subscription: RichSubscription = makeRichSubscription(),
-    price: Option[RichPrice] = Some(makeRichPrice()),
-    meterEventSummaries: Seq[MeterEventSummary] = Seq.empty,
-    discounts: Seq[RichDiscount] = Seq.empty,
-    taxRates: Seq[TaxRate] = Seq.empty,
+    base: StripeSubscriptionItem = makeSubscriptionItem(),
+    subscription: RichStripeSubscription = makeRichSubscription(),
+    price: Option[RichStripePrice] = Some(makeRichPrice()),
+    meterEventSummaries: Seq[StripeMeterEventSummary] = Seq.empty,
+    discounts: Seq[RichStripeDiscount] = Seq.empty,
+    taxRates: Seq[StripeTaxRate] = Seq.empty,
     currentPeriodStartExchangeRate: ExchangeRate = ExchangeRate.sameCurrency("usd")
-  ): RichSubscriptionItem = RichSubscriptionItem(
+  ): RichStripeSubscriptionItem = RichStripeSubscriptionItem(
     base = base,
     subscription = subscription,
     price = price,
@@ -1091,7 +1093,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     status: String = "succeeded",
     createdAt: Instant = Instant.now(),
     syncedAt: Instant = Instant.now()
-  ): Refund = Refund(
+  ): StripeRefund = StripeRefund(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -1107,11 +1109,11 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   )
 
   def makeRichRefund(
-    base: Refund = makeRefund(),
-    balanceTransaction: Option[BalanceTransaction] = None,
-    failureBalanceTransaction: Option[BalanceTransaction] = None,
+    base: StripeRefund = makeRefund(),
+    balanceTransaction: Option[StripeBalanceTransaction] = None,
+    failureBalanceTransaction: Option[StripeBalanceTransaction] = None,
     belongsToCreditNote: Boolean = false,
-  ): RichRefund = RichRefund(
+  ): RichStripeRefund = RichStripeRefund(
     base = base,
     balanceTransaction = balanceTransaction,
     failureBalanceTransaction = failureBalanceTransaction,
@@ -1127,8 +1129,8 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     failureBalanceTransactionAmount: Option[Long] = None,
     failureBalanceTransactionCreatedAt: Option[Instant] = None,
     belongsToCreditNote: Boolean = false,
-  ): RichRefund = {
-    RichRefund(
+  ): RichStripeRefund = {
+    RichStripeRefund(
       base = makeRefund(amount = amount, currency = currency),
       balanceTransaction = Some(makeBalanceTransaction(amount = balanceTransactionAmount, currency = balanceTransactionCurrency, createdAt = createdAt)),
       failureBalanceTransaction = failureBalanceTransactionAmount.map(amount => makeBalanceTransaction(amount = amount, currency = balanceTransactionCurrency, createdAt = failureBalanceTransactionCreatedAt.getOrElse(createdAt))),
@@ -1146,7 +1148,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     status: String = "won",
     createdAt: Instant = Instant.now(),
     syncedAt: Instant = Instant.now()
-  ): Dispute = Dispute(
+  ): StripeDispute = StripeDispute(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -1169,8 +1171,8 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     createdAt: Instant = Instant.now(),
     wonBalanceTransactionAmount: Option[Long] = None,
     wonBalanceTransactionCreatedAt: Option[Instant] = None,
-  ): RichDispute = {
-    RichDispute(
+  ): RichStripeDispute = {
+    RichStripeDispute(
       base = makeDispute(amount = amount, currency = currency),
       balanceTransactions = Seq(
         Some(makeBalanceTransaction(
@@ -1185,9 +1187,9 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   }
 
   def makeRichDispute(
-    base: Dispute = makeDispute(),
-    balanceTransactions: Seq[BalanceTransaction] = Seq.empty
-  ): RichDispute = RichDispute(
+    base: StripeDispute = makeDispute(),
+    balanceTransactions: Seq[StripeBalanceTransaction] = Seq.empty
+  ): RichStripeDispute = RichStripeDispute(
     base = base,
     balanceTransactions = balanceTransactions
   )
@@ -1199,9 +1201,9 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     balanceTransactionFeeAmount: Long = 0,
     balanceTransactionCurrency: String = "usd",
     createdAt: Instant = Instant.now(),
-    disputes: Seq[RichDispute] = Seq.empty,
-    refunds: Seq[RichRefund] = Seq.empty,
-  ): RichCharge = {
+    disputes: Seq[RichStripeDispute] = Seq.empty,
+    refunds: Seq[RichStripeRefund] = Seq.empty,
+  ): RichStripeCharge = {
     val bt = makeBalanceTransaction(
       id = s"bt_${genId()}",
       amount = balanceTransactionAmount,
@@ -1218,7 +1220,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
       created = createdAt,
     )
 
-    RichCharge(
+    RichStripeCharge(
       base = charge,
       balanceTransaction = Some(bt),
       disputes = disputes,
@@ -1240,7 +1242,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     created: Instant = Instant.now(),
     status: String = "succeeded",
     syncedAt: Instant = Instant.now()
-  ): Charge = Charge(
+  ): StripeCharge = StripeCharge(
     stripeAccountId = "",
     liveMode = false,
     id = id,
@@ -1259,11 +1261,11 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   )
 
   def makeRichCharge(
-    base: Charge = makeCharge(),
-    balanceTransaction: Option[BalanceTransaction] = None,
-    disputes: Seq[RichDispute] = Seq.empty,
-    refunds: Seq[RichRefund] = Seq.empty
-  ): RichCharge = RichCharge(
+    base: StripeCharge = makeCharge(),
+    balanceTransaction: Option[StripeBalanceTransaction] = None,
+    disputes: Seq[RichStripeDispute] = Seq.empty,
+    refunds: Seq[RichStripeRefund] = Seq.empty
+  ): RichStripeCharge = RichStripeCharge(
     base = base,
     balanceTransaction = balanceTransaction,
     disputes = disputes,
@@ -1282,7 +1284,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     source: Option[String] = None,
     createdAt: Instant = Instant.now(),
     syncedAt: Instant = Instant.now()
-  ): BalanceTransaction = BalanceTransaction(
+  ): StripeBalanceTransaction = StripeBalanceTransaction(
     stripeAccountId = "",
     liveMode = false,
     id = id,

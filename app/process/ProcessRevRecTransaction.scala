@@ -1,13 +1,13 @@
 package process
 
-import database.models.{RevRecTransaction, JournalEntry}
+import database.models.{Transaction, JournalEntry}
 import framework.Instant
 
-abstract class ProcessRevRecTransaction {
-  def transaction: RevRecTransaction
+abstract class ProcessTransaction {
+  def transaction: Transaction
   def generateRawJournalEntries(): Seq[JournalEntry]
   def startedAt: Option[Instant]
-  def status: RevRecTransaction.Status
+  def status: Transaction.Status
   def syncedAt: Instant
 
   def generateJournalEntries(): Seq[JournalEntry] = {

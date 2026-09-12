@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{InvoiceLineItemPretaxCreditAmount, InvoiceLineItemPretaxCreditAmountTable, RichInvoiceLineItemPretaxCreditAmount}
+import database.models.stripe.{StripeInvoiceLineItemPretaxCreditAmount, StripeInvoiceLineItemPretaxCreditAmountTable, RichStripeInvoiceLineItemPretaxCreditAmount}
 import framework.{BaseDbService, PlayConfig}
 import play.api.db.slick.DatabaseConfigProvider
 import slick.jdbc.JdbcProfile
@@ -32,12 +32,12 @@ class InvoiceLineItemPretaxCreditAmountService @Inject() (
   import InvoiceLineItemPretaxCreditAmountService.*
   import framework.PostgresProfile.api.*
 
-  val query: TableQuery[InvoiceLineItemPretaxCreditAmountTable] = TableQuery[InvoiceLineItemPretaxCreditAmountTable]
+  val query: TableQuery[StripeInvoiceLineItemPretaxCreditAmountTable] = TableQuery[StripeInvoiceLineItemPretaxCreditAmountTable]
 
   // A pretax credit amount has no natural id, so we replace all of them for a given invoice line item.
-  def replaceByInvoiceLineItem(invoiceLineItemId: String, pretaxCreditAmounts: Seq[CreateData]): Future[Seq[InvoiceLineItemPretaxCreditAmount]] = {
+  def replaceByInvoiceLineItem(invoiceLineItemId: String, pretaxCreditAmounts: Seq[CreateData]): Future[Seq[StripeInvoiceLineItemPretaxCreditAmount]] = {
     val entities = pretaxCreditAmounts.map { pretaxCreditAmount =>
-      InvoiceLineItemPretaxCreditAmount(
+      StripeInvoiceLineItemPretaxCreditAmount(
         stripeAccountId = pretaxCreditAmount.stripeAccountId,
         liveMode = pretaxCreditAmount.liveMode,
         rank = pretaxCreditAmount.rank,
@@ -57,17 +57,17 @@ class InvoiceLineItemPretaxCreditAmountService @Inject() (
     db.run(action.transactionally).map(_ => entities)
   }
 
-  def getByInvoiceLineItemIds(invoiceLineItemIds: Set[String]): Future[Seq[InvoiceLineItemPretaxCreditAmount]] = {
+  def getByInvoiceLineItemIds(invoiceLineItemIds: Set[String]): Future[Seq[StripeInvoiceLineItemPretaxCreditAmount]] = {
     db.run {
       query.filter(_.invoiceLineItemId.inSet(invoiceLineItemIds)).result
     }
   }
 
-  def getRichByInvoiceLineItemIds(invoiceLineItemIds: Set[String]): Future[Seq[RichInvoiceLineItemPretaxCreditAmount]] = {
+  def getRichByInvoiceLineItemIds(invoiceLineItemIds: Set[String]): Future[Seq[RichStripeInvoiceLineItemPretaxCreditAmount]] = {
     getByInvoiceLineItemIds(invoiceLineItemIds).flatMap(hydrate)
   }
 
-  private[this] def hydrate(items: Seq[InvoiceLineItemPretaxCreditAmount]): Future[Seq[RichInvoiceLineItemPretaxCreditAmount]] = {
+  private[this] def hydrate(items: Seq[StripeInvoiceLineItemPretaxCreditAmount]): Future[Seq[RichStripeInvoiceLineItemPretaxCreditAmount]] = {
     for {
       discounts <- discountService.getByIds(items.flatMap(_.discountId).toSet)
       creditBalanceTransactions <- creditBalanceTransactionService.getRichByIds(items.flatMap(_.creditBalanceTransactionId).toSet)
@@ -75,7 +75,7 @@ class InvoiceLineItemPretaxCreditAmountService @Inject() (
       creditBalanceTransactionsById = creditBalanceTransactions.map { t => t.base.id -> t }.toMap
     } yield {
       items.map { item =>
-        RichInvoiceLineItemPretaxCreditAmount(
+        RichStripeInvoiceLineItemPretaxCreditAmount(
           base = item,
           discount = item.discountId.flatMap(discountsById.get),
           creditBalanceTransaction = item.creditBalanceTransactionId.flatMap(creditBalanceTransactionsById.get)
