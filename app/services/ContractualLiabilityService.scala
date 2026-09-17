@@ -361,20 +361,20 @@ class ContractualLiabilityService @Inject() (
             ,
             revenue_by_month_entries AS (
               SELECT
-                rev_rec_transaction_id,
+                transaction_id,
           """,
           sumPeriodColumnsSql,
           sql"""
               FROM groups
-              GROUP BY rev_rec_transaction_id
+              GROUP BY transaction_id
             ),
 
             revenue_by_month_entry_with_infos AS (
               SELECT
-                COALESCE(e.rev_rec_transaction_id, c.id) AS rev_rec_transaction_id,
-                c.title AS rev_rec_transaction_title,
+                COALESCE(e.transaction_id, c.id) AS transaction_id,
+                c.title AS transaction_title,
                 c.settlement_total_value AS transaction_settlement_total_value,
-                c.type AS rev_rec_transaction_type,
+                c.type AS transaction_type,
                 c.status AS transaction_status,
                 c.started_at AS transaction_started_at,
           """,
@@ -383,7 +383,7 @@ class ContractualLiabilityService @Inject() (
               FROM
                 transaction c
                 LEFT JOIN revenue_by_month_entries e
-                ON c.id = e.rev_rec_transaction_id
+                ON c.id = e.transaction_id
               WHERE c.stripe_account_id = $stripeAccountId AND c.live_mode = $liveMode AND
           """,
           customerCond,
@@ -460,9 +460,9 @@ class ContractualLiabilityService @Inject() (
               case Column.CustomerId => "customer_id"
               case Column.CustomerName => "customer_name"
               case Column.CustomerEmail => "customer_email"
-              case Column.TransactionId => "rev_rec_transaction_id"
-              case Column.TransactionTitle => "rev_rec_transaction_title"
-              case Column.TransactionType => "rev_rec_transaction_type"
+              case Column.TransactionId => "transaction_id"
+              case Column.TransactionTitle => "transaction_title"
+              case Column.TransactionType => "transaction_type"
               case Column.TransactionDate => "transaction_started_at"
               case Column.TransactionValue => "transaction_settlement_total_value"
               case Column.TransactionStatus => "transaction_status"

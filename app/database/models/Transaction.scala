@@ -1,5 +1,6 @@
 package database.models
 
+import database.models.metronome.RichMetronomeDraftInvoice
 import database.models.stripe.*
 import framework.{Instant, Jsonable}
 import framework.PostgresProfile.api.*
@@ -15,7 +16,8 @@ object Transaction {
       UnbilledInvoiceItem,
       UnbilledUsageSubscriptionItem,
       StandaloneCustomerBalanceTransaction,
-      StandaloneCreditBalanceTransaction
+      StandaloneCreditBalanceTransaction,
+      UnbilledMetronomeDraftInvoice
   }
 
   enum Status extends Enum[Status] {
@@ -82,6 +84,7 @@ case class RichTransaction(
   subscriptionItem: Option[RichStripeSubscriptionItem],
   customerBalanceTransaction: Option[StripeCustomerBalanceTransaction],
   creditBalanceTransaction: Option[RichStripeCreditBalanceTransaction],
+  metronomeDraftInvoice: Option[RichMetronomeDraftInvoice],
 ) extends Jsonable {
   def toJson(): JsObject = base.toJson() ++ Json.obj(
     "customer" -> customer.map(_.toJson()),

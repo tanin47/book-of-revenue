@@ -1,8 +1,9 @@
 package framework
 
 import database.models.Transaction.Status
-import database.models.{Transaction, RichTransaction}
+import database.models.{RichTransaction, Transaction}
 import play.api.libs.json.{JsObject, Json}
+import process.Helpers.generatePeriods
 
 object TransactionDetail {
   case class LineItem(
@@ -39,13 +40,15 @@ object TransactionDetail {
     description: Option[String],
     startedAt: Instant,
     endedAt: Instant,
-    value: Long
+    value: Option[Long],
+    amount: Option[Long],
   ) extends Jsonable {
     def toJson(): JsObject = Json.obj(
       "description" -> description,
       "startedAt" -> startedAt.toEpochMilli,
       "endedAt" -> endedAt.toEpochMilli,
-      "value" -> value
+      "value" -> value,
+      "amount" -> amount,
     )
   }
 
@@ -214,6 +217,7 @@ case class TransactionDetail(
       case Transaction.Type.UnbilledUsageSubscriptionItem => transaction.subscriptionItem.flatMap(_.price).map(_.base.currency)
       case Transaction.Type.StandaloneCustomerBalanceTransaction => transaction.customerBalanceTransaction.map(_.currency)
       case Transaction.Type.StandaloneCreditBalanceTransaction => transaction.creditBalanceTransaction.flatMap { t => t.base.creditCurrency.orElse(t.base.debitCurrency) }
+      case Transaction.Type.UnbilledMetronomeDraftInvoice => transaction.metronomeDraftInvoice.map(_.base.currency)
     }
     c.getOrElse("usd")
   }
@@ -225,6 +229,7 @@ case class TransactionDetail(
     case Transaction.Type.UnbilledUsageSubscriptionItem => None
     case Transaction.Type.StandaloneCustomerBalanceTransaction => transaction.customerBalanceTransaction.map(_.amount)
     case Transaction.Type.StandaloneCreditBalanceTransaction => transaction.creditBalanceTransaction.flatMap { t => t.base.creditAmount.orElse(t.base.debitAmount) }
+    case Transaction.Type.UnbilledMetronomeDraftInvoice => transaction.metronomeDraftInvoice.flatMap(_.base.total.map(_.toLong))
   }
   val outstanding: Option[Long] = transaction.base.tpe match {
     case Transaction.Type.Invoice => transaction.invoice.map(_.base.amountRemaining)
@@ -295,6 +300,23 @@ case class TransactionDetail(
         total = 0L,
       )
     )
+    case Transaction.Type.UnbilledMetronomeDraftInvoice => transaction.metronomeDraftInvoice.toList.flatMap(_.lineItems).map { lineItem =>
+      val total = lineItem.total.map(_.toLong).getOrElse(0L)
+      LineItem(
+        id = Some(lineItem.id),
+        description = lineItem.name,
+        principleAmount = total,
+        startedAt = lineItem.startingAt,
+        endedAt = lineItem.endingBefore,
+        inclusiveTaxAmount = 0L,
+        discountAmount = 0L,
+        paidCreditGrantAmount = 0L,
+        promotionalCreditGrantAmount = 0L,
+        subtotal = total,
+        exclusiveTaxAmount = 0L,
+        total = total
+      )
+    }
     case _ => Seq.empty
   }
 
@@ -305,7 +327,8 @@ case class TransactionDetail(
           description = lineItem.base.description,
           startedAt = meterEventSummary.startTime,
           endedAt = meterEventSummary.endTime,
-          value = meterEventSummary.aggregatedValue
+          value = Some(meterEventSummary.aggregatedValue),
+          amount = None,
         )
       }
     }
@@ -314,9 +337,37 @@ case class TransactionDetail(
         description = transaction.subscriptionItem.map(_.base.id),
         startedAt = meterEventSummary.startTime,
         endedAt = meterEventSummary.endTime,
-        value = meterEventSummary.aggregatedValue
+        value = Some(meterEventSummary.aggregatedValue),
+        amount = None,
       )
     }
+    case Transaction.Type.UnbilledMetronomeDraftInvoice =>
+      val breakdownLineItemsByLineItemId = transaction.metronomeDraftInvoice.flatMap(_.breakdownInvoice).toList.flatMap(_.lineItems).groupBy(_.lineItemId.get)
+      transaction.metronomeDraftInvoice.toList
+        .flatMap(_.lineItems)
+        .filter(!_.isPrepaidCommit)
+        .filter { lineItem => breakdownLineItemsByLineItemId.getOrElse(lineItem.id, Seq.empty).forall(!_.isAppliedCredit) }
+        .flatMap { lineItem =>
+          val breakdowns = breakdownLineItemsByLineItemId.getOrElse(lineItem.id, Seq.empty)
+
+          val minTime = breakdowns.map(_.breakdownStartTimestamp.get).min
+          val maxTime = breakdowns.map(_.breakdownEndTimestamp.get).max
+          generatePeriods(minTime, maxTime).map { period =>
+            Usage(
+              description = lineItem.name,
+              startedAt = period.startedAt,
+              endedAt = period.endedAt,
+              value = None,
+              amount = Some(breakdowns
+                .filter { i =>
+                  period.startedAt.compareTo(i.breakdownStartTimestamp.get) <= 0 &&
+                    i.breakdownEndTimestamp.get.compareTo(period.endedAt) <= 0
+                }
+                .map(_.total.get.toLong)
+                .sum),
+            )
+          }
+        }
     case _ => Seq.empty
   }
 
@@ -328,6 +379,7 @@ case class TransactionDetail(
     case Transaction.Type.UnbilledUsageSubscriptionItem => Seq.empty
     case Transaction.Type.StandaloneCustomerBalanceTransaction => transaction.customerBalanceTransaction.toList.flatMap(_.billingActivities)
     case Transaction.Type.StandaloneCreditBalanceTransaction => transaction.creditBalanceTransaction.toList.flatMap(_.billingActivities)
+    case Transaction.Type.UnbilledMetronomeDraftInvoice => Seq.empty
   }
 
   def toJson(): JsObject = Json.obj(

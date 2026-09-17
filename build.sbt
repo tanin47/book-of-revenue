@@ -50,6 +50,7 @@ libraryDependencies ++= Seq(
   "org.bouncycastle" % "bcprov-jdk18on" % "1.85",
   "org.bouncycastle" % "bcpkix-jdk18on" % "1.85",
   "org.shredzone.acme4j" % "acme4j-client" % "5.1.0",
+  "org.apache.commons" % "commons-text" % "1.15.0",
   "org.seleniumhq.selenium" % "selenium-java" % "4.48.0" % Test
 )
 

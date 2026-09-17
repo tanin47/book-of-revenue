@@ -46,8 +46,8 @@ CREATE TABLE journal_entry
   credit_note_line_item_id     TEXT,
   product_id                   TEXT,
   price_id                     TEXT,
-  rev_rec_transaction_id       TEXT NOT NULL,
-  rev_rec_transaction_type     TEXT NOT NULL,
+  transaction_id       TEXT NOT NULL,
+  transaction_type     TEXT NOT NULL,
   created_at                   TIMESTAMPTZ NOT NULL
 );
 

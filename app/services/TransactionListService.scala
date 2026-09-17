@@ -81,9 +81,9 @@ class TransactionListService @Inject() (
 
   private[this] def convertToSqlColumnName(column: Column): SQLActionBuilder = {
     column match {
-      case Column.TransactionType => sql"rev_rec_transaction_type"
-      case Column.TransactionId => sql"rev_rec_transaction_id"
-      case Column.TransactionTitle => sql"rev_rec_transaction_title"
+      case Column.TransactionType => sql"transaction_type"
+      case Column.TransactionId => sql"transaction_id"
+      case Column.TransactionTitle => sql"transaction_title"
       case Column.SettlementTotalTransactionValue => sql"settlement_total_value"
       case Column.SettlementCurrency => sql"settlement_currency"
       case Column.TransactionStartedAt => sql"transaction_started_at"
@@ -101,7 +101,7 @@ class TransactionListService @Inject() (
 
   private[this] def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
     if (sorts.isEmpty) {
-      return sql"ORDER BY transaction_started_at DESC, rev_rec_transaction_title ASC"
+      return sql"ORDER BY transaction_started_at DESC, transaction_title ASC"
     }
 
     val sortClauses = sorts.map { sort =>
@@ -155,8 +155,8 @@ class TransactionListService @Inject() (
     makeSql(
       sql"""
         SELECT
-          con.id AS rev_rec_transaction_id,
-          MAX(con.title) AS rev_rec_transaction_title,
+          con.id AS transaction_id,
+          MAX(con.title) AS transaction_title,
           MAX(con.settlement_total_value) AS settlement_total_value,
           MAX(con.settlement_currency) AS settlement_currency,
           MAX(con.started_at) AS transaction_started_at,
@@ -171,7 +171,7 @@ class TransactionListService @Inject() (
             WHEN 'StandaloneCreditBalanceTransaction' THEN 'StripeCreditBalanceTransaction'
             ELSE 'Unknown'
             END
-          ) AS rev_rec_transaction_type,
+          ) AS transaction_type,
           SUM(
             (CASE WHEN debit = ANY(${revenueAccounts.map(_.name)}) THEN -settlement_amount ELSE 0 END)
             + (CASE WHEN credit = ANY(${revenueAccounts.map(_.name)}) THEN settlement_amount ELSE 0 END)
@@ -210,7 +210,7 @@ class TransactionListService @Inject() (
           ) AS Gain_amount
         FROM transaction con
         LEFT JOIN journal_entry j
-        ON j.rev_rec_transaction_id = con.id AND j.accounting_period <= ${Instant.now()}
+        ON j.transaction_id = con.id AND j.accounting_period <= ${Instant.now()}
         LEFT JOIN stripe.invoice inv
         ON con.id = inv.id AND con.type = 'StripeInvoice'
         LEFT JOIN stripe.charge ch

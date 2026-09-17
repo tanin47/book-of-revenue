@@ -156,12 +156,12 @@ class AccountChangeByMonthService @Inject()(
 
         unfiltered_groups AS (
           SELECT
-            rev_rec_transaction_id,
+            transaction_id,
       """,
       periodColumnSqls,
       sql"""
           FROM net_changes
-          GROUP BY rev_rec_transaction_id
+          GROUP BY transaction_id
         ),
 
         filtered_groups AS (
@@ -181,7 +181,7 @@ class AccountChangeByMonthService @Inject()(
             t.settlement_total_value AS transaction_value,
             g.*
           FROM transaction t
-          LEFT JOIN filtered_groups g ON t.id = g.rev_rec_transaction_id
+          LEFT JOIN filtered_groups g ON t.id = g.transaction_id
           WHERE t.customer_id = ${params.customerId}
         )
       """

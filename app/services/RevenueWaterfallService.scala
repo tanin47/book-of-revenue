@@ -105,8 +105,8 @@ class RevenueWaterfallService @Inject() (
         case Column.CustomerId => "customer_id"
         case Column.CustomerName => "customer_name"
         case Column.CustomerEmail => "customer_email"
-        case Column.TransactionId => "rev_rec_transaction_id"
-        case Column.TransactionTitle => "rev_rec_transaction_title"
+        case Column.TransactionId => "transaction_id"
+        case Column.TransactionTitle => "transaction_title"
         case Column.InvoiceId => "invoice_id"
         case Column.InvoiceNumber => "invoice_number"
         case Column.InvoiceLineItemId => "invoice_line_item_id"
@@ -126,8 +126,8 @@ class RevenueWaterfallService @Inject() (
     val extraGroupKey = params.groupBy match {
       case GroupBy.Product => sql", product_id"
       case GroupBy.Customer => sql", customer_id"
-      case GroupBy.Transaction => sql", rev_rec_transaction_id"
-      case GroupBy.LineItem => sql", rev_rec_transaction_id, invoice_line_item_id"
+      case GroupBy.Transaction => sql", transaction_id"
+      case GroupBy.LineItem => sql", transaction_id, invoice_line_item_id"
       case GroupBy.Summary => sql""
     }
 
@@ -144,8 +144,8 @@ class RevenueWaterfallService @Inject() (
           case Column.CustomerId => sql"customer_id"
           case Column.CustomerName => sql"customer_name"
           case Column.CustomerEmail => sql"customer_email"
-          case Column.TransactionId => sql"rev_rec_transaction_id"
-          case Column.TransactionTitle => sql"rev_rec_transaction_title"
+          case Column.TransactionId => sql"transaction_id"
+          case Column.TransactionTitle => sql"transaction_title"
           case Column.InvoiceId => sql"invoice_id"
           case Column.InvoiceNumber => sql"invoice_number"
           case Column.InvoiceLineItemId => sql"invoice_line_item_id"
@@ -173,7 +173,7 @@ class RevenueWaterfallService @Inject() (
         Some(sql"""occurred_at < ${getNextAccountingPeriod(params.endAccountingPeriod)}"""),
         params.productId.map { productId => sql"""product_id = $productId""" },
         params.customerId.map { customerId => sql"""customer_id = $customerId""" },
-        params.transactionId.map { transactionId => sql"""rev_rec_transaction_id = $transactionId""" },
+        params.transactionId.map { transactionId => sql"""transaction_id = $transactionId""" },
       ).flatten,
       sql" AND "
     )
@@ -182,7 +182,7 @@ class RevenueWaterfallService @Inject() (
       sql"""
         SELECT
           accounting_period AS recognized_accounting_period,
-          rev_rec_transaction_id,
+          transaction_id,
           customer_id,
           invoice_line_item_id,
           product_id,
@@ -206,7 +206,7 @@ class RevenueWaterfallService @Inject() (
         GROUP BY
           accounting_period,
           DATE_TRUNC('month', occurred_at AT TIME ZONE 'UTC') AT TIME ZONE 'UTC',
-          rev_rec_transaction_id,
+          transaction_id,
           customer_id,
           invoice_line_item_id,
           product_id
@@ -254,7 +254,7 @@ class RevenueWaterfallService @Inject() (
         raw_groups AS (
           SELECT
             booked_accounting_period,
-            MAX(rev_rec_transaction_id) AS rev_rec_transaction_id,
+            MAX(transaction_id) AS transaction_id,
             MAX(customer_id) AS customer_id,
             MAX(product_id) AS product_id,
             MAX(invoice_id) AS invoice_id,
@@ -374,7 +374,7 @@ class RevenueWaterfallService @Inject() (
             p.name AS product_name,
             c.name AS customer_name,
             c.email AS customer_email,
-            co.title AS rev_rec_transaction_title,
+            co.title AS transaction_title,
             i.number AS invoice_number,
             il.description AS invoice_line_item_description,
             il.started_at AS invoice_line_item_started_at,
@@ -382,7 +382,7 @@ class RevenueWaterfallService @Inject() (
           FROM groups AS main
           LEFT JOIN stripe.product AS p ON p.id = main.product_id
           LEFT JOIN stripe.customer AS c ON c.id = main.customer_id
-          LEFT JOIN transaction AS co ON co.id = main.rev_rec_transaction_id
+          LEFT JOIN transaction AS co ON co.id = main.transaction_id
           LEFT JOIN stripe.invoice AS i ON i.id = main.invoice_id
           LEFT JOIN stripe.invoice_line_item AS il ON il.id = main.invoice_line_item_id
         )

@@ -200,13 +200,13 @@ class JournalEntryService @Inject() (
       sqlu"""
         WITH
         transaction_ids AS (
-          SELECT DISTINCT rev_rec_transaction_id FROM journal_entry
+          SELECT DISTINCT transaction_id FROM journal_entry
         )
 
         DELETE FROM journal_entry
-        WHERE rev_rec_transaction_id IN (
-          SELECT j.rev_rec_transaction_id
-          FROM transaction_ids j LEFT JOIN transaction t ON t.id = j.rev_rec_transaction_id
+        WHERE transaction_id IN (
+          SELECT j.transaction_id
+          FROM transaction_ids j LEFT JOIN transaction t ON t.id = j.transaction_id
           WHERE t.id IS NULL
         )
       """

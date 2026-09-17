@@ -101,8 +101,8 @@ class ArAgingService @Inject() (
         case Column.CustomerId => "customer_id"
         case Column.CustomerName => "customer_name"
         case Column.CustomerEmail => "customer_email"
-        case Column.TransactionId => "rev_rec_transaction_id"
-        case Column.TransactionTitle => "rev_rec_transaction_title"
+        case Column.TransactionId => "transaction_id"
+        case Column.TransactionTitle => "transaction_title"
         case Column.InvoiceId => "invoice_id"
         case Column.InvoiceNumber => "invoice_number"
       }
@@ -115,7 +115,7 @@ class ArAgingService @Inject() (
   private[this] def makeGroupByClause(params: Params): SQLActionBuilder = {
     params.groupBy match {
       case GroupBy.Customer => sql"GROUP BY customer_id"
-      case GroupBy.Transaction => sql"GROUP BY rev_rec_transaction_id"
+      case GroupBy.Transaction => sql"GROUP BY transaction_id"
       case GroupBy.Summary => sql""
     }
   }
@@ -135,8 +135,8 @@ class ArAgingService @Inject() (
         case Column.CustomerId => sql"MIN(customer_id) AS customer_id"
         case Column.CustomerName => sql"MIN(customer_name) AS customer_name"
         case Column.CustomerEmail => sql"MIN(customer_email) AS customer_email"
-        case Column.TransactionId => sql"MIN(rev_rec_transaction_id) AS rev_rec_transaction_id"
-        case Column.TransactionTitle => sql"MIN(rev_rec_transaction_title) AS rev_rec_transaction_title"
+        case Column.TransactionId => sql"MIN(transaction_id) AS transaction_id"
+        case Column.TransactionTitle => sql"MIN(transaction_title) AS transaction_title"
         case Column.InvoiceId => sql"MIN(invoice_id) AS invoice_id"
         case Column.InvoiceNumber => sql"MIN(invoice_number) AS invoice_number"
       },
@@ -161,7 +161,7 @@ class ArAgingService @Inject() (
       sql"""
         WITH entries AS (
           SELECT
-            rev_rec_transaction_id,
+            transaction_id,
             customer_id,
             MIN(invoice_id) AS invoice_id,
             EXTRACT(DAY FROM (${params.exclusiveUpUntil} - MIN(occurred_at)))::INTEGER AS days_outstanding,
@@ -175,7 +175,7 @@ class ArAgingService @Inject() (
       """,
       whereClause,
       sql"""
-          GROUP BY settlement_currency, customer_id, rev_rec_transaction_id
+          GROUP BY settlement_currency, customer_id, transaction_id
           HAVING SUM(
             (CASE WHEN debit = 'AccountsReceivable' THEN settlement_amount ELSE 0 END) +
               (CASE WHEN credit = 'AccountsReceivable' THEN -settlement_amount ELSE 0 END)
@@ -183,14 +183,14 @@ class ArAgingService @Inject() (
         ),
         bucketed AS (
           SELECT
-            e.rev_rec_transaction_id,
+            e.transaction_id,
             e.customer_id,
             e.invoice_id,
             e.occurred_at,
             cus.name AS customer_name,
             cus.email AS customer_email,
             inv.number AS invoice_number,
-            con.title AS rev_rec_transaction_title,
+            con.title AS transaction_title,
             CASE WHEN days_outstanding <= 0 THEN e.amount ELSE 0 END AS "not_due",
             CASE WHEN days_outstanding > 0 AND days_outstanding <= 30 THEN e.amount ELSE 0 END AS "days_30",
             CASE WHEN days_outstanding > 30 AND days_outstanding <= 60 THEN e.amount ELSE 0 END AS "days_60",
@@ -200,7 +200,7 @@ class ArAgingService @Inject() (
             e.amount AS total
           FROM entries e
           LEFT JOIN stripe.customer cus ON e.customer_id = cus.id
-          LEFT JOIN transaction con ON e.rev_rec_transaction_id = con.id
+          LEFT JOIN transaction con ON e.transaction_id = con.id
           LEFT JOIN stripe.invoice inv ON e.invoice_id = inv.id
         ),
 

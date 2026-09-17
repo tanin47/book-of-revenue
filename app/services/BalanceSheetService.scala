@@ -121,8 +121,8 @@ class BalanceSheetService @Inject() (
         case Column.CustomerId => "customer_id"
         case Column.CustomerName => "customer_name"
         case Column.CustomerEmail => "customer_email"
-        case Column.TransactionId => "rev_rec_transaction_id"
-        case Column.TransactionTitle => "rev_rec_transaction_title"
+        case Column.TransactionId => "transaction_id"
+        case Column.TransactionTitle => "transaction_title"
         case Column.InvoiceId => "invoice_id"
         case Column.InvoiceNumber => "invoice_number"
         case Column.InvoiceLineItemId => "invoice_line_item_id"
@@ -150,8 +150,8 @@ class BalanceSheetService @Inject() (
         case Column.CustomerId => sql"customer_id"
         case Column.CustomerName => sql"customer_name"
         case Column.CustomerEmail => sql"customer_email"
-        case Column.TransactionId => sql"rev_rec_transaction_id"
-        case Column.TransactionTitle => sql"rev_rec_transaction_title"
+        case Column.TransactionId => sql"transaction_id"
+        case Column.TransactionTitle => sql"transaction_title"
         case Column.InvoiceId => sql"invoice_id"
         case Column.InvoiceNumber => sql"invoice_number"
         case Column.InvoiceLineItemDescription => sql"invoice_line_item_description"
@@ -203,8 +203,8 @@ class BalanceSheetService @Inject() (
         case GroupBy.Product => Seq("product_id")
         case GroupBy.Event => Seq("computed_event")
         case GroupBy.Customer => Seq("customer_id")
-        case GroupBy.Transaction => Seq("rev_rec_transaction_id")
-        case GroupBy.LineItem => Seq("rev_rec_transaction_id", "invoice_line_item_id")
+        case GroupBy.Transaction => Seq("transaction_id")
+        case GroupBy.LineItem => Seq("transaction_id", "invoice_line_item_id")
         case GroupBy.Summary => Seq.empty
       }
       .getOrElse(Seq.empty)
@@ -230,7 +230,7 @@ class BalanceSheetService @Inject() (
         params.periodEnd.map { p => sql"accounting_period <= $p" },
         params.productId.map { c => sql"product_id = $c" },
         params.customerId.map { c => sql"customer_id = $c" },
-        params.transactionId.map { c => sql"rev_rec_transaction_id = $c" },
+        params.transactionId.map { c => sql"transaction_id = $c" },
         if (params.accounts.nonEmpty) {
           val account = if (isDebit) {
             sql"debit"
@@ -301,7 +301,7 @@ class BalanceSheetService @Inject() (
                MAX(computed_event) AS computed_event,
                SUM(net_settlement_change) AS net_settlement_change,
                MAX(customer_id) AS customer_id,
-               MAX(rev_rec_transaction_id) AS rev_rec_transaction_id,
+               MAX(transaction_id) AS transaction_id,
                MAX(invoice_id) AS invoice_id,
                MAX(invoice_line_item_id) AS invoice_line_item_id,
                MAX(product_id) AS product_id
@@ -356,7 +356,7 @@ class BalanceSheetService @Inject() (
             SUM(sub.net_settlement_change) AS settlement_ending_balance,
             MAX(main.computed_event) AS computed_event,
             MAX(main.customer_id) AS customer_id,
-            MAX(main.rev_rec_transaction_id) AS rev_rec_transaction_id,
+            MAX(main.transaction_id) AS transaction_id,
             MAX(main.invoice_id) AS invoice_id,
             MAX(main.invoice_line_item_id) AS invoice_line_item_id,
             MAX(main.product_id) AS product_id
@@ -396,7 +396,7 @@ class BalanceSheetService @Inject() (
             g.settlement_ending_balance,
             g.computed_event,
             g.customer_id,
-            g.rev_rec_transaction_id,
+            g.transaction_id,
             g.invoice_id,
             g.invoice_line_item_id,
             g.product_id
@@ -448,13 +448,13 @@ class BalanceSheetService @Inject() (
             il.started_at AS invoice_line_item_started_at,
             il.ended_at AS invoice_line_item_ended_at,
             product.name AS product_name,
-            co.title AS rev_rec_transaction_title
+            co.title AS transaction_title
           FROM groups main
           LEFT JOIN stripe.customer cus ON cus.id = main.customer_id
           LEFT JOIN stripe.invoice inv ON inv.id = main.invoice_id
           LEFT JOIN stripe.invoice_line_item il ON il.id = main.invoice_line_item_id
           LEFT JOIN stripe.product ON product.id = main.product_id
-          LEFT JOIN transaction co ON co.id = main.rev_rec_transaction_id
+          LEFT JOIN transaction co ON co.id = main.transaction_id
         )
       """
     )

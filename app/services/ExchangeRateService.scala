@@ -53,7 +53,7 @@ class ExchangeRateService @Inject() (
 
     for {
       exchangeRate <- balanceTransactionId match {
-        case Some(btId) => balanceTransactionService.getRichById(balanceTransactionId.get).map { bt =>
+        case Some(btId) => balanceTransactionService.getRichById(btId).map { bt =>
           (bt, bt.flatMap(_.charge)) match {
             // Only if the BT is within the same period.
             case (Some(bt), Some(charge)) if periodStart.getEpochSecond <= bt.base.createdAt.getEpochSecond && bt.base.createdAt.getEpochSecond < periodEnd.getEpochSecond => Some(ExchangeRate(baseCurrency, exchangeCurrency, charge.amount, bt.base.amount))

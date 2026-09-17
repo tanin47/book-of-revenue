@@ -2,6 +2,7 @@ package base
 
 import ch.qos.logback.classic.Level
 import database.models.*
+import database.models.metronome.*
 import database.models.stripe.*
 import database.services.*
 import framework.{Instant, PlayConfig}
@@ -69,7 +70,12 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   lazy val paymentIntentService: PaymentIntentService = app.injector.instanceOf[PaymentIntentService]
   lazy val fileService: FileService = app.injector.instanceOf[FileService]
 
+  lazy val transactionService: TransactionService = app.injector.instanceOf[TransactionService]
+  lazy val metronomeDraftInvoiceService: MetronomeDraftInvoiceService = app.injector.instanceOf[MetronomeDraftInvoiceService]
+  lazy val metronomeInvoiceService: MetronomeInvoiceService = app.injector.instanceOf[MetronomeInvoiceService]
+
   var idRunner: Int = 0
+  var stripeAccount: StripeAccount = _
 
   def genId(): Int = {
     idRunner += 1
@@ -128,6 +134,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     resetDatabase()
     super.beforeEach()
     Instant.mockTimeForTest(java.time.Instant.parse("2025-09-22T07:00:00Z"))
+    stripeAccount = makeStripeAccount()
   }
 
   override def afterAll(): Unit = {
@@ -207,9 +214,9 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     endingBalance: Option[Long] = None,
     status: String = "open",
     syncedAt: Instant = Instant.now()
-  ): StripeInvoice = StripeInvoice(
-    stripeAccountId = "",
-    liveMode = false,
+  ): StripeInvoice = await(invoiceService.createForTest(StripeInvoice(
+    stripeAccountId = stripeAccount.id,
+    liveMode = true,
     id = id,
     customerId = customerId,
     number = number,
@@ -227,7 +234,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     endingBalance = endingBalance,
     status = status,
     syncedAt = syncedAt
-  )
+  )))
 
   def makeInvoiceLineItem(
     id: String = s"li_${genId()}",
@@ -244,9 +251,9 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     pricingUnitAmountDecimal: Option[String] = None,
     customerId: String = "cus_1",
     syncedAt: Instant = Instant.now()
-  ): StripeInvoiceLineItem = StripeInvoiceLineItem(
+  ): StripeInvoiceLineItem = await(invoiceLineItemService.createForTest(StripeInvoiceLineItem(
     stripeAccountId = "",
-    liveMode = false,
+    liveMode = true,
     id = id,
     invoiceId = invoiceId,
     description = description,
@@ -261,7 +268,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     pricingUnitAmountDecimal = pricingUnitAmountDecimal,
     customerId = customerId,
     syncedAt = syncedAt
-  )
+  )))
 
   def makeRichInvoiceLineItem(
     base: StripeInvoiceLineItem = makeInvoiceLineItem(),
@@ -878,10 +885,12 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
 
   def makeProcessInvoice(
     transaction: Transaction,
-    invoice: RichStripeInvoice
+    invoice: RichStripeInvoice,
+    metronomeInvoice: Option[RichMetronomeInvoice] = None,
   ): ProcessInvoice = ProcessInvoice(
     transaction = transaction,
-    invoice = invoice
+    invoice = invoice,
+    metronomeInvoice = metronomeInvoice
   )
 
   def makeProcessStandaloneCharge(
@@ -1298,5 +1307,469 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     source = source,
     createdAt = createdAt,
     syncedAt = syncedAt
+  )
+
+  def makeMetronomeInvoice(
+    id: String = s"invoice_${genId()}",
+    environmentType: Option[String] = Some("PRODUCTION"),
+    status: Option[String] = Some("FINALIZED"),
+    total: Option[BigDecimal] = Some(BigDecimal(100)),
+    creditTypeId: Option[String] = None,
+    creditTypeName: Option[String] = Some("USD"),
+    customerId: Option[String] = Some("cus_1"),
+    planId: Option[String] = None,
+    planName: Option[String] = None,
+    contractId: Option[String] = None,
+    billingProviderInvoiceId: Option[String] = None,
+    billingProviderType: Option[String] = Some(MetronomeInvoice.BillingProviderType.STRIPE.toString),
+    billingProviderInvoiceCreatedAt: Option[Instant] = None,
+    billingProviderInvoiceExternalStatus: Option[String] = None,
+    invoiceLabel: Option[String] = None,
+    metadata: Option[String] = None,
+    startTimestamp: Option[Instant] = None,
+    endTimestamp: Option[Instant] = None,
+    issuedAt: Option[Instant] = Some(Instant.now()),
+    updatedAt: Option[Instant] = Some(Instant.now())
+  ): MetronomeInvoice = await(metronomeInvoiceService.create(MetronomeInvoice(
+    id = id,
+    environmentType = environmentType,
+    status = status,
+    total = total,
+    creditTypeId = creditTypeId,
+    creditTypeName = creditTypeName,
+    customerId = customerId,
+    planId = planId,
+    planName = planName,
+    contractId = contractId,
+    billingProviderInvoiceId = billingProviderInvoiceId,
+    billingProviderType = billingProviderType,
+    billingProviderInvoiceCreatedAt = billingProviderInvoiceCreatedAt,
+    billingProviderInvoiceExternalStatus = billingProviderInvoiceExternalStatus,
+    invoiceLabel = invoiceLabel,
+    metadata = metadata,
+    startTimestamp = startTimestamp,
+    endTimestamp = endTimestamp,
+    issuedAt = issuedAt,
+    updatedAt = updatedAt
+  )))
+
+  def makeMetronomeLineItem(
+    id: String = s"line_item_${genId()}",
+    environmentType: Option[String] = Some("PRODUCTION"),
+    invoiceId: Option[String] = Some("invoice_1"),
+    creditGrantId: Option[String] = None,
+    creditTypeId: Option[String] = None,
+    creditTypeName: Option[String] = Some("USD"),
+    name: Option[String] = Some("Line item"),
+    quantity: Option[BigDecimal] = Some(BigDecimal(1)),
+    total: Option[BigDecimal] = Some(BigDecimal(100)),
+    commitId: Option[String] = None,
+    productId: Option[String] = None,
+    groupKey: Option[String] = None,
+    groupValue: Option[String] = None,
+    unitPrice: Option[BigDecimal] = Some(BigDecimal(100)),
+    pricingGroupValues: Option[String] = None,
+    metadata: Option[String] = None,
+    subscriptionId: Option[String] = None,
+    isProrated: Option[Boolean] = None,
+    startingAt: Option[Instant] = None,
+    endingBefore: Option[Instant] = None,
+    updatedAt: Option[Instant] = Some(Instant.now())
+  ): MetronomeLineItem = MetronomeLineItem(
+    id = id,
+    environmentType = environmentType,
+    invoiceId = invoiceId,
+    creditGrantId = creditGrantId,
+    creditTypeId = creditTypeId,
+    creditTypeName = creditTypeName,
+    name = name,
+    quantity = quantity,
+    total = total,
+    commitId = commitId,
+    productId = productId,
+    groupKey = groupKey,
+    groupValue = groupValue,
+    unitPrice = unitPrice,
+    pricingGroupValues = pricingGroupValues,
+    metadata = metadata,
+    subscriptionId = subscriptionId,
+    isProrated = isProrated,
+    startingAt = startingAt,
+    endingBefore = endingBefore,
+    updatedAt = updatedAt
+  )
+
+  def makeMetronomeBreakdownInvoice(
+    id: String = s"breakdown_${genId()}",
+    environmentType: Option[String] = Some("PRODUCTION"),
+    snapshotTimestamp: Option[Instant] = Some(Instant.now()),
+    invoiceId: Option[String] = Some("invoice_1"),
+    customerId: Option[String] = Some("cus_1"),
+    transferId: Option[String] = None,
+    creditTypeId: Option[String] = None,
+    netPaymentTermDays: Option[Int] = None,
+    creditTypeName: Option[String] = Some("USD"),
+    subtotal: Option[BigDecimal] = Some(BigDecimal(100)),
+    total: Option[BigDecimal] = Some(BigDecimal(100)),
+    tpe: Option[String] = None,
+    externalInvoice: Option[String] = None,
+    planId: Option[String] = None,
+    contractId: Option[String] = None,
+    amendmentId: Option[String] = None,
+    customFields: Option[String] = None,
+    billableStatus: Option[String] = None,
+    windowSize: Option[String] = None,
+    metadata: Option[String] = None,
+    issuedAt: Option[Instant] = None,
+    invoiceStartTimestamp: Option[Instant] = None,
+    invoiceEndTimestamp: Option[Instant] = None,
+    breakdownStartTimestamp: Option[Instant] = None,
+    breakdownEndTimestamp: Option[Instant] = None,
+    updatedAt: Option[Instant] = Some(Instant.now())
+  ): MetronomeBreakdownInvoice = MetronomeBreakdownInvoice(
+    id = id,
+    environmentType = environmentType,
+    snapshotTimestamp = snapshotTimestamp,
+    invoiceId = invoiceId,
+    customerId = customerId,
+    transferId = transferId,
+    creditTypeId = creditTypeId,
+    netPaymentTermDays = netPaymentTermDays,
+    creditTypeName = creditTypeName,
+    subtotal = subtotal,
+    total = total,
+    tpe = tpe,
+    externalInvoice = externalInvoice,
+    planId = planId,
+    contractId = contractId,
+    amendmentId = amendmentId,
+    customFields = customFields,
+    billableStatus = billableStatus,
+    windowSize = windowSize,
+    metadata = metadata,
+    issuedAt = issuedAt,
+    invoiceStartTimestamp = invoiceStartTimestamp,
+    invoiceEndTimestamp = invoiceEndTimestamp,
+    breakdownStartTimestamp = breakdownStartTimestamp,
+    breakdownEndTimestamp = breakdownEndTimestamp,
+    updatedAt = updatedAt
+  )
+
+  def makeMetronomeBreakdownLineItem(
+    id: String = s"breakdown_line_item_${genId()}",
+    environmentType: Option[String] = Some("PRODUCTION"),
+    snapshotTimestamp: Option[Instant] = Some(Instant.now()),
+    watermarkTimestamp: Option[Instant] = None,
+    invoiceBreakdownId: Option[String] = Some("breakdown_1"),
+    name: Option[String] = Some("Line item"),
+    transferId: Option[String] = None,
+    groupKey: Option[String] = None,
+    groupValue: Option[String] = None,
+    quantity: Option[BigDecimal] = Some(BigDecimal(1)),
+    total: Option[BigDecimal] = Some(BigDecimal(100)),
+    unitPrice: Option[BigDecimal] = Some(BigDecimal(100)),
+    productId: Option[String] = None,
+    productType: Option[String] = None,
+    creditTypeId: Option[String] = None,
+    creditTypeName: Option[String] = Some("USD"),
+    commitId: Option[String] = None,
+    commitSegmentId: Option[String] = None,
+    commitType: Option[String] = None,
+    subscriptionId: Option[String] = None,
+    isProrated: Option[Boolean] = None,
+    lineItemId: Option[String] = None,
+    lineItemType: Option[String] = None,
+    customFields: Option[String] = None,
+    pricingGroupValues: Option[String] = None,
+    presentationGroupValues: Option[String] = None,
+    billableMetricId: Option[String] = None,
+    metadata: Option[String] = None,
+    breakdownStartTimestamp: Option[Instant] = None,
+    breakdownEndTimestamp: Option[Instant] = None,
+    updatedAt: Option[Instant] = Some(Instant.now())
+  ): MetronomeBreakdownLineItem = MetronomeBreakdownLineItem(
+    id = id,
+    environmentType = environmentType,
+    snapshotTimestamp = snapshotTimestamp,
+    watermarkTimestamp = watermarkTimestamp,
+    invoiceBreakdownId = invoiceBreakdownId,
+    name = name,
+    transferId = transferId,
+    groupKey = groupKey,
+    groupValue = groupValue,
+    quantity = quantity,
+    total = total,
+    unitPrice = unitPrice,
+    productId = productId,
+    productType = productType,
+    creditTypeId = creditTypeId,
+    creditTypeName = creditTypeName,
+    commitId = commitId,
+    commitSegmentId = commitSegmentId,
+    commitType = commitType,
+    subscriptionId = subscriptionId,
+    isProrated = isProrated,
+    lineItemId = lineItemId,
+    lineItemType = lineItemType,
+    customFields = customFields,
+    pricingGroupValues = pricingGroupValues,
+    presentationGroupValues = presentationGroupValues,
+    billableMetricId = billableMetricId,
+    metadata = metadata,
+    breakdownStartTimestamp = breakdownStartTimestamp,
+    breakdownEndTimestamp = breakdownEndTimestamp,
+    updatedAt = updatedAt
+  )
+
+  def makeRichMetronomeBreakdownInvoice(
+    base: MetronomeBreakdownInvoice = makeMetronomeBreakdownInvoice(),
+    lineItems: Seq[MetronomeBreakdownLineItem] = Seq.empty,
+  ): RichMetronomeBreakdownInvoice = RichMetronomeBreakdownInvoice(
+    base = base,
+    lineItems = lineItems,
+  )
+
+  def makeRichMetronomeInvoice(
+    base: MetronomeInvoice = makeMetronomeInvoice(),
+    lineItems: Seq[MetronomeLineItem] = Seq.empty,
+    breakdownInvoice: Option[RichMetronomeBreakdownInvoice] = None,
+  ): RichMetronomeInvoice = RichMetronomeInvoice(
+    base = base,
+    lineItems = lineItems,
+    breakdownInvoice = breakdownInvoice,
+  )
+
+  def makeMetronomeDraftInvoice(
+    metronomeMetadataId: Option[String] = None,
+    id: String = s"draft_invoice_${genId()}",
+    environmentType: Option[String] = Some("PRODUCTION"),
+    snapshotTime: Option[Instant] = Some(Instant.now()),
+    status: Option[String] = Some("DRAFT"),
+    total: Option[BigDecimal] = Some(BigDecimal(100)),
+    creditTypeId: Option[String] = None,
+    creditTypeName: Option[String] = Some("USD"),
+    customerId: Option[String] = Some("cus_1"),
+    planId: Option[String] = None,
+    planName: Option[String] = None,
+    contractId: Option[String] = None,
+    billableStatus: Option[String] = None,
+    billingProviderInvoiceId: Option[String] = None,
+    billingProviderInvoiceCreatedAt: Option[Instant] = None,
+    label: Option[String] = None,
+    startTimestamp: Option[Instant] = None,
+    endTimestamp: Option[Instant] = None,
+    updatedAt: Option[Instant] = Some(Instant.now())
+  ): MetronomeDraftInvoice = {
+    await(metronomeDraftInvoiceService.create(MetronomeDraftInvoice(
+      metronomeMetadataId = metronomeMetadataId,
+      id = id,
+      environmentType = environmentType,
+      snapshotTime = snapshotTime,
+      status = status,
+      total = total,
+      creditTypeId = creditTypeId,
+      creditTypeName = creditTypeName,
+      customerId = customerId,
+      planId = planId,
+      planName = planName,
+      contractId = contractId,
+      billableStatus = billableStatus,
+      billingProviderInvoiceId = billingProviderInvoiceId,
+      billingProviderInvoiceCreatedAt = billingProviderInvoiceCreatedAt,
+      label = label,
+      startTimestamp = startTimestamp,
+      endTimestamp = endTimestamp,
+      updatedAt = updatedAt
+    )))
+  }
+
+  def makeMetronomeDraftLineItem(
+    metronomeMetadataId: Option[String] = None,
+    id: String = s"draft_line_item_${genId()}",
+    environmentType: Option[String] = Some("PRODUCTION"),
+    snapshotTime: Option[Instant] = Some(Instant.now()),
+    invoiceId: Option[String] = Some("draft_invoice_1"),
+    creditGrantId: Option[String] = None,
+    creditTypeId: Option[String] = None,
+    creditTypeName: Option[String] = Some("USD"),
+    name: Option[String] = Some("Line item"),
+    quantity: Option[BigDecimal] = Some(BigDecimal(1)),
+    total: Option[BigDecimal] = Some(BigDecimal(100)),
+    commitId: Option[String] = None,
+    productId: Option[String] = None,
+    groupKey: Option[String] = None,
+    groupValue: Option[String] = None,
+    unitPrice: Option[BigDecimal] = Some(BigDecimal(100)),
+    pricingGroupValues: Option[String] = None,
+    subscriptionId: Option[String] = None,
+    isProrated: Option[Boolean] = None,
+    metadata: Option[String] = None,
+    startingAt: Option[Instant] = None,
+    endingBefore: Option[Instant] = None,
+    updatedAt: Option[Instant] = Some(Instant.now())
+  ): MetronomeDraftLineItem = MetronomeDraftLineItem(
+    metronomeMetadataId = metronomeMetadataId,
+    id = id,
+    environmentType = environmentType,
+    snapshotTime = snapshotTime,
+    invoiceId = invoiceId,
+    creditGrantId = creditGrantId,
+    creditTypeId = creditTypeId,
+    creditTypeName = creditTypeName,
+    name = name,
+    quantity = quantity,
+    total = total,
+    commitId = commitId,
+    productId = productId,
+    groupKey = groupKey,
+    groupValue = groupValue,
+    unitPrice = unitPrice,
+    pricingGroupValues = pricingGroupValues,
+    subscriptionId = subscriptionId,
+    isProrated = isProrated,
+    metadata = metadata,
+    startingAt = startingAt,
+    endingBefore = endingBefore,
+    updatedAt = updatedAt
+  )
+
+  def makeMetronomeBreakdownDraftInvoice(
+    id: String = s"breakdown_draft_${genId()}",
+    environmentType: Option[String] = Some("PRODUCTION"),
+    snapshotTimestamp: Option[Instant] = Some(Instant.now()),
+    invoiceId: Option[String] = Some("draft_invoice_1"),
+    customerId: Option[String] = Some("cus_1"),
+    transferId: Option[String] = None,
+    creditTypeId: Option[String] = None,
+    netPaymentTermDays: Option[Int] = None,
+    creditTypeName: Option[String] = Some("USD"),
+    subtotal: Option[BigDecimal] = Some(BigDecimal(100)),
+    total: Option[BigDecimal] = Some(BigDecimal(100)),
+    tpe: Option[String] = None,
+    externalInvoice: Option[String] = None,
+    planId: Option[String] = None,
+    contractId: Option[String] = None,
+    amendmentId: Option[String] = None,
+    customFields: Option[String] = None,
+    billableStatus: Option[String] = None,
+    windowSize: Option[String] = None,
+    metadata: Option[String] = None,
+    issuedAt: Option[Instant] = None,
+    invoiceStartTimestamp: Option[Instant] = None,
+    invoiceEndTimestamp: Option[Instant] = None,
+    breakdownStartTimestamp: Option[Instant] = None,
+    breakdownEndTimestamp: Option[Instant] = None,
+    updatedAt: Option[Instant] = Some(Instant.now())
+  ): MetronomeBreakdownDraftInvoice = MetronomeBreakdownDraftInvoice(
+    id = id,
+    environmentType = environmentType,
+    snapshotTimestamp = snapshotTimestamp,
+    invoiceId = invoiceId,
+    customerId = customerId,
+    transferId = transferId,
+    creditTypeId = creditTypeId,
+    netPaymentTermDays = netPaymentTermDays,
+    creditTypeName = creditTypeName,
+    subtotal = subtotal,
+    total = total,
+    tpe = tpe,
+    externalInvoice = externalInvoice,
+    planId = planId,
+    contractId = contractId,
+    amendmentId = amendmentId,
+    customFields = customFields,
+    billableStatus = billableStatus,
+    windowSize = windowSize,
+    metadata = metadata,
+    issuedAt = issuedAt,
+    invoiceStartTimestamp = invoiceStartTimestamp,
+    invoiceEndTimestamp = invoiceEndTimestamp,
+    breakdownStartTimestamp = breakdownStartTimestamp,
+    breakdownEndTimestamp = breakdownEndTimestamp,
+    updatedAt = updatedAt
+  )
+
+  def makeMetronomeBreakdownDraftLineItem(
+    id: String = s"breakdown_draft_line_item_${genId()}",
+    environmentType: Option[String] = Some("PRODUCTION"),
+    snapshotTimestamp: Option[Instant] = Some(Instant.now()),
+    watermarkTimestamp: Option[Instant] = None,
+    invoiceBreakdownId: Option[String] = Some("breakdown_draft_1"),
+    name: Option[String] = Some("Line item"),
+    transferId: Option[String] = None,
+    groupKey: Option[String] = None,
+    groupValue: Option[String] = None,
+    quantity: Option[BigDecimal] = Some(BigDecimal(1)),
+    total: Option[BigDecimal] = Some(BigDecimal(100)),
+    unitPrice: Option[BigDecimal] = Some(BigDecimal(100)),
+    productId: Option[String] = None,
+    productType: Option[String] = None,
+    creditTypeId: Option[String] = None,
+    creditTypeName: Option[String] = Some("USD (cents)"),
+    commitId: Option[String] = None,
+    commitSegmentId: Option[String] = None,
+    commitType: Option[String] = None,
+    subscriptionId: Option[String] = None,
+    isProrated: Option[Boolean] = None,
+    lineItemId: Option[String] = None,
+    lineItemType: Option[String] = None,
+    customFields: Option[String] = None,
+    pricingGroupValues: Option[String] = None,
+    presentationGroupValues: Option[String] = None,
+    billableMetricId: Option[String] = None,
+    metadata: Option[String] = None,
+    breakdownStartTimestamp: Option[Instant] = None,
+    breakdownEndTimestamp: Option[Instant] = None,
+    updatedAt: Option[Instant] = Some(Instant.now())
+  ): MetronomeBreakdownDraftLineItem = MetronomeBreakdownDraftLineItem(
+    id = id,
+    environmentType = environmentType,
+    snapshotTimestamp = snapshotTimestamp,
+    watermarkTimestamp = watermarkTimestamp,
+    invoiceBreakdownId = invoiceBreakdownId,
+    name = name,
+    transferId = transferId,
+    groupKey = groupKey,
+    groupValue = groupValue,
+    quantity = quantity,
+    total = total,
+    unitPrice = unitPrice,
+    productId = productId,
+    productType = productType,
+    creditTypeId = creditTypeId,
+    creditTypeName = creditTypeName,
+    commitId = commitId,
+    commitSegmentId = commitSegmentId,
+    commitType = commitType,
+    subscriptionId = subscriptionId,
+    isProrated = isProrated,
+    lineItemId = lineItemId,
+    lineItemType = lineItemType,
+    customFields = customFields,
+    pricingGroupValues = pricingGroupValues,
+    presentationGroupValues = presentationGroupValues,
+    billableMetricId = billableMetricId,
+    metadata = metadata,
+    breakdownStartTimestamp = breakdownStartTimestamp,
+    breakdownEndTimestamp = breakdownEndTimestamp,
+    updatedAt = updatedAt
+  )
+
+  def makeRichMetronomeBreakdownDraftInvoice(
+    base: MetronomeBreakdownDraftInvoice = makeMetronomeBreakdownDraftInvoice(),
+    lineItems: Seq[MetronomeBreakdownDraftLineItem] = Seq.empty,
+  ): RichMetronomeBreakdownDraftInvoice = RichMetronomeBreakdownDraftInvoice(
+    base = base,
+    lineItems = lineItems,
+  )
+
+  def makeRichMetronomeDraftInvoice(
+    base: MetronomeDraftInvoice = makeMetronomeDraftInvoice(),
+    lineItems: Seq[MetronomeDraftLineItem] = Seq.empty,
+    breakdownInvoice: Option[RichMetronomeBreakdownDraftInvoice] = None,
+  ): RichMetronomeDraftInvoice = RichMetronomeDraftInvoice(
+    base = base,
+    lineItems = lineItems,
+    breakdownInvoice = breakdownInvoice,
   )
 }
