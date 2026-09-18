@@ -460,7 +460,8 @@ export interface TransactionDetailUsage {
   description: string | null,
   startedAt: number,
   endedAt: number,
-  value: number
+  value: number | null,
+  amount: number | null,
 }
 
 export interface TransactionDetail {

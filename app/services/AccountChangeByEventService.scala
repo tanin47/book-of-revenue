@@ -183,8 +183,8 @@ class AccountChangeByEventService @Inject() (
       case GroupBy.Summary => Seq.empty
       case GroupBy.Product => Seq("product_id")
       case GroupBy.Customer => Seq("customer_id")
-      case GroupBy.Transaction => Seq("rev_rec_transaction_id")
-      case GroupBy.LineItem => Seq("rev_rec_transaction_id, invoice_line_item_id")
+      case GroupBy.Transaction => Seq("transaction_id")
+      case GroupBy.LineItem => Seq("transaction_id, invoice_line_item_id")
     }
 
     base ++ extraGroupKeys
@@ -266,7 +266,7 @@ class AccountChangeByEventService @Inject() (
             ,
             SUM(net_settlement_change) AS net_settlement_change,
             MAX(customer_id) AS customer_id,
-            MAX(rev_rec_transaction_id) AS rev_rec_transaction_id,
+            MAX(transaction_id) AS transaction_id,
             MAX(invoice_id) AS invoice_id,
             MAX(invoice_line_item_id) AS invoice_line_item_id
           FROM net_changes
@@ -320,7 +320,7 @@ class AccountChangeByEventService @Inject() (
         group_with_lookup_columns AS(
           SELECT
             main.*,
-            con.title AS rev_rec_transaction_title,
+            con.title AS transaction_title,
             cus.name AS customer_name,
             cus.email AS customer_email,
             inv.number AS invoice_number,
@@ -330,7 +330,7 @@ class AccountChangeByEventService @Inject() (
             price.product_id AS product_id,
             product.name AS product_name
           FROM groups main
-          LEFT JOIN transaction con ON con.id = main.rev_rec_transaction_id
+          LEFT JOIN transaction con ON con.id = main.transaction_id
           LEFT JOIN stripe.customer cus ON cus.id = main.customer_id
           LEFT JOIN stripe.invoice inv ON inv.id = main.invoice_id
           LEFT JOIN stripe.invoice_line_item il ON il.id = main.invoice_line_item_id
@@ -378,8 +378,8 @@ class AccountChangeByEventService @Inject() (
         case Column.CustomerId => sql"customer_id"
         case Column.CustomerName => sql"customer_name"
         case Column.CustomerEmail => sql"customer_email"
-        case Column.TransactionId => sql"rev_rec_transaction_id"
-        case Column.TransactionTitle => sql"rev_rec_transaction_title"
+        case Column.TransactionId => sql"transaction_id"
+        case Column.TransactionTitle => sql"transaction_title"
         case Column.InvoiceId => sql"invoice_id"
         case Column.InvoiceNumber => sql"invoice_number"
         case Column.InvoiceLineItemDescription => sql"invoice_line_item_description"
@@ -406,8 +406,8 @@ class AccountChangeByEventService @Inject() (
         case Column.CustomerId => "customer_id"
         case Column.CustomerName => "customer_name"
         case Column.CustomerEmail => "customer_email"
-        case Column.TransactionId => "rev_rec_transaction_id"
-        case Column.TransactionTitle => "rev_rec_transaction_title"
+        case Column.TransactionId => "transaction_id"
+        case Column.TransactionTitle => "transaction_title"
         case Column.InvoiceId => "invoice_id"
         case Column.InvoiceNumber => "invoice_number"
         case Column.InvoiceLineItemId => "invoice_line_item_id"

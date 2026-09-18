@@ -44,7 +44,6 @@ trait Base extends base.Base with MockedTimeChangeListener {
   )
 
   var user: User = _
-  var stripeAccount: StripeAccount = _
 
   def mockedTimeChanged(time: Instant): Unit = {
     webDriver.executeCdpCommand(
@@ -74,7 +73,6 @@ trait Base extends base.Base with MockedTimeChangeListener {
     super.beforeEach()
 
     user = makeUser()
-    stripeAccount = makeStripeAccount()
 
     go("/")
     webDriver.manage().deleteAllCookies()

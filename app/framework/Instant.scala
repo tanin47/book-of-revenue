@@ -55,6 +55,4 @@ object Instant {
 
     def unbind(value: Instant, context: UnbindContext): JsValue = throw new UnsupportedOperationException()
   }
-
-
 }

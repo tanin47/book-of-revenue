@@ -174,9 +174,9 @@ class NetRevenueService @Inject() (
     val sortClauses = sorts.map { sort =>
       val name = sort.column match {
         case Column.AccountingPeriod => "accounting_period"
-        case Column.TransactionId => "rev_rec_transaction_id"
-        case Column.TransactionTitle => "rev_rec_transaction_title"
-        case Column.TransactionType => "rev_rec_transaction_type"
+        case Column.TransactionId => "transaction_id"
+        case Column.TransactionTitle => "transaction_title"
+        case Column.TransactionType => "transaction_type"
         case Column.TransactionDate => "transaction_started_at"
         case Column.TransactionValue => "transaction_settlement_total_value"
         case Column.TransactionStatus => "transaction_status"
@@ -222,9 +222,9 @@ class NetRevenueService @Inject() (
       if (params.groupBy.isEmpty) {
         computedColumns.map {
           case Column.AccountingPeriod => sql"accounting_period"
-          case Column.TransactionId => sql"rev_rec_transaction_id"
-          case Column.TransactionTitle => sql"rev_rec_transaction_title"
-          case Column.TransactionType => sql"rev_rec_transaction_type"
+          case Column.TransactionId => sql"transaction_id"
+          case Column.TransactionTitle => sql"transaction_title"
+          case Column.TransactionType => sql"transaction_type"
           case Column.TransactionDate => sql"transaction_started_at"
           case Column.TransactionValue => sql"transaction_settlement_total_value"
           case Column.TransactionStatus => sql"transaction_status"
@@ -251,9 +251,9 @@ class NetRevenueService @Inject() (
       } else {
         computedColumns.map {
           case Column.AccountingPeriod => sql"accounting_period"
-          case Column.TransactionId => sql"MAX(rev_rec_transaction_id) AS rev_rec_transaction_id"
-          case Column.TransactionTitle => sql"MAX(rev_rec_transaction_title) AS rev_rec_transaction_title"
-          case Column.TransactionType => sql"MAX(rev_rec_transaction_type) AS rev_rec_transaction_type"
+          case Column.TransactionId => sql"MAX(transaction_id) AS transaction_id"
+          case Column.TransactionTitle => sql"MAX(transaction_title) AS transaction_title"
+          case Column.TransactionType => sql"MAX(transaction_type) AS transaction_type"
           case Column.TransactionDate => sql"MAX(transaction_started_at) AS transaction_started_at"
           case Column.TransactionValue => sql"MAX(transaction_settlement_total_value) AS transaction_settlement_total_value"
           case Column.TransactionStatus => sql"MAX(transaction_status) AS transaction_status"
@@ -323,8 +323,8 @@ class NetRevenueService @Inject() (
       .map {
         case GroupBy.Product => sql", product_id"
         case GroupBy.Customer => sql", customer_id"
-        case GroupBy.Transaction => sql", rev_rec_transaction_id"
-        case GroupBy.LineItem => sql", rev_rec_transaction_id, invoice_line_item_id"
+        case GroupBy.Transaction => sql", transaction_id"
+        case GroupBy.LineItem => sql", transaction_id, invoice_line_item_id"
         case GroupBy.Summary => sql""
       }
       .map { extraGroupKey =>
@@ -343,7 +343,7 @@ class NetRevenueService @Inject() (
         Some(sql"accounting_period <= ${params.periodEnd}"),
         params.productId.map { productId => sql"product_id = $productId" },
         params.customerId.map { customerId => sql"customer_id = $customerId" },
-        params.transactionId.map { transactionId => sql"rev_rec_transaction_id = $transactionId" },
+        params.transactionId.map { transactionId => sql"transaction_id = $transactionId" },
       ).flatten,
       sql" AND "
     )
@@ -409,7 +409,7 @@ class NetRevenueService @Inject() (
         entries AS (
           SELECT
             j.*,
-            con.title AS rev_rec_transaction_title,
+            con.title AS transaction_title,
             cus.name AS customer_name,
             cus.email AS customer_email,
             inv.number AS invoice_number,
@@ -419,7 +419,7 @@ class NetRevenueService @Inject() (
             product.name AS product_name
           FROM raw_entries j
           LEFT JOIN transaction con
-          ON con.id = j.rev_rec_transaction_id
+          ON con.id = j.transaction_id
           LEFT JOIN stripe.customer cus
           ON cus.id = j.customer_id
           LEFT JOIN stripe.invoice inv
@@ -717,21 +717,21 @@ class NetRevenueService @Inject() (
             ,
             raw_revenue_by_month_groups AS (
               SELECT
-                rev_rec_transaction_id,
+                transaction_id,
                 SUM(net_revenue_net_income) AS total,
           """,
           sumPeriodColumnsSql,
           sql"""
               FROM groups
-              GROUP BY rev_rec_transaction_id
+              GROUP BY transaction_id
             ),
 
             revenue_by_month_groups AS (
               SELECT
-                COALESCE(r.rev_rec_transaction_id, c.id) AS rev_rec_transaction_id,
-                c.title AS rev_rec_transaction_title,
+                COALESCE(r.transaction_id, c.id) AS transaction_id,
+                c.title AS transaction_title,
                 c.settlement_total_value AS transaction_settlement_total_value,
-                c.type AS rev_rec_transaction_type,
+                c.type AS transaction_type,
                 c.status AS transaction_status,
                 c.started_at AS transaction_started_at,
           """,
@@ -740,7 +740,7 @@ class NetRevenueService @Inject() (
               FROM
                 transaction c
                 FULL OUTER JOIN raw_revenue_by_month_groups r
-                ON c.id = r.rev_rec_transaction_id
+                ON c.id = r.transaction_id
               WHERE c.stripe_account_id = $stripeAccountId AND c.live_mode = $liveMode AND
           """,
           customerCond,

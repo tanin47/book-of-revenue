@@ -113,8 +113,8 @@ class IncomeStatementService @Inject() (
         case Column.CustomerId => "customer_id"
         case Column.CustomerName => "customer_name"
         case Column.CustomerEmail => "customer_email"
-        case Column.TransactionId => "rev_rec_transaction_id"
-        case Column.TransactionTitle => "rev_rec_transaction_title"
+        case Column.TransactionId => "transaction_id"
+        case Column.TransactionTitle => "transaction_title"
         case Column.InvoiceId => "invoice_id"
         case Column.InvoiceNumber => "invoice_number"
         case Column.InvoiceLineItemId => "invoice_line_item_id"
@@ -145,8 +145,8 @@ class IncomeStatementService @Inject() (
           case Column.CustomerId => sql"product_id"
           case Column.CustomerName => sql"customer_name"
           case Column.CustomerEmail => sql"customer_email"
-          case Column.TransactionId => sql"rev_rec_transaction_id"
-          case Column.TransactionTitle => sql"rev_rec_transaction_title"
+          case Column.TransactionId => sql"transaction_id"
+          case Column.TransactionTitle => sql"transaction_title"
           case Column.InvoiceId => sql"invoice_id"
           case Column.InvoiceNumber => sql"invoice_number"
           case Column.InvoiceLineItemDescription => sql"invoice_line_item_description"
@@ -165,8 +165,8 @@ class IncomeStatementService @Inject() (
           case Column.CustomerId => sql"MAX(customer_id) AS product_id"
           case Column.CustomerName => sql"MAX(customer_name) AS customer_name"
           case Column.CustomerEmail => sql"MAX(customer_email) AS customer_email"
-          case Column.TransactionId => sql"MAX(rev_rec_transaction_id) AS rev_rec_transaction_id"
-          case Column.TransactionTitle => sql"MAX(rev_rec_transaction_title) AS rev_rec_transaction_title"
+          case Column.TransactionId => sql"MAX(transaction_id) AS transaction_id"
+          case Column.TransactionTitle => sql"MAX(transaction_title) AS transaction_title"
           case Column.InvoiceId => sql"MAX(invoice_id) AS invoice_id"
           case Column.InvoiceNumber => sql"MAX(invoice_number) AS invoice_number"
           case Column.InvoiceLineItemDescription => sql"MAX(invoice_line_item_description) AS invoice_line_item_description"
@@ -215,8 +215,8 @@ class IncomeStatementService @Inject() (
       .map {
         case GroupBy.Product => sql", product_id"
         case GroupBy.Customer => sql", customer_id"
-        case GroupBy.Transaction => sql", rev_rec_transaction_id"
-        case GroupBy.LineItem => sql", rev_rec_transaction_id, invoice_line_item_id"
+        case GroupBy.Transaction => sql", transaction_id"
+        case GroupBy.LineItem => sql", transaction_id, invoice_line_item_id"
         case GroupBy.Summary => sql""
       }
       .map { extraGroupKey =>
@@ -235,7 +235,7 @@ class IncomeStatementService @Inject() (
         params.periodEnd.map { p => sql"accounting_period <= ${p}" },
         params.productId.map { c => sql"product_id = $c" },
         params.customerId.map { c => sql"customer_id = $c" },
-        params.transactionId.map { c => sql"rev_rec_transaction_id = $c" },
+        params.transactionId.map { c => sql"transaction_id = $c" },
         if (params.accounts.nonEmpty) {
           Some(sql"(debit = ANY(${params.accounts}) OR credit = ANY(${params.accounts}))")
         } else {
@@ -296,13 +296,13 @@ class IncomeStatementService @Inject() (
             il.started_at AS invoice_line_item_started_at,
             il.ended_at AS invoice_line_item_ended_at,
             pr.name AS product_name,
-            co.title AS rev_rec_transaction_title
+            co.title AS transaction_title
           FROM raw_entries j
           LEFT JOIN stripe.customer cus ON cus.id = j.customer_id
           LEFT JOIN stripe.invoice inv ON inv.id = j.invoice_id
           LEFT JOIN stripe.invoice_line_item il ON il.id = j.invoice_line_item_id
           LEFT JOIN stripe.product pr ON pr.id = j.product_id
-          LEFT JOIN transaction co ON co.id = j.rev_rec_transaction_id
+          LEFT JOIN transaction co ON co.id = j.transaction_id
           WHERE net_settlement_income != 0
         ),
 

@@ -277,7 +277,11 @@ function getRelatedId(activity: BillingActivity, transaction: Transaction): Rela
             <td class="whitespace-nowrap text-ellipsis overflow-hidden">{usage.description ?? 'No description'}</td>
             <td class="whitespace-nowrap font-mono">{formatDateTime(usage.startedAt)}</td>
             <td class="whitespace-nowrap font-mono">{formatDateTime(usage.endedAt)}</td>
-            <td>{formatNumber(usage.value)}</td>
+            {#if usage.amount !== null}
+              <td>{formatAmount(usage.amount, detail.currency)}</td>
+            {:else}
+              <td>{formatNumber(usage.value ?? 0)}</td>
+            {/if}
           </tr>
         {/each}
         </tbody>

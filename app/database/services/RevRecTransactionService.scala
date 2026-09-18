@@ -37,6 +37,7 @@ class TransactionService @Inject() (
   customerBalanceTransactionService: CustomerBalanceTransactionService,
   creditBalanceTransactionService: CreditBalanceTransactionService,
   customerService: CustomerService,
+  metronomeDraftInvoiceService: MetronomeDraftInvoiceService,
 )(implicit ec: ExecutionContext) extends BaseDbService {
   import TransactionService.*
   import framework.PostgresProfile.api.*
@@ -171,6 +172,7 @@ class TransactionService @Inject() (
       subscriptionItems <- Future.sequence(idsOf(Transaction.Type.UnbilledUsageSubscriptionItem).toSeq.map(subscriptionItemService.getRichById)).map(_.flatten)
       customerBalanceTransactions <- customerBalanceTransactionService.getByIds(idsOf(Transaction.Type.StandaloneCustomerBalanceTransaction))
       creditBalanceTransactions <- creditBalanceTransactionService.getRichByIds(idsOf(Transaction.Type.StandaloneCreditBalanceTransaction))
+      metronomeDraftInvoices <- metronomeDraftInvoiceService.getRichByIds(idsOf(Transaction.Type.UnbilledMetronomeDraftInvoice))
       customers <- customerService.getByIds(transactions.flatMap(_.customerId).toSet)
     } yield {
       val invoicesById = invoices.map { i => i.base.id -> i }.toMap
@@ -180,6 +182,7 @@ class TransactionService @Inject() (
       val subscriptionItemsById = subscriptionItems.map { s => s.base.id -> s }.toMap
       val customerBalanceTransactionsById = customerBalanceTransactions.map { t => t.id -> t }.toMap
       val creditBalanceTransactionsById = creditBalanceTransactions.map { t => t.base.id -> t }.toMap
+      val metronomeDraftInvoicesById = metronomeDraftInvoices.map { i => i.base.id -> i }.toMap
       val customersById = customers.map { c => c.id -> c }.toMap
 
       transactions.map { transaction =>
@@ -194,6 +197,7 @@ class TransactionService @Inject() (
           subscriptionItem = subscriptionItemsById.get(id),
           customerBalanceTransaction = customerBalanceTransactionsById.get(id),
           creditBalanceTransaction = creditBalanceTransactionsById.get(id),
+          metronomeDraftInvoice = metronomeDraftInvoicesById.get(id),
         )
       }
     }

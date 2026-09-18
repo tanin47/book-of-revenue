@@ -1,11 +1,15 @@
 package process
 
+import background.ProcessTransactionWorker.JournalEntryPeriod
 import database.models.*
 import database.models.stripe.*
 import database.models.Transaction.Status
+import database.models.metronome.{MetronomeBreakdownLineItem, MetronomeInvoice, MetronomeLineItem, RichMetronomeInvoice}
 import framework.Helpers.await
 import framework.Instant
+import org.apache.commons.text.similarity.LevenshteinDistance
 import play.api.Logger
+import play.api.libs.json.Json
 import process.Helpers.*
 import process.ProcessBillingEvent.*
 import services.{ExchangeRate, ExchangeRateService}
@@ -31,6 +35,9 @@ case class ProcessInvoiceLineItemComponent(
   unappliedCustomerBalances: Seq[ProcessCustomerBalance],
   creditBalanceTransactionOnVoids: Seq[ProcessCreditBalanceTransactionOnVoid],
   billingEvents: Seq[BillingEvent],
+  metronomeInvoice: Option[RichMetronomeInvoice],
+  metronomeLineItem: Option[MetronomeLineItem],
+  metronomeBreakdownLineItems: Seq[MetronomeBreakdownLineItem],
   syncedAt: Instant
 ) {
   private[this] val logger = Logger(getClass)
@@ -184,7 +191,7 @@ case class ProcessInvoiceLineItemComponent(
   private[this] def bookArAndPrinciple(): Seq[JournalEntry] = {
     if (principleAccount == JournalEntry.Account.Revenue) {
       // When booking revenue, there's DeferredRevenue and UnbilledDeferredRevenue involved.
-      // Therefore, it has to be handled specially.
+      // Therefore, it has to be handled especially.
       if (
         invoiceLineItem.price.exists(_.base.recurringUsageType.contains("metered")) &&
           // a usage-based subscription item with a flat fee would generate 2 invoice line items that have the same Price ID.
@@ -193,6 +200,8 @@ case class ProcessInvoiceLineItemComponent(
           invoiceLineItem.base.pricingUnitAmountDecimal.isDefined
       ) {
         bookArAndRevenueForUsageBased()
+      } else if (metronomeLineItem.nonEmpty) {
+        bookArAndRevenueForMetronome()
       } else {
         bookArAndRevenueForAmortizationBased()
       }
@@ -269,7 +278,7 @@ case class ProcessInvoiceLineItemComponent(
       presentment = Amount(presentmentAmount.value, presentmentAmount.currency)
     ) - unbilledRevenue
 
-    // Reclassify the previously-unbilled AR (at the start-of-period rate) to billed AR.
+    // Reclassify the previously unbilled AR (at the start-of-period rate) to billed AR.
     val reclassifyUnbilledAr = makeJournalEntry(
       accountingPeriod = invoicedPeriod,
       debit = JournalEntry.Account.AccountsReceivable,
@@ -297,6 +306,108 @@ case class ProcessInvoiceLineItemComponent(
     )
 
     unbilledEntriesBefore ++ Seq(reclassifyUnbilledAr) ++ currentPeriodEntries ++ creditGrantEntries
+  }
+
+  private[this] def bookArAndRevenueForMetronome(): Seq[JournalEntry] = {
+    val invoicedPeriod = getAccountingPeriod(invoice.base.finalizedAt.get)
+
+    val isAppliedCredit = metronomeBreakdownLineItems.headOption.exists(_.isAppliedCredit)
+    val isPrepaidCommit = metronomeLineItem.flatMap(_.metadata).exists { metadata =>
+      val json = Json.parse(metadata)
+      (json \ "commit_type").asOpt[String].contains("PrepaidCommit")
+    }
+    if (isAppliedCredit || isPrepaidCommit) {
+      return Seq(makeJournalEntry(
+        accountingPeriod = invoicedPeriod,
+        debit = JournalEntry.Account.AccountsReceivable,
+        credit = JournalEntry.Account.MetronomeCreditBalance,
+        settlementAmount = settlementAmount.value,
+        settlementCurrency = settlementAmount.currency,
+        presentmentAmount =presentmentAmount.value,
+        presentmentCurrency = presentmentAmount.currency,
+        occurredAt = invoice.base.finalizedAt.get,
+        event = JournalEntry.Event.FinalizeInvoice,
+      ))
+    }
+
+    if (metronomeBreakdownLineItems.isEmpty) {
+      return bookArAndRevenueForAmortizationBased()
+    }
+
+    // We recognize revenue based on the breakdown line items.
+    // Then, for the remaining, we amortize it over the service period.
+    // There are 2 cases:
+    // 1. The breakdown exists and is complete the line item's principal
+    // 2. The breakdown exists but is incomplete the line item's principal. We need to amortize the remaining amount because the line item could have been a subscription.
+    val minTime = metronomeBreakdownLineItems.flatMap(_.breakdownStartTimestamp).min
+    val maxTime = metronomeBreakdownLineItems.flatMap(_.breakdownEndTimestamp).max
+    val presentmentPeriods = Helpers.generatePeriods(minTime, maxTime).map { period =>
+      period.copy(
+        amount = metronomeBreakdownLineItems
+          .filter { i =>
+            period.startedAt.compareTo(i.breakdownStartTimestamp.get) <= 0 &&
+              i.breakdownEndTimestamp.get.compareTo(period.endedAt) <= 0
+          }
+          .map(_.total.get.toLong)
+          .sum
+      )
+    }
+    val periods = presentmentPeriods
+      .zip(amortize(invoiceLineItem.base.amount, presentmentPeriods.map(_.amount)))
+      .zip(amortize(settlementAmount.value, presentmentPeriods.map(_.amount)))
+      .map { case ((period, presentmentAmount), settlementAmount) =>
+        JournalEntryPeriod(
+          startedAt = period.startedAt,
+          settlementAmount = settlementAmount,
+          presentmentAmount = presentmentAmount,
+        )
+      }
+
+    val (beforePeriods, afterPeriods) = periods.partition(_.startedAt.isBefore(invoicedPeriod))
+
+    val unbilledRevenueEntries = beforePeriods.map { period =>
+      makeJournalEntry(
+        accountingPeriod = period.startedAt,
+        debit = JournalEntry.Account.UnbilledAccountsReceivable,
+        credit = JournalEntry.Account.Revenue,
+        settlementAmount = period.settlementAmount,
+        settlementCurrency = settlementAmount.currency,
+        presentmentAmount = period.presentmentAmount,
+        presentmentCurrency = presentmentAmount.currency,
+        occurredAt = getNextAccountingPeriod(period.startedAt).minusMillis(1),
+        event = JournalEntry.Event.RecognizeRevenue,
+      )
+    }
+
+    val transitionUarEntries = beforePeriods.map { period =>
+      makeJournalEntry(
+        accountingPeriod = invoicedPeriod,
+        debit = JournalEntry.Account.AccountsReceivable,
+        credit = JournalEntry.Account.UnbilledAccountsReceivable,
+        settlementAmount = period.settlementAmount,
+        settlementCurrency = settlementAmount.currency,
+        presentmentAmount = period.presentmentAmount,
+        presentmentCurrency = presentmentAmount.currency,
+        occurredAt = invoice.base.finalizedAt.get,
+        event = JournalEntry.Event.FinalizeInvoice,
+      )
+    }
+
+    val bookArAndRevenueEntries = afterPeriods.map { period =>
+      makeJournalEntry(
+        accountingPeriod = period.startedAt,
+        debit = JournalEntry.Account.AccountsReceivable,
+        credit = JournalEntry.Account.Revenue,
+        settlementAmount = period.settlementAmount,
+        settlementCurrency = settlementAmount.currency,
+        presentmentAmount = period.presentmentAmount,
+        presentmentCurrency = presentmentAmount.currency,
+        occurredAt = invoice.base.finalizedAt.get,
+        event = JournalEntry.Event.FinalizeInvoice,
+      )
+    }
+
+    unbilledRevenueEntries ++ transitionUarEntries ++ bookArAndRevenueEntries
   }
 
   private[this] def bookArAndRevenueForAmortizationBased(): Seq[JournalEntry] = {
@@ -527,6 +638,9 @@ case class ProcessInvoiceLineItem(
   appliedCustomerBalances: Seq[ProcessCustomerBalance],
   unappliedCustomerBalances: Seq[ProcessCustomerBalance],
   billingEvents: Seq[BillingEvent],
+  metronomeInvoice: Option[RichMetronomeInvoice],
+  metronomeLineItem: Option[MetronomeLineItem],
+  metronomeBreakdownLineItems: Seq[MetronomeBreakdownLineItem],
   syncedAt: Instant
 ) {
   private[this] val logger = Logger(getClass)
@@ -640,6 +754,9 @@ case class ProcessInvoiceLineItem(
         unappliedCustomerBalances = principleUnappliedCustomerBalances,
         creditBalanceTransactionOnVoids = principleCreditBalanceTransactionOnVoids,
         billingEvents = principleBillingEvents,
+        metronomeInvoice = metronomeInvoice,
+        metronomeLineItem = metronomeLineItem,
+        metronomeBreakdownLineItems = metronomeBreakdownLineItems,
         syncedAt = syncedAt
       ),
       ProcessInvoiceLineItemComponent(
@@ -653,6 +770,9 @@ case class ProcessInvoiceLineItem(
         unappliedCustomerBalances = taxUnappliedCustomerBalances,
         creditBalanceTransactionOnVoids = Seq.empty,
         billingEvents = taxBillingEvents,
+        metronomeInvoice = metronomeInvoice,
+        metronomeLineItem = metronomeLineItem,
+        metronomeBreakdownLineItems = metronomeBreakdownLineItems,
         syncedAt = syncedAt
       ),
     )
@@ -678,12 +798,33 @@ object ProcessInvoice {
       }
       .getOrElse(ExchangeRate.sameCurrency(invoice.base.currency))
   }
+
+  def matchMetronomeLineItem(
+    lineItem: RichStripeInvoiceLineItem,
+    metronomeInvoice: Option[RichMetronomeInvoice],
+  ): Option[MetronomeLineItem] = {
+    if (metronomeInvoice.isEmpty) {
+      return None
+    }
+
+    // First, we filter for the line items whose amounts (before tax and discount) is the same as the Stripe invoice line item.
+    // Then, we take the closest metronome line item based on the levenshtein distance.
+    metronomeInvoice.get.lineItems
+      .filter { li => Math.abs(li.total.get.toLong - lineItem.base.amount) <= 1 }
+      .sortBy { li =>
+        LevenshteinDistance.getDefaultInstance().apply(lineItem.base.description.get, li.name.get)
+      }
+      .headOption
+  }
 }
 
 case class ProcessInvoice(
   transaction: Transaction,
   invoice: RichStripeInvoice,
+  metronomeInvoice: Option[RichMetronomeInvoice],
 ) extends ProcessTransaction {
+  import ProcessInvoice.*
+
   lazy val syncedAt: Instant = invoice.syncedAt
   lazy val startedAt: Option[Instant] = invoice.base.finalizedAt
   lazy val status: Transaction.Status = invoice.base.status match {
@@ -835,6 +976,7 @@ case class ProcessInvoice(
 
     val processInvoiceLineItems = invoice.lineItems.zipWithIndex
       .map { case (lineItem, index) =>
+        val metronomeLineItem = matchMetronomeLineItem(lineItem, metronomeInvoice)
         ProcessInvoiceLineItem(
           transaction = transaction,
           invoice = invoice,
@@ -848,6 +990,18 @@ case class ProcessInvoice(
 
             (items ++ specifics).sorted
           },
+          metronomeInvoice = metronomeInvoice,
+          metronomeLineItem = metronomeLineItem,
+          metronomeBreakdownLineItems = metronomeLineItem
+            .map { li =>
+              metronomeInvoice
+                .toList
+                .flatMap(_.breakdownInvoice)
+                .flatMap(_.lineItems)
+                .filter(_.lineItemId.contains(li.id))
+                .sortBy(_.breakdownStartTimestamp)
+            }
+            .getOrElse(Seq.empty),
           syncedAt = syncedAt
         )
       }
@@ -1094,7 +1248,7 @@ case class ProcessInvoice(
         val paymentTime = payment.base.paidAt.getOrElse(bt.createdAt)
         val moneyMovementTime = bt.createdAt
 
-        // The payment and money movement are in the same period and the invoice isn't marked as paid in-between (can happen in the test mode).
+        // The payment and money movement are in the same period, and the invoice isn't marked as paid in-between (can happen in the test mode).
         getAccountingPeriod(bt.createdAt) == getAccountingPeriod(payment.base.paidAt.getOrElse(bt.createdAt)) &&
           invoice.base.paidAt.forall { invoicePaidAt => invoicePaidAt.toEpochMilli >= moneyMovementTime.toEpochMilli }
       }

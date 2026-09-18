@@ -85,6 +85,10 @@ class InvoiceLineItemService @Inject() (
     }
   }
 
+  def createForTest(item: StripeInvoiceLineItem): Future[StripeInvoiceLineItem] = {
+    db.run { query += item }.map(_ => item)
+  }
+
   def update(entity: StripeInvoiceLineItem): Future[Unit] = {
     db
       .run {

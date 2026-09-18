@@ -10,7 +10,8 @@ object NetAmount {
     creditNoteId: Option[String] = None,
     creditNoteLineItemId: Option[String] = None,
     refundId: Option[String] = None,
-    principleAccount: Option[JournalEntry.Account] = None
+    principleAccount: Option[JournalEntry.Account] = None,
+    usePresentmentAmount: Boolean = false
   ): Seq[NetAmount] = {
     val amounts = entries
       .filter { entry =>
@@ -22,8 +23,16 @@ object NetAmount {
           principleAccount.forall(entry.principleAccount == _)
       }
       .flatMap { entry =>
-        val netAmountForDebit = if (entry.debit.isCredit()) { -entry.settlementAmount } else { entry.settlementAmount }
-        val netAmountForCredit = if (entry.credit.isCredit()) { entry.settlementAmount } else { -entry.settlementAmount }
+        val netAmountForDebit = if (entry.debit.isCredit()) {
+          if (usePresentmentAmount) { -entry.presentmentAmount } else { -entry.settlementAmount }
+        } else {
+          if (usePresentmentAmount) { entry.presentmentAmount  } else { entry.settlementAmount }
+        }
+        val netAmountForCredit = if (entry.credit.isCredit()) {
+          if (usePresentmentAmount) { entry.presentmentAmount } else { entry.settlementAmount }
+        } else {
+          if (usePresentmentAmount) { -entry.presentmentAmount } else { -entry.settlementAmount }
+        }
         Seq(
           NetAmount(netAmountForDebit, entry.debit, entry.settlementCurrency),
           NetAmount(netAmountForCredit, entry.credit, entry.settlementCurrency)

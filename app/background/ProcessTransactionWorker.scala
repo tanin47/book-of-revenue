@@ -1,5 +1,6 @@
 package background
 
+import database.models.metronome.MetronomeInvoice.BillingProviderType
 import database.models.{JournalEntry, Transaction}
 import database.services.*
 import framework.Helpers.await
@@ -59,6 +60,8 @@ class ProcessTransactionWorker @Inject() (
   exchangeRateService: ExchangeRateService,
   customerBalanceTransactionService: CustomerBalanceTransactionService,
   creditBalanceTransactionService: CreditBalanceTransactionService,
+  metronomeInvoiceService: MetronomeInvoiceService,
+  metronomeDraftInvoiceService: MetronomeDraftInvoiceService,
   trackedExceptionService: TrackedExceptionService
 )(implicit ec: ExecutionContext) extends BaseJobRequestHandler[ProcessTransactionWorkerRequest](trackedExceptionService) {
   private[this] val logger = Logger(getClass)
@@ -69,6 +72,12 @@ class ProcessTransactionWorker @Inject() (
     logger.info(s"Found ${unbilledUsageSubscriptionItemSources.size} unbilled usage subscription items")
     unbilledUsageSubscriptionItemSources.foreach { src =>
       await(transactionService.createIfNotExist(src.id, Transaction.Type.UnbilledUsageSubscriptionItem, src.stripeAccountId, src.liveMode, src.customerId, batchTimestamp))
+    }
+
+    val metronomeDraftInvoiceSources = await(metronomeDraftInvoiceService.getAllTransactionSources())
+    logger.info(s"Found ${metronomeDraftInvoiceSources.size} unbilled Metronome draft invoices")
+    metronomeDraftInvoiceSources.foreach { src =>
+      await(transactionService.createIfNotExist(src.id, Transaction.Type.UnbilledMetronomeDraftInvoice, src.stripeAccountId, src.liveMode, src.customerId, batchTimestamp))
     }
 
     val unbilledInvoiceItemSources = await(invoiceItemService.getAllUnbilledInvoiceItemSources())
@@ -153,6 +162,7 @@ class ProcessTransactionWorker @Inject() (
       case Transaction.Type.UnbilledUsageSubscriptionItem => makeProcessUnbilledUsageSubscriptionItem(transaction)
       case Transaction.Type.StandaloneCustomerBalanceTransaction => makeProcessStandaloneCustomerBalanceTransaction(transaction)
       case Transaction.Type.StandaloneCreditBalanceTransaction => makeProcessStandaloneCreditBalanceTransaction(transaction)
+      case Transaction.Type.UnbilledMetronomeDraftInvoice => makeProcessUnbilledMetronomeDraftInvoice(transaction)
     }
   }
 
@@ -189,6 +199,18 @@ class ProcessTransactionWorker @Inject() (
     Some(ProcessUnbilledUsageSubscriptionItem(
       transaction = transaction,
       subscriptionItem = subscriptionItemOpt.get
+    ))
+  }
+
+  private def makeProcessUnbilledMetronomeDraftInvoice(transaction: Transaction): Option[ProcessTransaction] = {
+    val draftInvoiceOpt = await(metronomeDraftInvoiceService.getRichById(transaction.id))
+    if (draftInvoiceOpt.isEmpty) {
+      return None
+    }
+
+    Some(ProcessMetronomeDraftInvoice(
+      transaction = transaction,
+      invoice = draftInvoiceOpt.get
     ))
   }
 
@@ -251,6 +273,10 @@ class ProcessTransactionWorker @Inject() (
       exchangeRateService,
       "usd"
     )
+    val metronomeInvoice = await(metronomeInvoiceService.getRichByBillingProviderInvoiceId(
+      billingProviderInvoiceId = invoice.base.id,
+      billingProviderType = BillingProviderType.STRIPE,
+    ))
 
     Some(ProcessInvoice(
       transaction = transaction,
@@ -269,7 +295,8 @@ class ProcessTransactionWorker @Inject() (
           )
         },
         finalizedAtExchangeRate = Some(finalizedAtExchangeRate),
-      )
+      ),
+      metronomeInvoice = metronomeInvoice,
     ))
   }
 
@@ -295,6 +322,7 @@ class ProcessTransactionWorker @Inject() (
       case Transaction.Type.UnbilledUsageSubscriptionItem => revenue
       case Transaction.Type.StandaloneCustomerBalanceTransaction => contractLiability
       case Transaction.Type.StandaloneCreditBalanceTransaction => contractLiability
+      case Transaction.Type.UnbilledMetronomeDraftInvoice => revenue
     }
 
     val actions = DBIO.seq(
@@ -343,5 +371,6 @@ class ProcessTransactionWorker @Inject() (
         case Some("debit") => s"${formatAmount(-con.creditBalanceTransaction.base.debitAmount.get, con.creditBalanceTransaction.base.debitCurrency.get, false)} $label credit balance"
         case _ => throw new RuntimeException(s"Unexpected credit balance transaction type: ${con.creditBalanceTransaction.base.`type`}")
       }
+    case con: ProcessMetronomeDraftInvoice => con.transaction.id
   }
 }

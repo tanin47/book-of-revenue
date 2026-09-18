@@ -42,6 +42,7 @@ object JournalEntry {
       Disputes,
       Fees,
       Loss,
+      MetronomeCreditBalance,
       OutOfBandAssets,
       PaidCreditGrants,
       PaidCreditGrantContraAsset,
@@ -70,6 +71,7 @@ object JournalEntry {
         case Fees => AccountCategory.Expense
         case Loss => AccountCategory.Expense
         case OutOfBandAssets => AccountCategory.Asset
+        case MetronomeCreditBalance => AccountCategory.ContractLiability
         case PaidCreditGrants => AccountCategory.ContractLiability
         case PaidCreditGrantContraAsset => AccountCategory.ContraAsset
         case PromotionalCreditGrants => AccountCategory.ContractLiability
