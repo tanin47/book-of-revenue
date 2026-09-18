@@ -5,7 +5,7 @@ Book of Revenue
 [![Test](https://github.com/tanin47/book-of-revenue/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/tanin47/book-of-revenue/actions/workflows/test.yml)
 [![Docker Pulls](https://img.shields.io/docker/pulls/tanin47/book-of-revenue)](https://hub.docker.com/r/tanin47/book-of-revenue)
 
-_Book of Revenue (BOR)_ is an open-source revenue recognition and analytics for Stripe. Built by ex-Stripe engineer.
+_Book of Revenue (BOR)_ is an open-source revenue recognition and analytics for Stripe and Metronome. Built by ex-Stripe engineer.
 
 It is a drop-in replacement for Stripe Revenue Recognition and offers revenue analytics that are aligned with the accounting standards.
 
@@ -20,6 +20,7 @@ __Key Features:__
 * __Near-Real-Time Data:__ Provides continuous, up-to-date visibility into your financial health. The current latency is ~45 minutes.
 * __Fully Auditable:__ Maintains audit-ready precision with full visibility into every transaction's journal entries, from executive summaries to individual line items.
 * __Customizable (coming soon!):__ Supports powerful custom revenue allocation rules, chart of accounts (COA) mapping, service period overrides, transaction exclusions, and date overrides (e.g. void date, uncollectible date).
+* __Native Metronome integration:__ Combines your Metronome and Stripe data into one set of accurate reports and analytics, updated daily — so usage and billing finally line up in the same numbers.
 
 __Comprehensive Reporting:__
 * Net revenue (i.e. monthly recognized revenue)
@@ -178,6 +179,13 @@ __<u>Let BOR manage its own Postgres on persistent disk</u>__
 5. Follow the instructions to set up the app domain and the data directory path in the `.env` file
 6. Visit `http://APP_DOMAIN` (not https) to set up an SSL certificate with Let's Encrypt
 7. After setting up the SSL certificate, you will be asked to register with the username, password, and a Stripe API key.
+
+
+### Metronome setup
+
+You'll need to contact Metronome (`solutions@metronome.com`) to set up the data export to BOR's postgres.
+
+Please see [this guide](https://docs.metronome.com/guides/reporting-insights/data-export/overview)
 
 
 Analytics and tracking
