@@ -58,6 +58,11 @@ case class ProcessInvoiceLineItemComponent(
           stripeInvoiceItemId = invoiceLineItem.invoiceItem.map(_.base.id),
           stripeProductId = invoiceLineItem.price.map(_.base.productId),
           stripePriceId = invoiceLineItem.base.priceId,
+          metronomeCustomerId = metronomeInvoice.flatMap(_.base.customerId),
+          metronomeProductId = metronomeLineItem.flatMap(_.productId),
+          metronomeContractId = metronomeInvoice.flatMap(_.base.contractId),
+          metronomeInvoiceId = metronomeInvoice.map(_.base.id),
+          metronomeLineItemId = metronomeLineItem.map(_.id),
           stripeAccountId = transaction.stripeAccountId,
           liveMode = transaction.liveMode,
           transactionId = transaction.id,
@@ -124,6 +129,11 @@ case class ProcessInvoiceLineItemComponent(
       stripeCreditNoteLineItemId = creditNoteLineItemId,
       stripeProductId = invoiceLineItem.price.map(_.base.productId),
       stripePriceId = invoiceLineItem.base.priceId,
+      metronomeCustomerId = metronomeInvoice.flatMap(_.base.customerId),
+      metronomeProductId = metronomeLineItem.flatMap(_.productId),
+      metronomeContractId = metronomeInvoice.flatMap(_.base.contractId),
+      metronomeInvoiceId = metronomeInvoice.map(_.base.id),
+      metronomeLineItemId = metronomeLineItem.map(_.id),
       createdAt = syncedAt
     )
   }
@@ -1081,6 +1091,11 @@ case class ProcessInvoice(
       stripeCreditNoteLineItemId = None,
       stripeProductId = None,
       stripePriceId = None,
+      metronomeCustomerId = metronomeInvoice.flatMap(_.base.customerId),
+      metronomeProductId = None,
+      metronomeContractId = metronomeInvoice.flatMap(_.base.contractId),
+      metronomeInvoiceId = metronomeInvoice.map(_.base.id),
+      metronomeLineItemId = None,
       createdAt = syncedAt
     )
   }

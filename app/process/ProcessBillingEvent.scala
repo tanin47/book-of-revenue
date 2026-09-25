@@ -268,6 +268,11 @@ object ProcessBillingEvent {
         stripeCreditNoteLineItemId = reference.creditNoteLineItemId,
         stripeProductId = None,
         stripePriceId = None,
+        metronomeCustomerId = None,
+        metronomeProductId = None,
+        metronomeContractId = None,
+        metronomeInvoiceId = None,
+        metronomeLineItemId = None,
         createdAt = null
       )
     }
@@ -1445,6 +1450,11 @@ object ProcessBillingEvent {
       stripeCreditNoteLineItemId = reference.creditNoteLineItemId,
       stripeProductId = None,
       stripePriceId = None,
+      metronomeCustomerId = None,
+      metronomeProductId = None,
+      metronomeContractId = None,
+      metronomeInvoiceId = None,
+      metronomeLineItemId = None,
       createdAt = null
     )
   }

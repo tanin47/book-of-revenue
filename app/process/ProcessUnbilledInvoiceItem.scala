@@ -96,6 +96,11 @@ object ProcessUnbilledInvoiceItem {
       stripeCreditNoteLineItemId = None,
       stripeProductId = None,
       stripePriceId = None,
+      metronomeCustomerId = None,
+      metronomeProductId = None,
+      metronomeContractId = None,
+      metronomeInvoiceId = None,
+      metronomeLineItemId = None,
       createdAt = null
     )
   }
@@ -141,6 +146,11 @@ case class ProcessUnbilledInvoiceItem(
           stripeInvoiceItemId = Some(invoiceItem.base.id),
           stripeProductId = invoiceItem.base.productId,
           stripePriceId = invoiceItem.base.priceId,
+          metronomeCustomerId = None,
+          metronomeProductId = None,
+          metronomeContractId = None,
+          metronomeInvoiceId = None,
+          metronomeLineItemId = None,
           createdAt = syncedAt
         )
       }

@@ -282,7 +282,19 @@ CREATE TABLE metronome.breakdowns_draft_line_items
 CREATE UNIQUE INDEX metronome__breakdowns_draft_line_items__id__snapshot_timestamp ON metronome.breakdowns_draft_line_items (id, snapshot_timestamp);
 CREATE INDEX metronome__breakdowns_draft_line_items__invoice_breakdown_id ON metronome.breakdowns_draft_line_items (invoice_breakdown_id);
 
+ALTER TABLE journal_entry ADD COLUMN metronome_customer_id TEXT;
+ALTER TABLE journal_entry ADD COLUMN metronome_product_id TEXT;
+ALTER TABLE journal_entry ADD COLUMN metronome_contract_id TEXT;
+ALTER TABLE journal_entry ADD COLUMN metronome_invoice_id TEXT;
+ALTER TABLE journal_entry ADD COLUMN metronome_line_item_id TEXT;
+
 # --- !Downs
+
+ALTER TABLE journal_entry DROP COLUMN metronome_customer_id;
+ALTER TABLE journal_entry DROP COLUMN metronome_product_id;
+ALTER TABLE journal_entry DROP COLUMN metronome_contract_id;
+ALTER TABLE journal_entry DROP COLUMN metronome_invoice_id;
+ALTER TABLE journal_entry DROP COLUMN metronome_line_item_id;
 
 DROP TABLE metronome.credit_type;
 DROP TABLE metronome.customer;

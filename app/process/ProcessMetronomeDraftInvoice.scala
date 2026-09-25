@@ -71,6 +71,11 @@ case class ProcessMetronomeDraftInvoice(
               stripeCreditNoteLineItemId = None,
               stripeProductId = None,
               stripePriceId = None,
+              metronomeCustomerId = invoice.base.customerId,
+              metronomeProductId = lineItem.productId,
+              metronomeContractId = invoice.base.contractId,
+              metronomeInvoiceId = Some(invoice.base.id),
+              metronomeLineItemId = Some(lineItem.id),
               createdAt = syncedAt
             )
           }

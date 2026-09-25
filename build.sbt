@@ -23,7 +23,7 @@ scalacOptions ++= Seq(
   // Also, silence the warnings on the test code.
   "-Wconf:msg=.*unused value of type.*&src=(target|test)/.*:silent",
   "-Wconf:msg=.*unused import.*&src=target/.*:silent",
-  "-Wunused:imports" // Warn for unused imports.
+//  "-Wunused:imports" // Warn for unused imports.
 )
 
 libraryDependencies ++= Seq(
@@ -51,8 +51,33 @@ libraryDependencies ++= Seq(
   "org.bouncycastle" % "bcpkix-jdk18on" % "1.85",
   "org.shredzone.acme4j" % "acme4j-client" % "5.1.0",
   "org.apache.commons" % "commons-text" % "1.15.0",
+  "org.jooq" % "jooq" % "3.21.8",
+  "org.jooq" % "jooq-scala_3.5" % "3.21.8",
   "org.seleniumhq.selenium" % "selenium-java" % "4.48.0" % Test
 )
+
+Compile / sourceGenerators += Def.task {
+  val codeGenFile = (baseDirectory.value / "project" / "JooqCodeGenScript.scala").get
+  val inputFiles = (baseDirectory.value / "conf" / "evolutions" / "default" ** "*.sql").get.toSet
+  val outputDir = baseDirectory.value / "app" / "jooq"
+  val cacheDir = streams.value.cacheDirectory / "jooq-cached"
+  val cachedGenerator = FileFunction.cached(cacheDir) { _ =>
+    if (sys.env.get("CI").contains("true")) {
+      println("Skipping JOOQ code generation on CI")
+    } else {
+      IO.delete(outputDir)
+      IO.createDirectory(outputDir)
+      JooqCodeGenScript.main(Array(outputDir.getAbsolutePath))
+    }
+
+    (outputDir ** "*.scala").get.toSet
+  }
+
+  cachedGenerator(inputFiles ++ codeGenFile).toSeq
+}.taskValue
+
+// The below is needed to make IntelliJ recognize the JOOQ generated sources.
+Compile / managedSourceDirectories += (Compile / sourceManaged).value / "jooq"
 
 ThisBuild / scalafixDependencies += "io.github.tanin47" %% "scalafix-forbidden-symbol" % "1.0.0"
 

@@ -2,7 +2,7 @@ package services
 
 import database.models.JournalEntry
 import database.models.JournalEntry.AccountCategory
-import database.services.JournalEntryService.{ColumnType, SortDirection, getValue}
+import database.services.JournalEntryService.{ColumnType, SortDirection, getMappedJournalEntries, getValue}
 import framework.Helpers.{escapeCsv, formatCsvValue}
 import framework.{Instant, Jsonable, PeriodColumn, PlayConfig}
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
