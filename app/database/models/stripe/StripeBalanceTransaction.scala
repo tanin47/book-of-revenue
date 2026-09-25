@@ -59,5 +59,5 @@ class StripeBalanceTransactionTable(tag: Tag) extends Table[StripeBalanceTransac
     source,
     createdAt,
     syncedAt
-  ).<>((StripeBalanceTransaction.apply _).tupled, StripeBalanceTransaction.unapply)
+  ).<>((StripeBalanceTransaction.apply).tupled, StripeBalanceTransaction.unapply)
 }

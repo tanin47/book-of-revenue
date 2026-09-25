@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.stripe.{StripeDiscount, StripeDiscountTable, RichStripeDiscount}
+import database.models.stripe.{RichStripeDiscount, StripeDiscount, StripeDiscountTable}
 import framework.{BaseDbService, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -81,7 +81,7 @@ class DiscountService @Inject() (
     getByIds(ids).flatMap(hydrate)
   }
 
-  private[this] def hydrate(items: Seq[StripeDiscount]): Future[Seq[RichStripeDiscount]] = {
+  private def hydrate(items: Seq[StripeDiscount]): Future[Seq[RichStripeDiscount]] = {
     couponService.getByIds(items.flatMap(_.couponId).toSet).map { coupons =>
       val couponsById = coupons.map { c => c.id -> c }.toMap
 

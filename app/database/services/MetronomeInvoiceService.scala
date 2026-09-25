@@ -1,7 +1,12 @@
 package database.services
 
 import database.models.metronome.MetronomeInvoice.BillingProviderType
-import database.models.metronome.{MetronomeInvoice, MetronomeInvoiceTable, RichMetronomeBreakdownInvoice, RichMetronomeInvoice}
+import database.models.metronome.{
+  MetronomeInvoice,
+  MetronomeInvoiceTable,
+  RichMetronomeBreakdownInvoice,
+  RichMetronomeInvoice
+}
 import framework.BaseDbService
 import play.api.db.slick.DatabaseConfigProvider
 
@@ -68,7 +73,7 @@ class MetronomeInvoiceService @Inject() (
     getByBillingProviderInvoiceId(billingProviderInvoiceId, billingProviderType).flatMap { item => hydrate(item.toList) }.map(_.headOption)
   }
 
-  private[this] def hydrate(items: List[MetronomeInvoice]): Future[Seq[RichMetronomeInvoice]] = {
+  private def hydrate(items: List[MetronomeInvoice]): Future[Seq[RichMetronomeInvoice]] = {
     val invoiceIds = items.map(_.id).toSet
 
     for {
@@ -93,7 +98,7 @@ class MetronomeInvoiceService @Inject() (
 
   // An invoice can have several breakdown rows (one per breakdown window, re-exported on every snapshot),
   // so the most recently snapshotted window is the one carried on RichMetronomeInvoice.
-  private[this] def latestFirst(breakdown: RichMetronomeBreakdownInvoice): (Option[Long], Option[Long], String) = {
+  private def latestFirst(breakdown: RichMetronomeBreakdownInvoice): (Option[Long], Option[Long], String) = {
     (
       breakdown.base.snapshotTimestamp.map(_.toEpochMilli),
       breakdown.base.breakdownStartTimestamp.map(_.toEpochMilli),

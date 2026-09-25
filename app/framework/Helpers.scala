@@ -1,15 +1,14 @@
 package framework
 
-import background.{ProcessTransactionWorkerRequest, StripeEventImporterRequest, StripeImporterRequest, StripeMeterEventSummaryImporterRequest, StripeNormalizer, StripeNormalizerRequest}
+import background.*
 import database.models.JournalEntry
 import database.services.JournalEntryService
 import database.services.JournalEntryService.ColumnType
 import givers.form.*
-import org.jobrunr.scheduling.{JobRequestScheduler, JobScheduler}
+import org.jobrunr.scheduling.JobRequestScheduler
 import play.api.libs.json.{JsDefined, JsLookupResult, JsString, JsValue}
 
 import java.time.{LocalTime, YearMonth, ZoneId}
-import java.time.temporal.TemporalAdjusters
 import java.util.concurrent.{Executors, TimeUnit}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise}
@@ -27,7 +26,7 @@ object Helpers {
   }
 
   def makeValidationException(key: String, args: String*): ValidationException = {
-    new ValidationException(Seq(new ValidationMessage(key, args: _*)))
+    new ValidationException(Seq(new ValidationMessage(key, args*)))
   }
 
   def constantForm[T](constant: T): Mapping[T] = new Mapping[T] {
@@ -55,7 +54,7 @@ object Helpers {
 
   def await[T](future: Future[T]): T = Await.result(future, Duration.Inf)
 
-  private[this] val scheduler = Executors.newSingleThreadScheduledExecutor()
+  private val scheduler = Executors.newSingleThreadScheduledExecutor()
   def sleep(ms: Long): Future[Unit] = {
     val promise = Promise[Unit]()
     scheduler.schedule(

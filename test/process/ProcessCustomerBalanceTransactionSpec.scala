@@ -1,13 +1,12 @@
 package process
 
 import base.Base
-import framework.NetAmount
 import database.models.*
 import database.models.JournalEntry.Account.*
-import framework.Instant
+import framework.{Instant, NetAmount}
 
 class ProcessCustomerBalanceTransactionSpec extends Base {
-  private[this] val createdAt = Instant.parse("2026-01-15T00:00:00Z")
+  private val createdAt = Instant.parse("2026-01-15T00:00:00Z")
 
   describe("manual adjustments") {
     it("books a credit to the customer balance") {

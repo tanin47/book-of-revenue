@@ -123,5 +123,5 @@ class StripeInvoiceTable(tag: Tag) extends Table[StripeInvoice](tag, Some("strip
     endingBalance,
     status,
     syncedAt
-  ).<>((StripeInvoice.apply _).tupled, StripeInvoice.unapply)
+  ).<>((StripeInvoice.apply).tupled, StripeInvoice.unapply)
 }

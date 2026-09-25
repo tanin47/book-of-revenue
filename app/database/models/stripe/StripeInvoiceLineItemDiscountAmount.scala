@@ -28,5 +28,5 @@ class StripeInvoiceLineItemDiscountAmountTable(tag: Tag) extends Table[StripeInv
     invoiceLineItemId,
     amount,
     discountId
-  ).<>((StripeInvoiceLineItemDiscountAmount.apply _).tupled, StripeInvoiceLineItemDiscountAmount.unapply)
+  ).<>((StripeInvoiceLineItemDiscountAmount.apply).tupled, StripeInvoiceLineItemDiscountAmount.unapply)
 }

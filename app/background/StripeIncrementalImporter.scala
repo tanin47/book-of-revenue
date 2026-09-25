@@ -5,7 +5,6 @@ import database.services.*
 import framework.Helpers.await
 import org.jobrunr.jobs.lambdas.JobRequest
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.{JsObject, Json}
 import play.api.{Environment, Logger, Mode, Play}
 import services.StripeService
 
@@ -38,7 +37,7 @@ class StripeIncrementalImporter @Inject() (
   trackedExceptionService: TrackedExceptionService,
 )(implicit ec: ExecutionContext)
   extends BaseJobRequestHandler[StripeIncrementalImporterRequest](trackedExceptionService) with StripeBaseImporter {
-  private[this] val logger = Logger(getClass)
+  private val logger = Logger(getClass)
 
   def run2(req: StripeIncrementalImporterRequest): Unit = {
     val accounts = await(stripeAccountService.getAll())

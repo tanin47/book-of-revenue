@@ -69,9 +69,9 @@ case class FakeWSRequestHolder(
 
   override def withCookies(cookie: WSCookie*): Self = copy(cookies = this.cookies ++ cookie.toSeq)
 
-  override def addCookies(cookies: WSCookie*): Self = withCookies(this.cookies ++ cookies: _*)
+  override def addCookies(cookies: WSCookie*): Self = withCookies(this.cookies ++ cookies*)
 
-  override def withHeaders(hdrs: (String, String)*): Self = withHttpHeaders(hdrs: _*)
+  override def withHeaders(hdrs: (String, String)*): Self = withHttpHeaders(hdrs*)
 
   override def withHttpHeaders(hdrs: (String, String)*): Self = {
     val headers = hdrs.foldLeft(Map.empty[String, Seq[String]])((m, hdr) =>
@@ -81,7 +81,7 @@ case class FakeWSRequestHolder(
     copy(headers = headers)
   }
 
-  override def withQueryString(parameters: (String, String)*): Self = withQueryStringParameters(parameters: _*)
+  override def withQueryString(parameters: (String, String)*): Self = withQueryStringParameters(parameters*)
 
   override def withQueryStringParameters(parameters: (String, String)*): Self = copy(
     queryString = parameters.foldLeft(Map.empty[String, Seq[String]]) { case (m, (k, v)) =>
@@ -132,7 +132,7 @@ case class FakeWSRequestHolder(
 
   private def executeResult(): Future[Result] = {
     logger.debug(s"calling $method $url")
-    def fakeRequest = FakeRequest(method, urlWithQueryParams()).withHeaders(headersSeq(): _*).withBody(body)
+    def fakeRequest = FakeRequest(method, urlWithQueryParams()).withHeaders(headersSeq()*).withBody(body)
 
     try {
       routes
@@ -172,12 +172,12 @@ case class FakeWSRequestHolder(
             Results
               .Status(resp.status)
               .apply(resp.body)
-              .withHeaders(resp.headers.view.mapValues(_.head).toSeq: _*)
+              .withHeaders(resp.headers.view.mapValues(_.head).toSeq*)
           }
     }
   }
 
-  private def sign(req: FakeRequest[_]): FakeRequest[_] = auth match {
+  private def sign(req: FakeRequest[?]): FakeRequest[?] = auth match {
     case None                                           => req
     case Some((username, password, WSAuthScheme.BASIC)) =>
       val encoded = new String(Base64.getMimeEncoder().encode(s"$username:$password".getBytes("UTF-8")), "UTF-8")
@@ -189,7 +189,7 @@ case class FakeWSRequestHolder(
       """.stripMargin)
   }
 
-  private def applyRequestTimeout[T](req: FakeRequest[_])(future: Future[T]) = requestTimeout match {
+  private def applyRequestTimeout[T](req: FakeRequest[?])(future: Future[T]) = requestTimeout match {
     case Some(delay) if delay.isFinite =>
       timeoutProvider.timeout(
         future = future,
@@ -199,7 +199,7 @@ case class FakeWSRequestHolder(
     case _ => future
   }
 
-  private def requestBodySource: Source[ByteString, _] = body match {
+  private def requestBodySource: Source[ByteString, ?] = body match {
     case EmptyBody           => Source.empty
     case InMemoryBody(bytes) => Source.single(bytes)
     case SourceBody(source)  => source
@@ -228,13 +228,13 @@ case class FakeWSRequestHolder(
         .mkString("?", "&", "")
     }
 
-  override def patch(body: Source[Part[Source[ByteString, _]], _]): Future[Response] =
+  override def patch(body: Source[Part[Source[ByteString, ?]], ?]): Future[Response] =
     withBody(body).execute("PATCH")
 
-  override def post(body: Source[Part[Source[ByteString, _]], _]): Future[Response] =
+  override def post(body: Source[Part[Source[ByteString, ?]], ?]): Future[Response] =
     withBody(body).execute("POST")
 
-  override def put(body: Source[Part[Source[ByteString, _]], _]): Future[Response] =
+  override def put(body: Source[Part[Source[ByteString, ?]], ?]): Future[Response] =
     withBody(body).execute("PUT")
 
   override def get(): Future[Response] = execute("GET")

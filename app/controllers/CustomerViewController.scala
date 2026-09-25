@@ -2,14 +2,14 @@ package controllers
 
 import database.models.JournalEntry
 import database.models.stripe.StripeCustomer
-import database.services.{CustomerService, ExportedFileService}
 import database.services.JournalEntryService.SortDirection
+import database.services.{CustomerService, ExportedFileService}
 import framework.*
 import framework.Helpers.{constantForm, enumForm}
 import givers.form.Form
 import givers.form.Mappings.*
 import play.api.libs.json.*
-import play.api.mvc.{Action, AnyContent, Result}
+import play.api.mvc.{Action, AnyContent}
 import services.{AccountChangeByMonthService, ContractualLiabilityService, NetRevenueService}
 
 import javax.inject.*
@@ -123,7 +123,7 @@ class CustomerViewController @Inject() (
     }
   }
 
-  private[this] def getCustomer(customerId: String)(implicit req: AuthRequest[_]): Future[(Option[String], Option[StripeCustomer])] = {
+  private def getCustomer(customerId: String)(implicit req: AuthRequest[?]): Future[(Option[String], Option[StripeCustomer])] = {
     val sanitizedCustomerId = Some(customerId).filter(_ != "empty")
     for {
       customer <- sanitizedCustomerId match {

@@ -357,7 +357,7 @@ class StripeService @Inject() (
     get("/v1/account", apiKey)
   }
 
-  private[this] def get(
+  private def get(
     path: String,
     apiKey: String,
     expands: Seq[String] = Seq.empty
@@ -377,7 +377,7 @@ class StripeService @Inject() (
       }
   }
 
-  private[this] def list(
+  private def list(
     apiKey: String,
     path: String,
     params: Map[String, String],
@@ -411,13 +411,13 @@ class StripeService @Inject() (
       }
   }
 
-  private[this] def makeWs(path: String, apiKey: String): WSRequest = {
+  private def makeWs(path: String, apiKey: String): WSRequest = {
     ws
       .url(s"https://api.stripe.com$path")
       .withAuth(apiKey, "", WSAuthScheme.BASIC)
   }
 
-  private[this] def retry[T](fn: => Future[T]): Future[T] = {
+  private def retry[T](fn: => Future[T]): Future[T] = {
     def wrapped(retryCount: Int): Future[T] = {
       if (tokenBucket.tryConsume(1)) {
         fn.recoverWith {

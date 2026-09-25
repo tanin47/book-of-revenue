@@ -22,5 +22,5 @@ class Http01ChallengeEntryTable(tag: Tag) extends Table[Http01ChallengeEntry](ta
     token,
     content,
     createdAt
-  ).<>((Http01ChallengeEntry.apply _).tupled, Http01ChallengeEntry.unapply)
+  ).<>((Http01ChallengeEntry.apply).tupled, Http01ChallengeEntry.unapply)
 }

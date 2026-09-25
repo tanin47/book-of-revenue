@@ -38,5 +38,5 @@ class StripePriceTierTable(tag: Tag) extends Table[StripePriceTier](tag, Some("s
     unitAmount,
     upTo,
     syncedAt
-  ).<>((StripePriceTier.apply _).tupled, StripePriceTier.unapply)
+  ).<>((StripePriceTier.apply).tupled, StripePriceTier.unapply)
 }

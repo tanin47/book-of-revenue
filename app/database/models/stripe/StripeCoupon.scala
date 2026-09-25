@@ -36,5 +36,5 @@ class StripeCouponTable(tag: Tag) extends Table[StripeCoupon](tag, Some("stripe"
     amountOff,
     currency,
     percentOff
-  ).<>((StripeCoupon.apply _).tupled, StripeCoupon.unapply)
+  ).<>((StripeCoupon.apply).tupled, StripeCoupon.unapply)
 }

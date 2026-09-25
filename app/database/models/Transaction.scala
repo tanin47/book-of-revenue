@@ -2,8 +2,8 @@ package database.models
 
 import database.models.metronome.RichMetronomeDraftInvoice
 import database.models.stripe.*
-import framework.{Instant, Jsonable}
 import framework.PostgresProfile.api.*
+import framework.{Instant, Jsonable}
 import play.api.libs.json.{JsObject, Json}
 import slick.lifted.{ProvenShape, Rep}
 
@@ -127,5 +127,5 @@ class TransactionTable(tag: Tag) extends Table[Transaction](tag, "transaction") 
     processedAt,
     syncedAt,
     batchTimestamp
-  ).<>((Transaction.apply _).tupled, Transaction.unapply)
+  ).<>((Transaction.apply).tupled, Transaction.unapply)
 }

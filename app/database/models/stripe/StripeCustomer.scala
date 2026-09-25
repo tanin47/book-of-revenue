@@ -35,5 +35,5 @@ class StripeCustomerTable(tag: Tag) extends Table[StripeCustomer](tag, Some("str
     name,
     email,
     syncedAt
-  ).<>((StripeCustomer.apply _).tupled, StripeCustomer.unapply)
+  ).<>((StripeCustomer.apply).tupled, StripeCustomer.unapply)
 }

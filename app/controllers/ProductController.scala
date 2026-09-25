@@ -9,7 +9,7 @@ import givers.form.Form
 import givers.form.Mappings.*
 import play.api.libs.json.*
 import play.api.mvc.{Action, AnyContent, Result}
-import services.{ContractualLiabilityService, MonthlyGrrService, MonthlyNrrService, NetRevenueService}
+import services.{ContractualLiabilityService, NetRevenueService}
 
 import javax.inject.*
 import scala.concurrent.{ExecutionContext, Future}
@@ -128,7 +128,7 @@ class ProductController @Inject() (
     exportContractualLiabilities(Seq(JournalEntry.Account.DeferredRevenue), "deferred-revenue")
   }
 
-  private[this] def loadContractualLiabilities(accounts: Seq[JournalEntry.Account])(implicit req: AuthRequest[_]): Future[Result] = {
+  private def loadContractualLiabilities(accounts: Seq[JournalEntry.Account])(implicit req: AuthRequest[?]): Future[Result] = {
     val data = LOAD_CONTRACTUAL_LIABILITY_FORM.bindFromRequest().get
 
     for {
@@ -151,7 +151,7 @@ class ProductController @Inject() (
     }
   }
 
-  private[this] def exportContractualLiabilities(accounts: Seq[JournalEntry.Account], partFileName: String)(implicit req: AuthRequest[_]): Future[Result] = {
+  private def exportContractualLiabilities(accounts: Seq[JournalEntry.Account], partFileName: String)(implicit req: AuthRequest[?]): Future[Result] = {
     val data = LOAD_CONTRACTUAL_LIABILITY_FORM.bindFromRequest().get
 
     for {

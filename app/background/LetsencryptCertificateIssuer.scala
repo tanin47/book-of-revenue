@@ -3,16 +3,15 @@ package background
 import database.services.{FileService, Http01ChallengeEntryService, TrackedExceptionService}
 import framework.Helpers.await
 import framework.PlayConfig
-import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
-import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
 import org.bouncycastle.openssl.jcajce.{JcaPEMKeyConverter, JcaPEMWriter}
-import org.jobrunr.jobs.lambdas.{JobRequest, JobRequestHandler}
+import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
+import org.jobrunr.jobs.lambdas.JobRequest
 import org.shredzone.acme4j.challenge.Http01Challenge
 import org.shredzone.acme4j.util.KeyPairUtils
 import org.shredzone.acme4j.{AccountBuilder, Authorization, Session, Status}
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.{Application, Environment, Logger, Mode, Play}
+import play.api.*
 
 import java.io.{StringReader, StringWriter}
 import java.security.{KeyPair, MessageDigest, PrivateKey, PublicKey}

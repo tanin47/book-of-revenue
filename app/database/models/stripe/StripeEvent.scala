@@ -28,5 +28,5 @@ class StripeEventTable(tag: Tag) extends Table[StripeEvent](tag, Some("stripe"),
     rawJson,
     processedCount,
     createdAt
-  ).<>((StripeEvent.apply _).tupled, StripeEvent.unapply)
+  ).<>((StripeEvent.apply).tupled, StripeEvent.unapply)
 }

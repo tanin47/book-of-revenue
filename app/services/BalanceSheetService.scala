@@ -102,7 +102,7 @@ class BalanceSheetService @Inject() (
   import framework.PostgresProfile.api.*
 
 
-  private[this] def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
+  private def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
     if (sorts.isEmpty) {
       return sql"ORDER BY accounting_period ASC, category ASC, net_settlement_change DESC, account ASC"
     }
@@ -137,7 +137,7 @@ class BalanceSheetService @Inject() (
     makeSql(sql"ORDER BY ", joinSqls(sortClauses, sql", "))
   }
 
-  private[this] def makeSelectedColumns(params: Params): SQLActionBuilder = {
+  private def makeSelectedColumns(params: Params): SQLActionBuilder = {
     joinSqls(
       params.columns.map {
         case Column.AccountingPeriod => sql"accounting_period"
@@ -165,7 +165,7 @@ class BalanceSheetService @Inject() (
     )
   }
 
-  private[this] def getResultColumns(params: Params): Seq[ResultColumn] = {
+  private def getResultColumns(params: Params): Seq[ResultColumn] = {
     params.columns.map { column =>
       ResultColumn(
         id = column,
@@ -196,7 +196,7 @@ class BalanceSheetService @Inject() (
     }
   }
 
-  private[this] def makeGroupKeys(params: Params): Seq[String] = {
+  private def makeGroupKeys(params: Params): Seq[String] = {
     val base = Seq("accounting_period", "account")
     val extraGroupKeys = params.groupBy
       .map {
@@ -460,7 +460,7 @@ class BalanceSheetService @Inject() (
     )
   }
 
-  private[this] def makeListSql(stripeAccountId: String, liveMode: Boolean, params: Params): SQLActionBuilder = {
+  private def makeListSql(stripeAccountId: String, liveMode: Boolean, params: Params): SQLActionBuilder = {
     makeSql(
       makeBaseWithSqlWithLookupColumns(stripeAccountId, liveMode, params),
       sql"""

@@ -5,7 +5,6 @@ import database.models.JournalEntry.AccountCategory
 import database.services.JournalEntryService.{ColumnType, SortDirection, getValue}
 import framework.Helpers.{escapeCsv, formatCsvValue}
 import framework.{Instant, Jsonable, PeriodColumn, PlayConfig}
-import givers.form.{BindContext, Mapping, UnbindContext}
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import play.api.libs.json.*
 import process.Helpers.{generatePeriods, getNextAccountingPeriod}
@@ -13,12 +12,8 @@ import slick.jdbc.{GetResult, JdbcProfile, SQLActionBuilder}
 
 import java.io.{BufferedWriter, File, FileWriter}
 import java.nio.charset.StandardCharsets
-import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
-import java.time.{LocalDate, ZoneOffset}
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
 
 object RevenueWaterfallService {
   enum Column extends Enum[Column] {
@@ -92,7 +87,7 @@ class RevenueWaterfallService @Inject() (
   import RevenueWaterfallService.*
   import framework.PostgresProfile.api.*
 
-  private[this] def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
+  private def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
     if (sorts.isEmpty) {
       return sql"ORDER BY booked_accounting_period ASC"
     }
@@ -121,7 +116,7 @@ class RevenueWaterfallService @Inject() (
 
     makeSql(sql"ORDER BY ", joinSqls(sortClauses, sql", "))
   }
-  private[this] def makeGroupByClause(params: Params): SQLActionBuilder = {
+  private def makeGroupByClause(params: Params): SQLActionBuilder = {
     val baseGroupKey = sql"GROUP BY booked_accounting_period"
     val extraGroupKey = params.groupBy match {
       case GroupBy.Product => sql", product_id"
@@ -134,7 +129,7 @@ class RevenueWaterfallService @Inject() (
     makeSql(baseGroupKey, extraGroupKey)
   }
 
-  private[this] def makeSelectedColumns(resultColumns: Seq[ResultColumn]): SQLActionBuilder = {
+  private def makeSelectedColumns(resultColumns: Seq[ResultColumn]): SQLActionBuilder = {
     joinSqls(
       resultColumns.map { column =>
         column.id match {
@@ -295,7 +290,7 @@ class RevenueWaterfallService @Inject() (
       }
   }
 
-  private[this] def getResultColumns(stripeAccountId: String, liveMode: Boolean, params: Params): Future[Seq[ResultColumn]] = {
+  private def getResultColumns(stripeAccountId: String, liveMode: Boolean, params: Params): Future[Seq[ResultColumn]] = {
     for {
       minMaxAccountPeriod <- getMinMaxAccountPeriod(stripeAccountId, liveMode, params)
     } yield {
@@ -362,7 +357,7 @@ class RevenueWaterfallService @Inject() (
       }
   }
 
-  private[this] def makeListSql(stripeAccountId: String, liveMode: Boolean, params: Params, resultColumns: Seq[ResultColumn]): SQLActionBuilder = {
+  private def makeListSql(stripeAccountId: String, liveMode: Boolean, params: Params, resultColumns: Seq[ResultColumn]): SQLActionBuilder = {
     makeSql(
       makeBaseSql(stripeAccountId, liveMode, params, resultColumns),
       sql"""

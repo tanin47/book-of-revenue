@@ -1,7 +1,7 @@
 package framework
 
 import givers.form.{BindContext, Mapping, UnbindContext}
-import play.api.libs.json.{JsDefined, JsLookupResult, JsObject, JsString, JsValue}
+import play.api.libs.json.{JsDefined, JsLookupResult, JsString, JsValue}
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, ZoneOffset}

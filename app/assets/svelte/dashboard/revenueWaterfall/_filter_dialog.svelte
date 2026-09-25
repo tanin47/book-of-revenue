@@ -1,10 +1,5 @@
 <script lang="ts" context="module">
-import {
-  type ColumnProperty,
-  type ColumnSelectionItem,
-  inPlaceSortColumnGroupBys, makeColumnGroupBys,
-  type Sort
-} from "../../common/table_models";
+import {type ColumnSelectionItem, makeColumnGroupBys, type Sort} from "../../common/table_models";
 
 export interface Params {
     periodStart: number

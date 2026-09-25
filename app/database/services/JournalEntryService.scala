@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{Transaction, JournalEntry, JournalEntryTable}
+import database.models.{JournalEntry, JournalEntryTable, Transaction}
 import framework.{Instant, Jsonable, PlayConfig}
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import play.api.libs.json.{JsObject, Json}
@@ -108,11 +108,11 @@ class JournalEntryService @Inject() (
 
   val query: TableQuery[JournalEntryTable] = TableQuery[JournalEntryTable]
 
-  def getCreateAction(items: Seq[JournalEntry]): DBIOAction[_, NoStream, Effect.Write] = {
+  def getCreateAction(items: Seq[JournalEntry]): DBIOAction[?, NoStream, Effect.Write] = {
     query ++= items
   }
 
-  def getDeleteByTransactionAction(transactionId: String, transactionType: Transaction.Type): DBIOAction[_, NoStream, Effect.Write] = {
+  def getDeleteByTransactionAction(transactionId: String, transactionType: Transaction.Type): DBIOAction[?, NoStream, Effect.Write] = {
     query.filter { q => q.transactionId === transactionId && q.transactionType === transactionType }.delete
   }
 
@@ -132,7 +132,7 @@ class JournalEntryService @Inject() (
     }
   }
 
-  private[this] def makeGroupByClause(params: Params): SQLActionBuilder = {
+  private def makeGroupByClause(params: Params): SQLActionBuilder = {
     val baseGroupKey = sql"GROUP BY currency, accounting_period, debit, credit"
     val extraGroupKey = params.groupBy match {
       case Some(GroupBy.Product) => sql", product_id"
@@ -145,7 +145,7 @@ class JournalEntryService @Inject() (
     makeSql(baseGroupKey, extraGroupKey)
   }
 
-  private[this] def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
+  private def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
     if (sorts.isEmpty) {
       return sql"ORDER BY accounting_period ASC, debit ASC, credit ASC, currency ASC"
     }
@@ -169,7 +169,7 @@ class JournalEntryService @Inject() (
     makeSql(sql"ORDER BY ", joinSqls(sortClauses, sql", "))
   }
 
-  private[this] def makeSelectedColumns(params: Params): SQLActionBuilder = {
+  private def makeSelectedColumns(params: Params): SQLActionBuilder = {
     joinSqls(
       params.columns.map {
         case Column.AccountingPeriod => sql"accounting_period"
@@ -214,7 +214,7 @@ class JournalEntryService @Inject() (
       .map { _ => () }
   }
 
-  private[this] def getResultColumns(params: Params): Seq[ResultColumn] = {
+  private def getResultColumns(params: Params): Seq[ResultColumn] = {
     params.columns.map { column =>
       ResultColumn(
         id = column,

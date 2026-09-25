@@ -2,7 +2,7 @@
 import {
   type ColumnGroupBy,
   type ColumnSelectionItem,
-  inPlaceSortColumnGroupBys, makeColumnGroupBys,
+  makeColumnGroupBys,
   type TableParams
 } from "../../common/table_models";
 

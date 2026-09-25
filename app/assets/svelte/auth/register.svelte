@@ -1,6 +1,6 @@
 <script lang="ts">
 import Button from '../common/_button.svelte'
-import {ValidationError, invokeOnEnter, post} from "../common/form";
+import {invokeOnEnter, post, ValidationError} from "../common/form";
 import ErrorPanel from '../common/form/_error_panel.svelte';
 import {onMount} from "svelte";
 

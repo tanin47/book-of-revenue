@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.stripe.{StripeDispute, StripeDisputeTable, RichStripeDispute}
+import database.models.stripe.{RichStripeDispute, StripeDispute, StripeDisputeTable}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -103,7 +103,7 @@ class DisputeService @Inject() (
     getByChargeIds(chargeIds).flatMap(hydrate)
   }
 
-  private[this] def hydrate(items: Seq[StripeDispute]): Future[Seq[RichStripeDispute]] = {
+  private def hydrate(items: Seq[StripeDispute]): Future[Seq[RichStripeDispute]] = {
     for {
       balanceTransactions <- balanceTransactionService.getByIds(items.flatMap(_.balanceTransactionIds).toSet)
     } yield {

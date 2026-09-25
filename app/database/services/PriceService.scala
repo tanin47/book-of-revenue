@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.stripe.{StripePrice, StripePriceTable, RichStripePrice}
+import database.models.stripe.{RichStripePrice, StripePrice, StripePriceTable}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -108,7 +108,7 @@ class PriceService @Inject() (
     getByIds(ids).flatMap { items => hydrate(items.toList) }
   }
 
-  private[this] def hydrate(items: List[StripePrice]): Future[Seq[RichStripePrice]] = {
+  private def hydrate(items: List[StripePrice]): Future[Seq[RichStripePrice]] = {
     for {
       tiers <- priceTierService.getByPriceIds(items.map(_.id).toSet)
       products <- productService.getByIds(items.map(_.productId).toSet)

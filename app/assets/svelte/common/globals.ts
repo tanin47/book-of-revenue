@@ -1,4 +1,4 @@
-import type {User, CurrentStripeAccount} from './models'
+import type {CurrentStripeAccount, User} from './models'
 
 // @ts-expect-error defined globally
 export const LOGGED_IN_USER: User | null = window.LOGGED_IN_USER

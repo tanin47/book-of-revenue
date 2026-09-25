@@ -59,7 +59,7 @@ class JobRunrBaseConfiguration @Inject() (
 )(implicit
   ec: ExecutionContext
 ) extends Provider[JobRunrConfiguration] {
-  private[this] val logger = Logger(this.getClass)
+  private val logger = Logger(this.getClass)
 
   // It is important that the scheduler and the background runner uses the same queue config.
   // It's also important that this is a def, so it works in test.
@@ -93,7 +93,7 @@ class JobRequestSchedulerProvider @Inject() (
 )(implicit
   ec: ExecutionContext
 ) extends Provider[JobRequestScheduler] {
-  private[this] val logger = Logger(this.getClass)
+  private val logger = Logger(this.getClass)
 
   lazy val scheduler: JobRequestScheduler = {
     val scheduler = baseConfiguration
@@ -118,7 +118,7 @@ class JobRunrMainStarter @Inject() (
 )(implicit
   ec: ExecutionContext
 ) extends Provider[JobRunrMain] {
-  private[this] val logger = Logger(this.getClass)
+  private val logger = Logger(this.getClass)
 
   lazy val main: JobRunrMain = {
     if (app.mode == Mode.Prod) {

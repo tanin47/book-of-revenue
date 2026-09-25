@@ -79,5 +79,5 @@ class MetronomeLineItemTable(tag: Tag) extends Table[MetronomeLineItem](tag, Som
     startingAt,
     endingBefore,
     updatedAt
-  ).<>((MetronomeLineItem.apply _).tupled, MetronomeLineItem.unapply)
+  ).<>((MetronomeLineItem.apply).tupled, MetronomeLineItem.unapply)
 }

@@ -1,6 +1,10 @@
 package database.services
 
-import database.models.stripe.{StripeCreditNoteLineItemPretaxCreditAmount, StripeCreditNoteLineItemPretaxCreditAmountTable, RichStripeCreditNoteLineItemPretaxCreditAmount}
+import database.models.stripe.{
+  RichStripeCreditNoteLineItemPretaxCreditAmount,
+  StripeCreditNoteLineItemPretaxCreditAmount,
+  StripeCreditNoteLineItemPretaxCreditAmountTable
+}
 import framework.{BaseDbService, PlayConfig}
 import play.api.db.slick.DatabaseConfigProvider
 
@@ -62,7 +66,7 @@ class CreditNoteLineItemPretaxCreditAmountService @Inject() (
     getByCreditNoteLineItemIds(creditNoteLineItemIds).flatMap(hydrate)
   }
 
-  private[this] def hydrate(items: Seq[StripeCreditNoteLineItemPretaxCreditAmount]): Future[Seq[RichStripeCreditNoteLineItemPretaxCreditAmount]] = {
+  private def hydrate(items: Seq[StripeCreditNoteLineItemPretaxCreditAmount]): Future[Seq[RichStripeCreditNoteLineItemPretaxCreditAmount]] = {
     for {
       discounts <- discountService.getByIds(items.flatMap(_.discountId).toSet)
       creditBalanceTransactions <- creditBalanceTransactionService.getRichByIds(items.flatMap(_.creditBalanceTransactionId).toSet)

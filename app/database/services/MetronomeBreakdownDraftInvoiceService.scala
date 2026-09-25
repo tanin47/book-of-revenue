@@ -1,6 +1,10 @@
 package database.services
 
-import database.models.metronome.{MetronomeBreakdownDraftInvoice, MetronomeBreakdownDraftInvoiceTable, RichMetronomeBreakdownDraftInvoice}
+import database.models.metronome.{
+  MetronomeBreakdownDraftInvoice,
+  MetronomeBreakdownDraftInvoiceTable,
+  RichMetronomeBreakdownDraftInvoice
+}
 import framework.{BaseDbService, Instant}
 import play.api.db.slick.DatabaseConfigProvider
 
@@ -53,7 +57,7 @@ class MetronomeBreakdownDraftInvoiceService @Inject() (
     getByInvoiceIds(invoiceIds).flatMap { items => hydrate(items.toList) }
   }
 
-  private[this] def hydrate(items: List[MetronomeBreakdownDraftInvoice]): Future[Seq[RichMetronomeBreakdownDraftInvoice]] = {
+  private def hydrate(items: List[MetronomeBreakdownDraftInvoice]): Future[Seq[RichMetronomeBreakdownDraftInvoice]] = {
     for {
       lineItems <- metronomeBreakdownDraftLineItemService.getByInvoiceBreakdownIds(items.map(_.id).toSet)
     } yield {

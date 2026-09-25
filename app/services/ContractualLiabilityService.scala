@@ -8,7 +8,6 @@ import framework.{Instant, Jsonable, PeriodColumn}
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import play.api.libs.json.{JsObject, Json}
 import process.Helpers.generatePeriods
-import services.ContractualLiabilityService.GroupBy
 import slick.jdbc.{GetResult, JdbcProfile, SQLActionBuilder}
 
 import java.io.{BufferedWriter, File, FileWriter}
@@ -412,7 +411,7 @@ class ContractualLiabilityService @Inject() (
       .map(_.headOption.getOrElse(0L))
   }
 
-  private[this] def getEndingBalanceByMonthResultColumns(params: ByMonthParams): Seq[ByMonthResultColumn] = {
+  private def getEndingBalanceByMonthResultColumns(params: ByMonthParams): Seq[ByMonthResultColumn] = {
     val baseColumns = params.groupBy match {
       case GroupBy.Product =>
         Seq(
@@ -442,7 +441,7 @@ class ContractualLiabilityService @Inject() (
     }
   }
 
-  private[this] def makeRevenueByMonthOrderByClause(sorts: Seq[ByMonthSort], periodEnd: Instant, groupBy: GroupBy): SQLActionBuilder = {
+  private def makeRevenueByMonthOrderByClause(sorts: Seq[ByMonthSort], periodEnd: Instant, groupBy: GroupBy): SQLActionBuilder = {
     if (sorts.isEmpty) {
       groupBy match {
         case GroupBy.Product => return sql""""#${PeriodColumn(periodEnd.toEpochMilli).name}" DESC NULLS LAST, product_name ASC"""
@@ -476,7 +475,7 @@ class ContractualLiabilityService @Inject() (
     )
   }
 
-  private[this] def makeEndingBalanceByMonthSql(
+  private def makeEndingBalanceByMonthSql(
     stripeAccountId: String,
     liveMode: Boolean,
     params: ByMonthParams,

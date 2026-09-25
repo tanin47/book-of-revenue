@@ -85,5 +85,5 @@ class StripeCreditNoteLineItemTable(tag: Tag) extends Table[StripeCreditNoteLine
     amount,
     `type`,
     invoiceLineItemId
-  ).<>((StripeCreditNoteLineItem.apply _).tupled, StripeCreditNoteLineItem.unapply)
+  ).<>((StripeCreditNoteLineItem.apply).tupled, StripeCreditNoteLineItem.unapply)
 }

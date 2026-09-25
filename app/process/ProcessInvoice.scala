@@ -2,9 +2,9 @@ package process
 
 import background.ProcessTransactionWorker.JournalEntryPeriod
 import database.models.*
-import database.models.stripe.*
 import database.models.Transaction.Status
-import database.models.metronome.{MetronomeBreakdownLineItem, MetronomeInvoice, MetronomeLineItem, RichMetronomeInvoice}
+import database.models.metronome.{MetronomeBreakdownLineItem, MetronomeLineItem, RichMetronomeInvoice}
+import database.models.stripe.*
 import framework.Helpers.await
 import framework.Instant
 import org.apache.commons.text.similarity.LevenshteinDistance
@@ -40,7 +40,7 @@ case class ProcessInvoiceLineItemComponent(
   metronomeBreakdownLineItems: Seq[MetronomeBreakdownLineItem],
   syncedAt: Instant
 ) {
-  private[this] val logger = Logger(getClass)
+  private val logger = Logger(getClass)
 
   def generateJournalEntries(): Seq[JournalEntry] = {
     val invoicingEntries = bookArAndPrinciple() ++ bookCustomerBalance()
@@ -68,7 +68,7 @@ case class ProcessInvoiceLineItemComponent(
       }
   }
 
-  private[this] def makeJournalEntry(
+  private def makeJournalEntry(
     accountingPeriod: Instant,
     debit: JournalEntry.Account,
     credit: JournalEntry.Account,
@@ -128,7 +128,7 @@ case class ProcessInvoiceLineItemComponent(
     )
   }
 
-  private[this] def bookBillingEvents(invoicingEntries: Seq[JournalEntry]): Seq[JournalEntry] = {
+  private def bookBillingEvents(invoicingEntries: Seq[JournalEntry]): Seq[JournalEntry] = {
     val isNegative = settlementAmount.value < 0
     val billedAmount = sumAccount(invoicingEntries, JournalEntry.Account.AccountsReceivable).getOrElse(JournalEntryAmount.empty(settlementAmount.currency, invoiceLineItem.base.currency))
     val journalEntryEvents = {
@@ -188,7 +188,7 @@ case class ProcessInvoiceLineItemComponent(
     )
   }
 
-  private[this] def bookArAndPrinciple(): Seq[JournalEntry] = {
+  private def bookArAndPrinciple(): Seq[JournalEntry] = {
     if (principleAccount == JournalEntry.Account.Revenue) {
       // When booking revenue, there's DeferredRevenue and UnbilledDeferredRevenue involved.
       // Therefore, it has to be handled especially.
@@ -211,7 +211,7 @@ case class ProcessInvoiceLineItemComponent(
     }
   }
 
-  private[this] def bookArAndNonRevenue(): Seq[JournalEntry] = {
+  private def bookArAndNonRevenue(): Seq[JournalEntry] = {
     Seq(makeJournalEntry(
       accountingPeriod = getAccountingPeriod(invoice.base.finalizedAt.get),
       debit = JournalEntry.Account.AccountsReceivable,
@@ -225,7 +225,7 @@ case class ProcessInvoiceLineItemComponent(
     ))
   }
 
-  private[this] def bookArAndRevenueForUsageBased(): Seq[JournalEntry] = {
+  private def bookArAndRevenueForUsageBased(): Seq[JournalEntry] = {
     val invoicedPeriod = getAccountingPeriod(invoice.base.finalizedAt.get)
 
     val (unbilledEntriesBefore, _) = ProcessUnbilledUsageSubscriptionItem
@@ -308,7 +308,7 @@ case class ProcessInvoiceLineItemComponent(
     unbilledEntriesBefore ++ Seq(reclassifyUnbilledAr) ++ currentPeriodEntries ++ creditGrantEntries
   }
 
-  private[this] def bookArAndRevenueForMetronome(): Seq[JournalEntry] = {
+  private def bookArAndRevenueForMetronome(): Seq[JournalEntry] = {
     val invoicedPeriod = getAccountingPeriod(invoice.base.finalizedAt.get)
 
     val isAppliedCredit = metronomeBreakdownLineItems.headOption.exists(_.isAppliedCredit)
@@ -410,7 +410,7 @@ case class ProcessInvoiceLineItemComponent(
     unbilledRevenueEntries ++ transitionUarEntries ++ bookArAndRevenueEntries
   }
 
-  private[this] def bookArAndRevenueForAmortizationBased(): Seq[JournalEntry] = {
+  private def bookArAndRevenueForAmortizationBased(): Seq[JournalEntry] = {
     val startedAt = invoiceLineItem.base.startedAt
       .orElse(invoiceLineItem.invoiceItem.flatMap(_.base.startedAt))
       .orElse(invoiceLineItem.invoiceItem.map(_.base.createdAt))
@@ -571,7 +571,7 @@ case class ProcessInvoiceLineItemComponent(
     bookUnbilledEntries ++ correctingUnbilledEntriesFromInvoiceItem ++ bookDrEntries ++ recognizedEntries
   }
 
-  private[this] def bookCustomerBalance(): Seq[JournalEntry] = {
+  private def bookCustomerBalance(): Seq[JournalEntry] = {
     val appliedEntries = appliedCustomerBalance.map { cb =>
       makeJournalEntry(
         accountingPeriod = getAccountingPeriod(invoice.base.finalizedAt.get),
@@ -607,7 +607,7 @@ case class ProcessInvoiceLineItemComponent(
     appliedEntries.toList ++ unappliedEntries
   }
 
-  private[this] def bookCreditBalanceAppliedOnVoid(): Seq[JournalEntry] = {
+  private def bookCreditBalanceAppliedOnVoid(): Seq[JournalEntry] = {
     invoice.base.voidedAt.toList.flatMap { voidedAt =>
       creditBalanceTransactionOnVoids.map { cbt =>
         makeJournalEntry(
@@ -643,7 +643,7 @@ case class ProcessInvoiceLineItem(
   metronomeBreakdownLineItems: Seq[MetronomeBreakdownLineItem],
   syncedAt: Instant
 ) {
-  private[this] val logger = Logger(getClass)
+  private val logger = Logger(getClass)
 
   def generateJournalEntries(): Seq[JournalEntry] = {
     val revTaxWeights = Seq(invoiceLineItem.totalPrincipleAmount, invoiceLineItem.totalTaxAmount)
@@ -1025,7 +1025,7 @@ case class ProcessInvoice(
       .sortBy { e => (e.accountingPeriod, e.occurredAt, e.debit, e.credit) }
   }
 
-  private[this] def makeJournalEntry(
+  private def makeJournalEntry(
     accountingPeriod: Instant,
     debit: JournalEntry.Account,
     credit: JournalEntry.Account,
@@ -1085,7 +1085,7 @@ case class ProcessInvoice(
     )
   }
 
-  private[this] def bookFees(): Seq[JournalEntry] = {
+  private def bookFees(): Seq[JournalEntry] = {
     val fromCharges = for {
       p <- invoice.payments
       c <- Seq(p.charge, p.paymentIntent.flatMap(_.charge)).flatten
@@ -1156,7 +1156,7 @@ case class ProcessInvoice(
     fromCharges ++ fromRefunds ++ fromDisputes
   }
 
-  private[this] def makeMoneyMovementEvents(
+  private def makeMoneyMovementEvents(
     charge: RichStripeCharge,
     paymentIntentId: Option[String],
     payAndMoveMoney: Boolean
@@ -1241,7 +1241,7 @@ case class ProcessInvoice(
     (paymentEvents ++ refundEvents ++ disputeEvents).sorted
   }
 
-  private[this] def makeBillingEvents(): Seq[BillingEvent] = {
+  private def makeBillingEvents(): Seq[BillingEvent] = {
     val moneyMovementEvents: Seq[BillingEvent] = invoice.payments.flatMap { payment =>
       val bt = payment.charge.flatMap(_.balanceTransaction).orElse(payment.paymentIntent.flatMap(_.charge).flatMap(_.balanceTransaction))
       val shouldPayAndMoveMoneyAtTheSameTime = bt.exists { bt =>

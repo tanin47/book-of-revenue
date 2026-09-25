@@ -35,5 +35,5 @@ class StripeAccountTable(tag: Tag) extends Table[StripeAccount](tag, Some("strip
     defaultCurrency,
     liveModeApiKey,
     testModeApiKey
-  ).<>((StripeAccount.apply _).tupled, StripeAccount.unapply)
+  ).<>((StripeAccount.apply).tupled, StripeAccount.unapply)
 }

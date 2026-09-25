@@ -1,15 +1,14 @@
 package background
 
-import database.models.stripe.{StripeAccount, StripeImporterJob, StripeImporterJobCursor}
-import database.services.{RawStripeObjectService, StripeAccountService, StripeImporterJobCursorService, StripeImporterJobService, TrackedExceptionService}
+import database.models.stripe.StripeImporterJob
+import database.services.*
 import framework.Helpers.await
 import framework.PlayConfig
-import org.jobrunr.jobs.lambdas.{JobRequest, JobRequestHandler}
+import org.jobrunr.jobs.lambdas.JobRequest
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsObject, Json}
 import play.api.{Environment, Logger, Mode, Play}
 import services.StripeService
-import services.StripeService.ListResult
 
 import java.util.concurrent.Executors
 import javax.inject.{Inject, Singleton}
@@ -41,7 +40,7 @@ class StripeImporter @Inject() (
   trackedExceptionService: TrackedExceptionService,
 )(implicit ec: ExecutionContext)
   extends BaseJobRequestHandler[StripeImporterRequest](trackedExceptionService) with StripeBaseImporter {
-  private[this] val logger = Logger(getClass)
+  private val logger = Logger(getClass)
 
   def run2(req: StripeImporterRequest): Unit = {
     val accounts = await(stripeAccountService.getAll())
@@ -151,7 +150,7 @@ class StripeImporter @Inject() (
     }
   }
 
-  private[this] def importBillingClocks(job: StripeImporterJob, apiKey: String): Unit = {
+  private def importBillingClocks(job: StripeImporterJob, apiKey: String): Unit = {
     importAll(job, "test_helpers.test_clock") { (startingAfter, endingBefore) => await(stripeService.listTestClocks(apiKey, startingAfter, endingBefore)) }
 
     var maxId: Option[String] = None

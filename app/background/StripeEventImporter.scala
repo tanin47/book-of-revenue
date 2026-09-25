@@ -1,10 +1,10 @@
 package background
 
 import database.models.stripe.StripeImporterJob
-import database.services.{RawStripeObjectService, StripeAccountService, StripeEventService, StripeImporterJobCursorService, StripeImporterJobService, TrackedExceptionService}
+import database.services.*
 import framework.Helpers.await
 import framework.Instant
-import org.jobrunr.jobs.lambdas.{JobRequest, JobRequestHandler}
+import org.jobrunr.jobs.lambdas.JobRequest
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsObject, Json}
 import play.api.{Environment, Logger, Mode, Play}
@@ -40,8 +40,7 @@ class StripeEventImporter @Inject() (
   trackedExceptionService: TrackedExceptionService,
 )(implicit ec: ExecutionContext)
   extends BaseJobRequestHandler[StripeEventImporterRequest](trackedExceptionService) with StripeBaseImporter {
-  import StripeEventImporter.*
-  private[this] val logger = Logger(getClass)
+  private val logger = Logger(getClass)
 
   def run2(req: StripeEventImporterRequest): Unit = {
     val minCreatedAt = Instant.now().minus(3, ChronoUnit.HOURS)
@@ -57,7 +56,7 @@ class StripeEventImporter @Inject() (
     updateRawStripeObjects(minCreatedAt)
   }
 
-  private[this] def importEvents(minCreatedAt: Instant, accountId: String, apiKey: String, liveMode: Boolean): Unit = {
+  private def importEvents(minCreatedAt: Instant, accountId: String, apiKey: String, liveMode: Boolean): Unit = {
     val job = await(stripeImporterJobService.getActive(StripeImporterJob.JobType.Event, accountId, liveMode)) match {
       case Some(job) => job
       case None => await(stripeImporterJobService.create(StripeImporterJob.JobType.Event, accountId, liveMode))
@@ -88,7 +87,7 @@ class StripeEventImporter @Inject() (
     )
   }
 
-  private[this] def updateRawStripeObjects(minCreatedAt: Instant): Unit = {
+  private def updateRawStripeObjects(minCreatedAt: Instant): Unit = {
     // Map each account to the API key matching an event's mode, so we fetch referenced objects with the right key.
     val accountsById = await(stripeAccountService.getAll()).map { a => a.id -> a }.toMap
 

@@ -1,7 +1,5 @@
 <script lang="ts">
 import BarChart, {type DataPoint} from "./_bar_chart.svelte";
-import {post} from "../common/form";
-import type {Params} from "./_filter_dialog.svelte";
 
 export let points: DataPoint[] = []
 </script>

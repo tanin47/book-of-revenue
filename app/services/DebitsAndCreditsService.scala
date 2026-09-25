@@ -113,7 +113,7 @@ class DebitsAndCreditsService @Inject() (
   import framework.PostgresProfile.api.*
 
 
-  private[this] def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
+  private def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
     if (sorts.isEmpty) {
       return sql"ORDER BY accounting_period ASC, debit ASC, credit ASC"
     }
@@ -149,7 +149,7 @@ class DebitsAndCreditsService @Inject() (
     makeSql(sql"ORDER BY ", joinSqls(sortClauses, sql", "))
   }
 
-  private[this] def makeSelectedColumns(params: Params): SQLActionBuilder = {
+  private def makeSelectedColumns(params: Params): SQLActionBuilder = {
     joinSqls(
       if (params.groupBy.isEmpty) {
         params.columns.map {
@@ -201,7 +201,7 @@ class DebitsAndCreditsService @Inject() (
     )
   }
 
-  private[this] def getResultColumns(params: Params): Seq[ResultColumn] = {
+  private def getResultColumns(params: Params): Seq[ResultColumn] = {
     params.columns.map { column =>
       ResultColumn(
         id = column,
@@ -232,7 +232,7 @@ class DebitsAndCreditsService @Inject() (
     }
   }
 
-  private[this] def makeGroupByClause(params: Params): SQLActionBuilder = {
+  private def makeGroupByClause(params: Params): SQLActionBuilder = {
     params.groupBy
       .map {
         case GroupBy.Product => sql", product_id"
@@ -247,7 +247,7 @@ class DebitsAndCreditsService @Inject() (
       .getOrElse(sql"")
   }
 
-  private[this] def makeBaseWithSql(stripeAccountId: String, liveMode: Boolean, params: Params): SQLActionBuilder = {
+  private def makeBaseWithSql(stripeAccountId: String, liveMode: Boolean, params: Params): SQLActionBuilder = {
     val whereClause = joinSqls(
       Seq(
         Some(sql"j.stripe_account_id = $stripeAccountId"),

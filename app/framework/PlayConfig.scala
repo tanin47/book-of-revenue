@@ -21,7 +21,7 @@ class PlayConfig @Inject() (
   val langs: Langs
 ) {
 
-  private[this] val logger = Logger(getClass)
+  private val logger = Logger(getClass)
 
   val APP_DOMAIN: String = getString("app.domain")
   val BASE_URL: String = getString("app.baseUrl")

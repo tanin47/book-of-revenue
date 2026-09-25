@@ -1,6 +1,6 @@
 @import play.api.Mode
 @import play.filters.csrf.CSRF
-@(title: String)(content: Html)(implicit req: framework.Request[_])
+@(title: String)(content: Html)(implicit req: framework.Request[?])
 
 @layout(title) {
   <script>

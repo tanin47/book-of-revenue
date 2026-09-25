@@ -83,5 +83,5 @@ class StripeCustomerBalanceTransactionTable(tag: Tag) extends Table[StripeCustom
     creditNoteId,
     `type`,
     syncedAt
-  ).<>((StripeCustomerBalanceTransaction.apply _).tupled, StripeCustomerBalanceTransaction.unapply)
+  ).<>((StripeCustomerBalanceTransaction.apply).tupled, StripeCustomerBalanceTransaction.unapply)
 }

@@ -56,5 +56,5 @@ class StripeCreditGrantTable(tag: Tag) extends Table[StripeCreditGrant](tag, Som
     effectiveAt,
     expiresAt,
     voidedAt
-  ).<>((StripeCreditGrant.apply _).tupled, StripeCreditGrant.unapply)
+  ).<>((StripeCreditGrant.apply).tupled, StripeCreditGrant.unapply)
 }

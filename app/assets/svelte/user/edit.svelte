@@ -1,5 +1,5 @@
 <script lang="ts">
-import {ValidationError, post} from "../common/form/index";
+import {post, ValidationError} from "../common/form/index";
 import {PreferredLangs, type User} from "../common/models";
 
 export let user: User

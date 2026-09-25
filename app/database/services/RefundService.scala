@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.stripe.{StripeRefund, StripeRefundTable, RichStripeRefund}
+import database.models.stripe.{RichStripeRefund, StripeRefund, StripeRefundTable}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -114,7 +114,7 @@ class RefundService @Inject() (
     getByIds(ids).flatMap(hydrate)
   }
 
-  private[this] def hydrate(items: Seq[StripeRefund]): Future[Seq[RichStripeRefund]] = {
+  private def hydrate(items: Seq[StripeRefund]): Future[Seq[RichStripeRefund]] = {
     for {
       bts <- balanceTransactionService.getByIds(items.flatMap { i => Seq(i.balanceTransactionId, i.failureBalanceTransactionId).flatten }.toSet)
       creditNoteRefunds <- creditNoteRefundService.get().getByRefundIds(items.map(_.id).toSet)

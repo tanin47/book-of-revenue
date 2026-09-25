@@ -1,6 +1,6 @@
 <script lang="ts">
 import type {BillingActivity, Transaction, TransactionDetail} from "../../common/models";
-import {formatAmount, formatDateTime, formatNumber, getQueryParam, makeStripeUrl} from "../../common/globals";
+import {formatAmount, formatDateTime, formatNumber, makeStripeUrl} from "../../common/globals";
 import BillingActivityLine, {type RelatedId} from "./_billing_activity_line.svelte";
 import {onMount} from "svelte";
 import {post} from "../../common/form";

@@ -4,10 +4,8 @@ import framework.{Instant, Jsonable}
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import play.api.libs.json.{JsObject, Json}
 import process.Helpers.generatePeriods
-import services.NetRevenueService.{Column, GroupBy, ShowOnly, Sort}
 import slick.jdbc.JdbcProfile
 
-import java.sql.Timestamp
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions

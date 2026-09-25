@@ -41,5 +41,5 @@ class StripeDiscountTable(tag: Tag) extends Table[StripeDiscount](tag, Some("str
     liveMode,
     id,
     couponId
-  ).<>((StripeDiscount.apply _).tupled, StripeDiscount.unapply)
+  ).<>((StripeDiscount.apply).tupled, StripeDiscount.unapply)
 }

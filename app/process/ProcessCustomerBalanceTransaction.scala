@@ -1,7 +1,7 @@
 package process
 
-import database.models.{Transaction, JournalEntry}
 import database.models.stripe.StripeCustomerBalanceTransaction
+import database.models.{JournalEntry, Transaction}
 import framework.Instant
 import process.Helpers.getAccountingPeriod
 

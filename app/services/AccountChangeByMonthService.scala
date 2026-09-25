@@ -204,7 +204,7 @@ class AccountChangeByMonthService @Inject()(
     }
   }
 
-  private[this] def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
+  private def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
     if (sorts.isEmpty) {
       return sql"transaction_date DESC"
     }
@@ -226,7 +226,7 @@ class AccountChangeByMonthService @Inject()(
     joinSqls(sortClauses, sql", ")
   }
 
-  private[this] def getResultColumns(params: Params): Seq[ResultColumn] = {
+  private def getResultColumns(params: Params): Seq[ResultColumn] = {
     val periods = generatePeriods(params.periodStart, params.periodEnd.plusMillis(1))
 
     val columns = (
@@ -258,7 +258,7 @@ class AccountChangeByMonthService @Inject()(
     }
   }
 
-  private[this] def makeSelectedColumns(resultColumns: Seq[ResultColumn]): SQLActionBuilder = {
+  private def makeSelectedColumns(resultColumns: Seq[ResultColumn]): SQLActionBuilder = {
     joinSqls(
       resultColumns.map { col =>
         col.id match {

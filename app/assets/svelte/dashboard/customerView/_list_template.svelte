@@ -1,7 +1,7 @@
 <script lang="ts">
 import Layout from '../_layout.svelte'
 import {post} from "../../common/form";
-import Table, { DEFAULT_COLUMN_RENDERING_SETTINGS } from '../../common/_table.svelte'
+import Table, {DEFAULT_COLUMN_RENDERING_SETTINGS} from '../../common/_table.svelte'
 import {
   type ColumnProperty,
   type FetchResult,

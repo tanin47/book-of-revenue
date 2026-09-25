@@ -3,13 +3,12 @@ package process
 import background.ProcessTransactionWorker.JournalEntryPeriod
 import database.models.JournalEntry
 import database.models.JournalEntry.AccountCategory
-import framework.Helpers.printEntries
 import framework.Instant
 import play.api.Logger
 import process.Helpers.*
 
 object ProcessBillingEvent {
-  private[this] val logger = Logger(getClass)
+  private val logger = Logger(getClass)
 
   case class BilledAmount(
     recognizedRevenuePeriods: Seq[JournalEntryPeriod],
@@ -429,7 +428,7 @@ object ProcessBillingEvent {
 
   // We need to sanitize the events before processing them. This is to separate intentional human actions from incidental ones caused by the system.
   // As an example, when an invoice is paid, its paid time is set but its payment might be created a second later. We wouldn't want Underpayment in this case.
-  private[this] def sanitize(events: Seq[BillingEvent]): Seq[BillingEvent] = {
+  private def sanitize(events: Seq[BillingEvent]): Seq[BillingEvent] = {
     val array = events.sorted.toArray
     var index = 0
 
@@ -925,7 +924,7 @@ object ProcessBillingEvent {
     }
   }
 
-  private[this] def bookCreditNoteVoided(
+  private def bookCreditNoteVoided(
     settlementCurrency: String,
     presentmentCurrency: String,
     entries: Seq[JournalEntry],
@@ -1019,7 +1018,7 @@ object ProcessBillingEvent {
   }
 
 
-  private[this] def bookContra(
+  private def bookContra(
     entries: Seq[JournalEntry],
     paidAmount: JournalEntryAmount,
     contraAmount: JournalEntryAmount,
@@ -1147,7 +1146,7 @@ object ProcessBillingEvent {
     }
   }
 
-  private[this] def bookMarkPaid(
+  private def bookMarkPaid(
     settlementCurrency: String,
     presentmentCurrency: String,
     entries: Seq[JournalEntry],
@@ -1170,7 +1169,7 @@ object ProcessBillingEvent {
   }
 
 
-  private[this] def bookUncollectible(
+  private def bookUncollectible(
     settlementCurrency: String,
     presentmentCurrency: String,
     entries: Seq[JournalEntry],
@@ -1265,7 +1264,7 @@ object ProcessBillingEvent {
     }
   }
 
-  private[this] def bookVoid(
+  private def bookVoid(
     settlementCurrency: String,
     presentmentCurrency: String,
     entries: Seq[JournalEntry],
@@ -1397,7 +1396,7 @@ object ProcessBillingEvent {
     }
   }
 
-  private[this] def makeJournalEntry(
+  private def makeJournalEntry(
     accountingPeriod: Instant,
     attributionPeriod: Option[Instant] = None,
     debit: JournalEntry.Account,

@@ -14,7 +14,7 @@ class LoggingFilter @Inject() (
   val mat: Materializer,
   ec: ExecutionContext
 ) extends Filter {
-  private[this] val logger = Logger(getClass)
+  private val logger = Logger(getClass)
 
   def apply(
     nextFilter: RequestHeader => Future[Result]

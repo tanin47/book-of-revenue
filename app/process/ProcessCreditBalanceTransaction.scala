@@ -1,10 +1,10 @@
 package process
 
-import database.models.{Transaction, JournalEntry}
-import database.models.stripe.{RichStripeCreditBalanceTransaction, RichStripeInvoiceItem}
+import database.models.stripe.RichStripeCreditBalanceTransaction
+import database.models.{JournalEntry, Transaction}
 import framework.Instant
-import process.Helpers.{amortize, getAccountingPeriod}
-import process.ProcessBillingEvent.{Amount, JournalEntryAmount}
+import process.Helpers.getAccountingPeriod
+import process.ProcessBillingEvent.Amount
 
 case class ProcessCreditBalanceTransaction(
   transaction: Transaction,

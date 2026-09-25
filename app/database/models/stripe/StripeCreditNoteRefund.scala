@@ -1,6 +1,5 @@
 package database.models.stripe
 
-import database.models.stripe.RichStripeRefund
 import framework.Jsonable
 import framework.PostgresProfile.api.*
 import framework.TransactionDetail.BillingActivity
@@ -58,5 +57,5 @@ class StripeCreditNoteRefundTable(tag: Tag) extends Table[StripeCreditNoteRefund
     `type`,
     amountRefunded,
     paymentRecordRefundId
-  ).<>((StripeCreditNoteRefund.apply _).tupled, StripeCreditNoteRefund.unapply)
+  ).<>((StripeCreditNoteRefund.apply).tupled, StripeCreditNoteRefund.unapply)
 }

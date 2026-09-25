@@ -62,7 +62,7 @@ case class ProcessStandaloneCharge(
       ) }
   }
 
-  private[this] def makeJournalEntry(
+  private def makeJournalEntry(
     accountingPeriod: Instant,
     debit: JournalEntry.Account,
     credit: JournalEntry.Account,
@@ -120,7 +120,7 @@ case class ProcessStandaloneCharge(
     )
   }
 
-  private[this] def bookFees(): Seq[JournalEntry] = {
+  private def bookFees(): Seq[JournalEntry] = {
     val fromCharge = charge.balanceTransaction.filter(_.feeAmount != 0).map { bt =>
       makeJournalEntry(
         accountingPeriod = getAccountingPeriod(bt.createdAt),
@@ -175,7 +175,7 @@ case class ProcessStandaloneCharge(
     fromCharge.toList ++ fromRefunds.toList ++ fromDisputes.toList
   }
 
-  private[this] def bookBillingEvents(entries: Seq[JournalEntry]): Seq[JournalEntry] = {
+  private def bookBillingEvents(entries: Seq[JournalEntry]): Seq[JournalEntry] = {
     val paymentEvents = Seq(
       MoneyMovementBillingEvent(
         amount = JournalEntryAmount(
@@ -271,7 +271,7 @@ case class ProcessStandaloneCharge(
     )
   }
 
-  private[this] def bookAr(): Seq[JournalEntry] = {
+  private def bookAr(): Seq[JournalEntry] = {
     Seq(makeJournalEntry(
       accountingPeriod = getAccountingPeriod(charge.base.created),
       debit = JournalEntry.Account.AccountsReceivable,
@@ -286,7 +286,7 @@ case class ProcessStandaloneCharge(
     ))
   }
 
-  private[this] def bookRevenue(): Seq[JournalEntry] = {
+  private def bookRevenue(): Seq[JournalEntry] = {
     Seq(makeJournalEntry(
       accountingPeriod = getAccountingPeriod(charge.base.created),
       debit = JournalEntry.Account.DeferredRevenue,

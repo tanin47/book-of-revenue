@@ -1,13 +1,12 @@
 package process
 
 import base.Base
-import framework.NetAmount
 import database.models.*
 import database.models.JournalEntry.Account.*
-import framework.Instant
+import framework.{Instant, NetAmount}
 
 class ProcessCreditBalanceTransactionSpec extends Base {
-  private[this] val effectiveAt = Instant.parse("2026-01-15T00:00:00Z")
+  private val effectiveAt = Instant.parse("2026-01-15T00:00:00Z")
 
   describe("granting credits") {
     it("books a paid credit grant") {

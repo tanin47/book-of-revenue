@@ -10,7 +10,6 @@ import givers.form.Mappings.*
 import play.api.libs.json.*
 import play.api.mvc.{Action, AnyContent, Result}
 import services.{ContractualLiabilityService, MonthlyGrrService, MonthlyNrrService, NetRevenueService}
-import services.NetRevenueService.{RevenueByMonthParams, RevenueByMonthSort}
 
 import javax.inject.*
 import scala.concurrent.{ExecutionContext, Future}
@@ -259,7 +258,7 @@ class CustomerController @Inject() (
     exportContractualLiabilities(Seq(JournalEntry.Account.DeferredRevenue), "deferred-revenue")
   }
 
-  private[this] val otherContractualLiabilityAccounts = JournalEntry.Account.values
+  private val otherContractualLiabilityAccounts = JournalEntry.Account.values
     .filter { a => a.getAccountCategory() == JournalEntry.AccountCategory.ContractLiability && a != JournalEntry.Account.DeferredRevenue }
     .toList
   def otherContractualLiabilities(): Action[AnyContent] = async() { implicit req =>
@@ -272,7 +271,7 @@ class CustomerController @Inject() (
     exportContractualLiabilities(otherContractualLiabilityAccounts, "other-contractual-liabilities")
   }
 
-  private[this] def loadContractualLiabilities(accounts: Seq[JournalEntry.Account])(implicit req: AuthRequest[_]): Future[Result] = {
+  private def loadContractualLiabilities(accounts: Seq[JournalEntry.Account])(implicit req: AuthRequest[?]): Future[Result] = {
     val data = LOAD_CONTRACTUAL_LIABILITY_FORM.bindFromRequest().get
 
     for {
@@ -295,7 +294,7 @@ class CustomerController @Inject() (
     }
   }
 
-  private[this] def exportContractualLiabilities(accounts: Seq[JournalEntry.Account], partFileName: String)(implicit req: AuthRequest[_]): Future[Result] = {
+  private def exportContractualLiabilities(accounts: Seq[JournalEntry.Account], partFileName: String)(implicit req: AuthRequest[?]): Future[Result] = {
     val data = LOAD_CONTRACTUAL_LIABILITY_FORM.bindFromRequest().get
 
     for {

@@ -2,11 +2,7 @@ package process
 
 import database.models.*
 import database.models.metronome.RichMetronomeDraftInvoice
-import database.models.stripe.*
 import framework.Instant
-import process.Helpers.{amortize, generatePeriods}
-import process.ProcessBillingEvent.{Amount, JournalEntryAmount}
-import services.ExchangeRate
 
 case class ProcessMetronomeDraftInvoice(
   transaction: Transaction,

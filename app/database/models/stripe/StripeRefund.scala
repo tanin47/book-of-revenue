@@ -79,5 +79,5 @@ class StripeRefundTable(tag: Tag) extends Table[StripeRefund](tag, Some("stripe"
     status,
     createdAt,
     syncedAt
-  ).<>((StripeRefund.apply _).tupled, StripeRefund.unapply)
+  ).<>((StripeRefund.apply).tupled, StripeRefund.unapply)
 }

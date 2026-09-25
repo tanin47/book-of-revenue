@@ -1,6 +1,5 @@
 package database.models.stripe
 
-import database.models.stripe.StripeTaxRate
 import framework.PostgresProfile.api.*
 import framework.{Instant, Jsonable}
 import play.api.libs.json.{JsObject, Json}
@@ -102,5 +101,5 @@ class StripeInvoiceItemTable(tag: Tag) extends Table[StripeInvoiceItem](tag, Som
     productId,
     createdAt,
     syncedAt
-  ).<>((StripeInvoiceItem.apply _).tupled, StripeInvoiceItem.unapply)
+  ).<>((StripeInvoiceItem.apply).tupled, StripeInvoiceItem.unapply)
 }

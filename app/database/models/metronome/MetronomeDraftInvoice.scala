@@ -76,5 +76,5 @@ class MetronomeDraftInvoiceTable(tag: Tag) extends Table[MetronomeDraftInvoice](
     startTimestamp,
     endTimestamp,
     updatedAt
-  ).<>((MetronomeDraftInvoice.apply _).tupled, MetronomeDraftInvoice.unapply)
+  ).<>((MetronomeDraftInvoice.apply).tupled, MetronomeDraftInvoice.unapply)
 }

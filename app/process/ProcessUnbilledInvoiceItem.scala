@@ -1,7 +1,7 @@
 package process
 
-import database.models.{JournalEntry, Transaction}
 import database.models.stripe.RichStripeInvoiceItem
+import database.models.{JournalEntry, Transaction}
 import framework.Helpers.await
 import framework.Instant
 import process.Helpers.{amortize, getAccountingPeriod}
@@ -50,7 +50,7 @@ object ProcessUnbilledInvoiceItem {
   }
 
 
-  private[this] def makeJournalEntry(
+  private def makeJournalEntry(
     accountingPeriod: Instant,
     debit: JournalEntry.Account,
     credit: JournalEntry.Account,

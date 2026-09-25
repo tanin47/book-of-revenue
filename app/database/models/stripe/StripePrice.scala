@@ -78,5 +78,5 @@ class StripePriceTable(tag: Tag) extends Table[StripePrice](tag, Some("stripe"),
     recurringMeterId,
     recurringUsageType,
     syncedAt
-  ).<>((StripePrice.apply _).tupled, StripePrice.unapply)
+  ).<>((StripePrice.apply).tupled, StripePrice.unapply)
 }

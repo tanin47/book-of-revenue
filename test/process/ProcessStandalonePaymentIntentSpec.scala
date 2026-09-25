@@ -1,10 +1,9 @@
 package process
 
 import base.Base
-import framework.NetAmount
 import database.models.*
 import database.models.JournalEntry.Account.*
-import framework.Instant
+import framework.{Instant, NetAmount}
 
 import java.time.temporal.ChronoUnit
 

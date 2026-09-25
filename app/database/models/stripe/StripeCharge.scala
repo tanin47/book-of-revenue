@@ -1,6 +1,5 @@
 package database.models.stripe
 
-import database.models.stripe.RichStripeRefund
 import framework.PostgresProfile.api.*
 import framework.TransactionDetail.BillingActivity
 import framework.TransactionDetail.BillingActivity.MakePayment
@@ -109,5 +108,5 @@ class StripeChargeTable(tag: Tag) extends Table[StripeCharge](tag, Some("stripe"
     created,
     status,
     syncedAt
-  ).<>((StripeCharge.apply _).tupled, StripeCharge.unapply)
+  ).<>((StripeCharge.apply).tupled, StripeCharge.unapply)
 }
