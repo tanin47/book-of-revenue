@@ -86,5 +86,5 @@ class StripeDisputeTable(tag: Tag) extends Table[StripeDispute](tag, Some("strip
     status,
     createdAt,
     syncedAt
-  ).<>((StripeDispute.apply _).tupled, StripeDispute.unapply)
+  ).<>((StripeDispute.apply).tupled, StripeDispute.unapply)
 }

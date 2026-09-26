@@ -1,7 +1,7 @@
 <script lang="ts">
 import Layout from '../_layout.svelte'
 import FilterDialog, {BASE_COLUMNS, COLUMNS, type Params} from "./_filter_dialog.svelte";
-import Table, { DEFAULT_COLUMN_RENDERING_SETTINGS } from "../../common/_table.svelte";
+import Table, {DEFAULT_COLUMN_RENDERING_SETTINGS} from "../../common/_table.svelte";
 import {
   type FetchResult,
   makeSortParam,
@@ -13,7 +13,8 @@ import {post} from "../../common/form";
 import {
   addMonths,
   CURRENT_CURRENCY,
-  FIRST_ACCOUNTING_PERIOD, formatAccountingPeriod,
+  FIRST_ACCOUNTING_PERIOD,
+  formatAccountingPeriod,
   formatNumber,
   LATEST_ACCOUNTING_PERIOD
 } from "../../common/globals";

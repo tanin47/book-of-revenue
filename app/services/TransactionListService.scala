@@ -1,6 +1,5 @@
 package services
 
-import database.models.stripe.*
 import database.models.JournalEntry
 import database.models.JournalEntry.AccountCategory
 import database.services.JournalEntryService.{ColumnType, SortDirection, getValue}
@@ -79,7 +78,7 @@ class TransactionListService @Inject() (
   import TransactionListService.*
   import framework.PostgresProfile.api.*
 
-  private[this] def convertToSqlColumnName(column: Column): SQLActionBuilder = {
+  private def convertToSqlColumnName(column: Column): SQLActionBuilder = {
     column match {
       case Column.TransactionType => sql"transaction_type"
       case Column.TransactionId => sql"transaction_id"
@@ -99,7 +98,7 @@ class TransactionListService @Inject() (
     }
   }
 
-  private[this] def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
+  private def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
     if (sorts.isEmpty) {
       return sql"ORDER BY transaction_started_at DESC, transaction_title ASC"
     }
@@ -111,7 +110,7 @@ class TransactionListService @Inject() (
     makeSql(sql"ORDER BY ", joinSqls(sortClauses, sql", "))
   }
 
-  private[this] def makeSelectedColumns(params: Params): SQLActionBuilder = {
+  private def makeSelectedColumns(params: Params): SQLActionBuilder = {
     joinSqls(
       params.columns.map(convertToSqlColumnName),
       sql", "
@@ -253,7 +252,7 @@ class TransactionListService @Inject() (
     )
   }
 
-  private[this] def getResultColumns(params: Params): Seq[ResultColumn] = {
+  private def getResultColumns(params: Params): Seq[ResultColumn] = {
     params.columns.map { column =>
       ResultColumn(
         id = column,

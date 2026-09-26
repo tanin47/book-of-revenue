@@ -47,5 +47,5 @@ class StripeMeterEventSummaryTable(tag: Tag) extends Table[StripeMeterEventSumma
     startTime,
     endTime,
     syncedAt
-  ).<>((StripeMeterEventSummary.apply _).tupled, StripeMeterEventSummary.unapply)
+  ).<>((StripeMeterEventSummary.apply).tupled, StripeMeterEventSummary.unapply)
 }

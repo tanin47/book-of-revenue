@@ -36,7 +36,7 @@ object Jsonable {
     encodeJson(JsNumber(value))
   }
 
-  def encode(form: FilledForm[_]): String = {
+  def encode(form: FilledForm[?]): String = {
     encodeJson(form.toJson)
   }
 
@@ -52,7 +52,7 @@ object Jsonable {
     valueOpt.map(encodeJson).getOrElse(JsNull.toString)
   }
 
-  protected[this] def sanitize(value: String): String = {
+  protected def sanitize(value: String): String = {
     value.replaceAll("<", "\\\\u003C")
   }
 }

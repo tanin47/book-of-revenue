@@ -1,10 +1,9 @@
 package framework
 
-import org.apache.pekko.util.ByteString
 import play.api.Logger
 import play.api.libs.streams.Accumulator
 import play.api.mvc.Results.Redirect
-import play.api.mvc.{EssentialAction, EssentialFilter, RequestHeader, Result}
+import play.api.mvc.{EssentialAction, EssentialFilter}
 import play.filters.https.RedirectHttpsFilter as BaseRedirectHttpsFilter
 
 import java.net.URI
@@ -14,7 +13,7 @@ import javax.net.ssl.{HttpsURLConnection, SSLHandshakeException}
 import scala.concurrent.{ExecutionContext, Future}
 
 class RedirectHttpsFilter @Inject() (base: BaseRedirectHttpsFilter, config: PlayConfig)(implicit ec: ExecutionContext) extends EssentialFilter {
-  private[this] val logger = Logger(getClass)
+  private val logger = Logger(getClass)
 
   override def apply(next: EssentialAction): EssentialAction = { req =>
     val valid = checkDomainCertificate()

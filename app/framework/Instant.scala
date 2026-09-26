@@ -1,11 +1,10 @@
 package framework
 
 import givers.form.{BindContext, Mapping, UnbindContext}
-import play.api.libs.json.{JsDefined, JsLookupResult, JsNumber, JsString, JsValue}
+import play.api.libs.json.{JsDefined, JsLookupResult, JsNumber, JsValue}
 
 import java.time.temporal.ChronoUnit
-import scala.reflect.{ClassTag, classTag}
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Try}
 
 type Instant = java.time.Instant
 
@@ -14,7 +13,7 @@ object Instant {
     def mockedTimeChanged(time: Instant): Unit
   }
 
-  private[this] var mockedTime: Option[Instant] = None
+  private var mockedTime: Option[Instant] = None
   var mockedTimeChangedListener: Option[MockedTimeChangeListener] = None
 
   def mockTimeForTest(t: Instant): Unit = {

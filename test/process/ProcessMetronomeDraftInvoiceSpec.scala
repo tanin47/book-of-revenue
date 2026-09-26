@@ -5,7 +5,6 @@ import database.models.*
 import database.models.JournalEntry.Account.*
 import framework.{Instant, NetAmount}
 import play.api.libs.json.Json
-import services.ExchangeRate
 
 class ProcessMetronomeDraftInvoiceSpec extends Base {
   it("books unbilled usage as revenue (same currency)") {

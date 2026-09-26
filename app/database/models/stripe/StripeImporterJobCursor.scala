@@ -41,5 +41,5 @@ class StripeImporterJobCursorTable(tag: Tag) extends Table[StripeImporterJobCurs
     latestId,
     startingAfter,
     endingBefore
-  ).<>((StripeImporterJobCursor.apply _).tupled, StripeImporterJobCursor.unapply)
+  ).<>((StripeImporterJobCursor.apply).tupled, StripeImporterJobCursor.unapply)
 }

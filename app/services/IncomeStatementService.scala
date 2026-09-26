@@ -94,7 +94,7 @@ class IncomeStatementService @Inject() (
   import framework.PostgresProfile.api.*
 
 
-  private[this] def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
+  private def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
     if (sorts.isEmpty) {
       return sql"ORDER BY accounting_period ASC, net_settlement_income DESC, account ASC"
     }
@@ -129,7 +129,7 @@ class IncomeStatementService @Inject() (
     makeSql(sql"ORDER BY ", joinSqls(sortClauses, sql", "))
   }
 
-  private[this] def makeSelectedColumns(params: Params): SQLActionBuilder = {
+  private def makeSelectedColumns(params: Params): SQLActionBuilder = {
     joinSqls(
       if (params.groupBy.isEmpty) {
         params.columns.map {
@@ -180,7 +180,7 @@ class IncomeStatementService @Inject() (
     )
   }
 
-  private[this] def getResultColumns(params: Params): Seq[ResultColumn] = {
+  private def getResultColumns(params: Params): Seq[ResultColumn] = {
     params.columns.map { column =>
       ResultColumn(
         id = column,
@@ -210,7 +210,7 @@ class IncomeStatementService @Inject() (
     }
   }
 
-  private[this] def makeGroupByClause(params: Params): SQLActionBuilder = {
+  private def makeGroupByClause(params: Params): SQLActionBuilder = {
     params.groupBy
       .map {
         case GroupBy.Product => sql", product_id"
@@ -225,7 +225,7 @@ class IncomeStatementService @Inject() (
       .getOrElse(sql"")
   }
 
-  private[this] def makeBaseWithSql(stripeAccountId: String, liveMode: Boolean, params: Params): SQLActionBuilder = {
+  private def makeBaseWithSql(stripeAccountId: String, liveMode: Boolean, params: Params): SQLActionBuilder = {
     val whereClause = joinSqls(
       Seq(
         Some(sql"stripe_account_id = $stripeAccountId"),

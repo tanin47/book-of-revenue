@@ -82,5 +82,5 @@ class MetronomeInvoiceTable(tag: Tag) extends Table[MetronomeInvoice](tag, Some(
     endTimestamp,
     issuedAt,
     updatedAt
-  ).<>((MetronomeInvoice.apply _).tupled, MetronomeInvoice.unapply)
+  ).<>((MetronomeInvoice.apply).tupled, MetronomeInvoice.unapply)
 }

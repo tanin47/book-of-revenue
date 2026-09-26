@@ -1,6 +1,5 @@
 package database.services
 
-import database.models.*
 import database.models.stripe.*
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
@@ -130,7 +129,7 @@ class SubscriptionItemService @Inject() (
     }
   }
 
-  private[this] def hydrate(item: StripeSubscriptionItem): Future[Option[RichStripeSubscriptionItem]] = {
+  private def hydrate(item: StripeSubscriptionItem): Future[Option[RichStripeSubscriptionItem]] = {
     for {
       subscriptionOpt <- subscriptionService.getRichById(item.subscriptionId)
       price <- priceService.getRichById(item.priceId)

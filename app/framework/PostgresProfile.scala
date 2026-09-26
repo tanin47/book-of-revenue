@@ -2,10 +2,9 @@ package framework
 
 import com.github.tminglei.slickpg.{ExPostgresProfile, PgArraySupport}
 import slick.ast.BaseTypedType
-import slick.jdbc.{GetResult, PositionedParameters, PositionedResult, SQLActionBuilder, SetParameter}
+import slick.jdbc.*
 import slick.lifted.OptionMapper2
 
-import java.sql.Timestamp
 import java.time.{OffsetDateTime, ZoneId}
 import scala.reflect.ClassTag
 

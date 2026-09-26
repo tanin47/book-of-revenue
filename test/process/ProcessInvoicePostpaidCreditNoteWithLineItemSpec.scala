@@ -1,11 +1,9 @@
 package process
 
 import base.Base
-import framework.NetAmount
 import database.models.*
 import database.models.JournalEntry.Account.*
-import framework.Helpers.printEntries
-import framework.Instant
+import framework.{Instant, NetAmount}
 import process.Helpers.getAccountingPeriod
 
 import java.time.temporal.ChronoUnit

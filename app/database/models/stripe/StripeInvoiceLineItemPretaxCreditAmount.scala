@@ -55,5 +55,5 @@ class StripeInvoiceLineItemPretaxCreditAmountTable(tag: Tag) extends Table[Strip
     discountId,
     creditBalanceTransactionId,
     `type`
-  ).<>((StripeInvoiceLineItemPretaxCreditAmount.apply _).tupled, StripeInvoiceLineItemPretaxCreditAmount.unapply)
+  ).<>((StripeInvoiceLineItemPretaxCreditAmount.apply).tupled, StripeInvoiceLineItemPretaxCreditAmount.unapply)
 }

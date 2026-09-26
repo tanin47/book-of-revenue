@@ -11,7 +11,7 @@ lazy val root = (project in file(".")).enablePlugins(PlayScala, SbtWeb, SbtSvelt
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
-scalaVersion := "3.3.5"
+scalaVersion := "3.5.2"
 semanticdbEnabled := true
 semanticdbVersion := scalafixSemanticdb.revision
 
@@ -23,7 +23,7 @@ scalacOptions ++= Seq(
   // Also, silence the warnings on the test code.
   "-Wconf:msg=.*unused value of type.*&src=(target|test)/.*:silent",
   "-Wconf:msg=.*unused import.*&src=target/.*:silent",
-//  "-Wunused:imports" // Warn for unused imports.
+  "-Wunused:imports" // Warn for unused imports.
 )
 
 libraryDependencies ++= Seq(

@@ -1,4 +1,4 @@
-@()(implicit req: framework.Request[_])
+@()(implicit req: framework.Request[?])
 
 @main("Income Statement") {
   <script src='@routes.AssetsController.versioned("svelte/dashboard/incomeStatement/index.js")'></script>

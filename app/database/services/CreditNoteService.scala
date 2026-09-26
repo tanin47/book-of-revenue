@@ -1,6 +1,11 @@
 package database.services
 
-import database.models.stripe.{StripeCreditNote, StripeCreditNoteTable, RichStripeCreditNote, RichStripeCreditNoteRefund}
+import database.models.stripe.{
+  RichStripeCreditNote,
+  RichStripeCreditNoteRefund,
+  StripeCreditNote,
+  StripeCreditNoteTable
+}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -108,7 +113,7 @@ class CreditNoteService @Inject() (
     getByInvoiceIds(invoiceIds).flatMap(hydrate)
   }
 
-  private[this] def hydrate(items: Seq[StripeCreditNote]): Future[Seq[RichStripeCreditNote]] = {
+  private def hydrate(items: Seq[StripeCreditNote]): Future[Seq[RichStripeCreditNote]] = {
     val creditNoteIds = items.map(_.id).toSet
     val customerBalanceTransactionIds = items.flatMap(_.customerBalanceTransactionId).toSet
 

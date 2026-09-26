@@ -1,7 +1,7 @@
 <script lang="ts">
 import Layout from '../_layout.svelte'
 import {formatAmount, formatDateTime, formatNumber} from '../../common/globals'
-import type {Transaction, TrackedException} from "../../common/models";
+import type {TrackedException, Transaction} from "../../common/models";
 import {onMount} from "svelte";
 import {post} from "../../common/form";
 

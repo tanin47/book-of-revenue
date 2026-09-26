@@ -1,12 +1,7 @@
 <script lang="ts" context="module">
-import {
-  type ColumnProperty,
-  type ColumnSelectionItem,
-  makeColumnGroupBys,
-  type TableParams
-} from "../../common/table_models";
+import {type ColumnSelectionItem, makeColumnGroupBys, type TableParams} from "../../common/table_models";
 
-  export type Params = TableParams & {
+export type Params = TableParams & {
     groupBy: string | null
     lineItemId: string | null
     accounts: string[]

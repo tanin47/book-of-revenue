@@ -1,18 +1,13 @@
 <script lang="ts">
 import Layout from '../_layout.svelte'
 import {post} from "../../common/form";
-import Table, { DEFAULT_COLUMN_RENDERING_SETTINGS } from "../../common/_table.svelte";
-import {
-  type FetchResult,
-  makeSortParam,
-  parseColumnQueryParam,
-  parseSortParam,
-  type Sort
-} from "../../common/table_models";
+import Table, {DEFAULT_COLUMN_RENDERING_SETTINGS} from "../../common/_table.svelte";
+import {type FetchResult, makeSortParam, parseColumnQueryParam, parseSortParam} from "../../common/table_models";
 import {
   addMonths,
   CURRENT_CURRENCY,
-  FIRST_ACCOUNTING_PERIOD, formatAccountingPeriod,
+  FIRST_ACCOUNTING_PERIOD,
+  formatAccountingPeriod,
   formatNumber,
   LATEST_ACCOUNTING_PERIOD
 } from "../../common/globals";

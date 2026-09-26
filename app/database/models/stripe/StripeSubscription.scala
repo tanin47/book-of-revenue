@@ -62,5 +62,5 @@ class StripeSubscriptionTable(tag: Tag) extends Table[StripeSubscription](tag, S
     discountIds,
     defaultTaxRateIds,
     syncedAt
-  ).<>((StripeSubscription.apply _).tupled, StripeSubscription.unapply)
+  ).<>((StripeSubscription.apply).tupled, StripeSubscription.unapply)
 }

@@ -35,5 +35,5 @@ class StripeProductTable(tag: Tag) extends Table[StripeProduct](tag, Some("strip
     name,
     description,
     syncedAt
-  ).<>((StripeProduct.apply _).tupled, StripeProduct.unapply)
+  ).<>((StripeProduct.apply).tupled, StripeProduct.unapply)
 }

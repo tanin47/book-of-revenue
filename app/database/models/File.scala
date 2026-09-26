@@ -15,5 +15,5 @@ class FileTable(tag: Tag) extends Table[File](tag, "file") {
   def * : ProvenShape[File] = (
     name,
     content
-  ).<>((File.apply _).tupled, File.unapply)
+  ).<>((File.apply).tupled, File.unapply)
 }

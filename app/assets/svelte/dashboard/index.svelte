@@ -18,11 +18,13 @@ import {
   formatAccountingPeriod,
   formatAmount,
   formatNumber,
-  getDeferredRevenueAuditUrl, getDirectCashFlowAuditUrl,
+  getDeferredRevenueAuditUrl,
+  getDirectCashFlowAuditUrl,
   getMonthlyArpaAuditUrl,
   getMonthlyGrrAuditUrl,
   getMonthlyNrrAuditUrl,
-  getNetRevenueAuditUrl, getOtherContractualLiabilitiesAuditUrl,
+  getNetRevenueAuditUrl,
+  getOtherContractualLiabilitiesAuditUrl,
   LATEST_ACCOUNTING_PERIOD
 } from "../common/globals";
 import Button from "../common/_button.svelte";

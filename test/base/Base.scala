@@ -75,7 +75,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   lazy val metronomeInvoiceService: MetronomeInvoiceService = app.injector.instanceOf[MetronomeInvoiceService]
 
   var idRunner: Int = 0
-  var stripeAccount: StripeAccount = _
+  var stripeAccount: StripeAccount = scala.compiletime.uninitialized
 
   def genId(): Int = {
     idRunner += 1
@@ -141,7 +141,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
     await(app.stop())
   }
 
-  private[this] val WAIT_UNTIL_TIMEOUT_MILLIS = 15000
+  private val WAIT_UNTIL_TIMEOUT_MILLIS = 15000
   def waitUntil(fn: => Boolean): Unit = {
     val newFn = () => {
       try {

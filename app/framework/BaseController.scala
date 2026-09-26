@@ -159,7 +159,7 @@ abstract class BaseController(cc: ControllerComponents)(implicit ec: ExecutionCo
     result.removingFromSession(USER_ID_SESSION_KEY)
   }
 
-  private[this] def convert[T](baseReq: play.api.mvc.Request[T]): Future[Request[T]] = {
+  private def convert[T](baseReq: play.api.mvc.Request[T]): Future[Request[T]] = {
     val userIdOpt = try {
       baseReq.session.get(USER_ID_SESSION_KEY)
     } catch {

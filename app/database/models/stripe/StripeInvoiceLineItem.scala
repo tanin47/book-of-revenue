@@ -1,6 +1,5 @@
 package database.models.stripe
 
-import database.models.stripe.{StripeMeterEventSummary, RichStripePrice, StripeSubscriptionItem}
 import framework.PostgresProfile.api.*
 import framework.{Instant, Jsonable}
 import play.api.libs.json.{JsObject, Json}
@@ -138,5 +137,5 @@ class StripeInvoiceLineItemTable(tag: Tag) extends Table[StripeInvoiceLineItem](
     pricingUnitAmountDecimal,
     customerId,
     syncedAt
-  ).<>((StripeInvoiceLineItem.apply _).tupled, StripeInvoiceLineItem.unapply)
+  ).<>((StripeInvoiceLineItem.apply).tupled, StripeInvoiceLineItem.unapply)
 }

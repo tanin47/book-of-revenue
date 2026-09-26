@@ -22,5 +22,5 @@ class ExportedFileTable(tag: Tag) extends Table[ExportedFile](tag, "exported_fil
     filename,
     tmpFilePath,
     createdAt
-  ).<>((ExportedFile.apply _).tupled, ExportedFile.unapply)
+  ).<>((ExportedFile.apply).tupled, ExportedFile.unapply)
 }

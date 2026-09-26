@@ -1,6 +1,5 @@
 package database.models.stripe
 
-import database.models.stripe.RichStripePaymentIntent
 import framework.PostgresProfile.api.*
 import framework.TransactionDetail.BillingActivity
 import framework.TransactionDetail.BillingActivity.MakePayment
@@ -97,5 +96,5 @@ class StripeInvoicePaymentTable(tag: Tag) extends Table[StripeInvoicePayment](ta
     paidAt,
     status,
     syncedAt
-  ).<>((StripeInvoicePayment.apply _).tupled, StripeInvoicePayment.unapply)
+  ).<>((StripeInvoicePayment.apply).tupled, StripeInvoicePayment.unapply)
 }

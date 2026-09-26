@@ -64,5 +64,5 @@ class StripePaymentIntentTable(tag: Tag) extends Table[StripePaymentIntent](tag,
     description,
     latestChargeId,
     syncedAt
-  ).<>((StripePaymentIntent.apply _).tupled, StripePaymentIntent.unapply)
+  ).<>((StripePaymentIntent.apply).tupled, StripePaymentIntent.unapply)
 }

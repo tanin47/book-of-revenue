@@ -1,4 +1,4 @@
-@(appDomain: String)(implicit req: framework.Request[_])
+@(appDomain: String)(implicit req: framework.Request[?])
 
 @main("Book of Revenue") {
   <script src='@routes.AssetsController.versioned("svelte/onboard.js")'></script>

@@ -43,7 +43,7 @@ trait Base extends base.Base with MockedTimeChangeListener {
     application = app
   )
 
-  var user: User = _
+  var user: User = scala.compiletime.uninitialized
 
   def mockedTimeChanged(time: Instant): Unit = {
     webDriver.executeCdpCommand(
@@ -189,7 +189,7 @@ trait Base extends base.Base with MockedTimeChangeListener {
     select.selectByVisibleText(label)
   }
 
-  private[this] def getElem(cssSelector: String, checkDisplay: Boolean): Option[WebElement] = {
+  private def getElem(cssSelector: String, checkDisplay: Boolean): Option[WebElement] = {
     val elems = webDriver.findElements(By.cssSelector(cssSelector)).asScala.toList
 
     if (checkDisplay) {

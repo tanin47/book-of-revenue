@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.{Transaction, TransactionTable, ListableTransaction, RichTransaction}
+import database.models.{ListableTransaction, RichTransaction, Transaction, TransactionTable}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -160,7 +160,7 @@ class TransactionService @Inject() (
     getById(stripeAccountId, liveMode, transactionId).flatMap { transaction => hydrate(transaction.toSeq) }.map(_.headOption)
   }
 
-  private[this] def hydrate(transactions: Seq[Transaction]): Future[Seq[RichTransaction]] = {
+  private def hydrate(transactions: Seq[Transaction]): Future[Seq[RichTransaction]] = {
     def idsOf(tpe: Transaction.Type): Set[String] =
       transactions.filter(_.tpe == tpe).map(_.id).toSet
 
@@ -218,7 +218,7 @@ class TransactionService @Inject() (
     }
   }
 
-  private[this] def hydrateListable(transactions: Seq[Transaction]): Future[Seq[ListableTransaction]] = {
+  private def hydrateListable(transactions: Seq[Transaction]): Future[Seq[ListableTransaction]] = {
     for {
       customers <- customerService.getByIds(transactions.flatMap(_.customerId).toSet)
     } yield {

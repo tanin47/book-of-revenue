@@ -1,7 +1,7 @@
 <script lang="ts">
 import Layout from '../_layout.svelte'
 import {post} from "../../common/form";
-import Table, { DEFAULT_COLUMN_RENDERING_SETTINGS } from "../../common/_table.svelte";
+import Table, {DEFAULT_COLUMN_RENDERING_SETTINGS} from "../../common/_table.svelte";
 import {type FetchResult, makeSortParam, parseColumnQueryParam, parseSortParam} from "../../common/table_models";
 import {CURRENT_CURRENCY, formatAccountingPeriod, formatNumber, LATEST_ACCOUNTING_PERIOD} from "../../common/globals";
 import FilterDialog, {BASE_COLUMNS, COLUMNS, type Params} from './_filter_dialog.svelte';

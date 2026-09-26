@@ -3,10 +3,10 @@ package controllers
 import database.services.UserService.UsernameAlreadyExistingException
 import database.services.{JournalEntryService, StripeAccountService, UserService}
 import framework.*
-import framework.Helpers.{makeValidationException, queueBootstrapJobs}
+import framework.Helpers.makeValidationException
 import givers.form.Form
-import givers.form.Mappings.{email, text}
-import org.jobrunr.scheduling.{JobRequestScheduler, JobScheduler}
+import givers.form.Mappings.text
+import org.jobrunr.scheduling.JobRequestScheduler
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Action, AnyContent}

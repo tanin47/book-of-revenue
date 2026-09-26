@@ -1,6 +1,6 @@
 package process
 
-import database.models.{Transaction, JournalEntry}
+import database.models.{JournalEntry, Transaction}
 import framework.Instant
 
 abstract class ProcessTransaction {

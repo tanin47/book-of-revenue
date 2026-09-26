@@ -100,7 +100,7 @@ class SubscriptionService @Inject() (
     getByIds(ids).flatMap(hydrate)
   }
 
-  private[this] def hydrate(items: Seq[StripeSubscription]): Future[Seq[RichStripeSubscription]] = {
+  private def hydrate(items: Seq[StripeSubscription]): Future[Seq[RichStripeSubscription]] = {
     for {
       discounts <- discountService.getRichByIds(items.flatMap(_.discountIds).toSet)
       taxRates <- taxRateService.getByIds(items.flatMap(_.defaultTaxRateIds).toSet)

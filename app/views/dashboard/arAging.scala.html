@@ -1,4 +1,4 @@
-@()(implicit req: framework.Request[_])
+@()(implicit req: framework.Request[?])
 
 @main("AR Aging") {
   <script src='@routes.AssetsController.versioned("svelte/dashboard/arAging/index.js")'></script>

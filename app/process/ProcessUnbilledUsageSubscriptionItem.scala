@@ -123,7 +123,7 @@ object ProcessUnbilledUsageSubscriptionItem {
     flatFeeEntries
   }
 
-  private[this] def computeNetRevenue(
+  private def computeNetRevenue(
     amount: Long,
     discounts: Seq[RichStripeDiscount],
     taxRates: Seq[StripeTaxRate],
@@ -135,7 +135,7 @@ object ProcessUnbilledUsageSubscriptionItem {
     subtotal - totalInclusiveTaxAmount
   }
 
-  private[this] def computeFlatFee(
+  private def computeFlatFee(
     aggregatedValue: Long,
     price: RichStripePrice,
   ): Long = {
@@ -150,7 +150,7 @@ object ProcessUnbilledUsageSubscriptionItem {
     }
   }
 
-  private[this] def computeRevenue(aggregatedValue: Long, price: RichStripePrice): Long = {
+  private def computeRevenue(aggregatedValue: Long, price: RichStripePrice): Long = {
     price.base.billingScheme match {
       case "per_unit" => price.base.unitAmount * aggregatedValue
       case "tiered" =>
@@ -170,7 +170,7 @@ object ProcessUnbilledUsageSubscriptionItem {
     }
   }
 
-  private[this] def getAggregatedValue(startedAt: Instant, endedAt: Instant, meterEventSummaries: Seq[StripeMeterEventSummary]): Long = {
+  private def getAggregatedValue(startedAt: Instant, endedAt: Instant, meterEventSummaries: Seq[StripeMeterEventSummary]): Long = {
     meterEventSummaries
       .filter { summary =>
         // If overlapping at all, we count it. We may double count, and that's fine.

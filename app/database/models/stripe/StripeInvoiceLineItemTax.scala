@@ -40,5 +40,5 @@ class StripeInvoiceLineItemTaxTable(tag: Tag) extends Table[StripeInvoiceLineIte
     amount,
     taxBehaviour,
     taxRateId
-  ).<>((StripeInvoiceLineItemTax.apply _).tupled, StripeInvoiceLineItemTax.unapply)
+  ).<>((StripeInvoiceLineItemTax.apply).tupled, StripeInvoiceLineItemTax.unapply)
 }

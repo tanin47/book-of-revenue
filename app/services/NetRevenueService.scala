@@ -166,7 +166,7 @@ class NetRevenueService @Inject() (
   import framework.PostgresProfile.api.*
 
 
-  private[this] def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
+  private def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
     if (sorts.isEmpty) {
       return sql"accounting_period ASC, net_revenue_net_income DESC NULLS LAST, Revenue_net_income DESC NULLS LAST, settlement_currency ASC"
     }
@@ -207,7 +207,7 @@ class NetRevenueService @Inject() (
     joinSqls(sortClauses, sql", ")
   }
 
-  private[this] def makeSelectedColumns(params: Params): SQLActionBuilder = {
+  private def makeSelectedColumns(params: Params): SQLActionBuilder = {
     val computedColumns = params.columns ++ Seq(
       Column.AccountingPeriod,
       Column.Currency,
@@ -282,7 +282,7 @@ class NetRevenueService @Inject() (
     )
   }
 
-  private[this] def getResultColumns(params: Params): Seq[ResultColumn] = {
+  private def getResultColumns(params: Params): Seq[ResultColumn] = {
     params.columns.map { column =>
       ResultColumn(
         id = column,
@@ -318,7 +318,7 @@ class NetRevenueService @Inject() (
     }
   }
 
-  private[this] def makeGroupByClause(params: Params): SQLActionBuilder = {
+  private def makeGroupByClause(params: Params): SQLActionBuilder = {
     params.groupBy
       .map {
         case GroupBy.Product => sql", product_id"
@@ -568,7 +568,7 @@ class NetRevenueService @Inject() (
       }
   }
 
-  private[this] def makeRevenueByMonthOrderByClause(sorts: Seq[RevenueByMonthSort], groupBy: GroupBy): SQLActionBuilder = {
+  private def makeRevenueByMonthOrderByClause(sorts: Seq[RevenueByMonthSort], groupBy: GroupBy): SQLActionBuilder = {
     if (sorts.isEmpty) {
       groupBy match {
         case GroupBy.Product => return sql"total DESC NULLS LAST, product_name ASC"
@@ -589,7 +589,7 @@ class NetRevenueService @Inject() (
     )
   }
 
-  private[this] def makeBaseRevenueByMonthWithSql(stripeAccountId: String, liveMode: Boolean, params: RevenueByMonthParams): SQLActionBuilder = {
+  private def makeBaseRevenueByMonthWithSql(stripeAccountId: String, liveMode: Boolean, params: RevenueByMonthParams): SQLActionBuilder = {
     val periods = generatePeriods(params.periodStart, params.periodEnd.plusMillis(1))
     val sumPeriodColumnsSql = joinSqls(
       periods.map { period =>
@@ -769,7 +769,7 @@ class NetRevenueService @Inject() (
       .map(_.headOption.getOrElse(0L))
   }
 
-  private[this] def getRevenueByMonthResultColumns(params: RevenueByMonthParams): Seq[RevenueByMonthResultColumn] = {
+  private def getRevenueByMonthResultColumns(params: RevenueByMonthParams): Seq[RevenueByMonthResultColumn] = {
     val baseColumns = params.groupBy match {
       case GroupBy.Product =>
         Seq(

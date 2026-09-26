@@ -1,4 +1,4 @@
-@(redirectPath: String)(implicit req: framework.Request[_])
+@(redirectPath: String)(implicit req: framework.Request[?])
 
 @main("Login") {
   <script src='@routes.AssetsController.versioned("svelte/auth/login.js")'></script>

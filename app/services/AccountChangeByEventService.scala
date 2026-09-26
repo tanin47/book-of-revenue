@@ -8,9 +8,7 @@ import framework.{EventColumn, Instant, Jsonable}
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import play.api.libs.json.{JsObject, Json}
 import process.Helpers.generatePeriods
-import services.AccountChangeByEventService.GroupBy
 import slick.jdbc.{GetResult, JdbcProfile, SQLActionBuilder}
-import slick.sql.SqlAction
 
 import java.io.{BufferedWriter, File, FileWriter}
 import java.nio.charset.StandardCharsets
@@ -167,7 +165,7 @@ class AccountChangeByEventService @Inject() (
       }
   }
 
-  private[this] def getRelevantEvents(accounts: Seq[JournalEntry.Account]): Future[Seq[JournalEntry.Event]] = {
+  private def getRelevantEvents(accounts: Seq[JournalEntry.Account]): Future[Seq[JournalEntry.Event]] = {
     db
       .run {
         sql"""
@@ -177,7 +175,7 @@ class AccountChangeByEventService @Inject() (
       .map { events => events.map(JournalEntry.Event.valueOf) }
   }
 
-  private[this] def makeGroupKeys(params: Params): Seq[String] = {
+  private def makeGroupKeys(params: Params): Seq[String] = {
     val base = Seq("accounting_period")
     val extraGroupKeys = params.groupBy match {
       case GroupBy.Summary => Seq.empty
@@ -349,7 +347,7 @@ class AccountChangeByEventService @Inject() (
     )
   }
 
-  private[this] def computeColumns(params: Params, events: Seq[JournalEntry.Event]): Seq[Column | EventColumn] = {
+  private def computeColumns(params: Params, events: Seq[JournalEntry.Event]): Seq[Column | EventColumn] = {
     (params.columns ++ events.map(EventColumn.apply)).asInstanceOf[Seq[Column | EventColumn]]
       .sortBy {
         case e: EventColumn =>
@@ -367,7 +365,7 @@ class AccountChangeByEventService @Inject() (
       }
   }
 
-  private[this] def makeSelectedColumns(params: Params, events: Seq[JournalEntry.Event]): SQLActionBuilder = {
+  private def makeSelectedColumns(params: Params, events: Seq[JournalEntry.Event]): SQLActionBuilder = {
     joinSqls(
       computeColumns(params, events).map {
         case e: EventColumn => sql""""#${e.name}""""
@@ -391,7 +389,7 @@ class AccountChangeByEventService @Inject() (
     )
   }
 
-  private[this] def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
+  private def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
     if (sorts.isEmpty) {
       return sql"accounting_period ASC, net_settlement_change DESC"
     }
@@ -422,7 +420,7 @@ class AccountChangeByEventService @Inject() (
     joinSqls(sortClauses, sql", ")
   }
 
-  private[this] def getResultColumns(params: Params, events: Seq[JournalEntry.Event]): Seq[ResultColumn] = {
+  private def getResultColumns(params: Params, events: Seq[JournalEntry.Event]): Seq[ResultColumn] = {
     computeColumns(params, events).map { column =>
       ResultColumn(
         id = column,

@@ -40,5 +40,5 @@ class StripeImporterJobTable(tag: Tag) extends Table[StripeImporterJob](tag, Som
     finishedAt,
     jobType,
     status
-  ).<>((StripeImporterJob.apply _).tupled, StripeImporterJob.unapply)
+  ).<>((StripeImporterJob.apply).tupled, StripeImporterJob.unapply)
 }

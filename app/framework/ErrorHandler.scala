@@ -2,7 +2,6 @@ package framework
 
 import com.google.inject.{Inject, Provider, Singleton}
 import controllers.routes
-import database.models.TrackedException
 import database.services.TrackedExceptionService
 import givers.form.ValidationException
 import play.api.http.DefaultHttpErrorHandler
@@ -123,7 +122,7 @@ class ErrorHandler @Inject() (
             Json.obj(
               "errors" -> e.messages.map { message =>
                 val translated =
-                  messagesApi.apply(message.key, message.args: _*)(Lang("en"))
+                  messagesApi.apply(message.key, message.args*)(Lang("en"))
 
                 if (translated == message.key) {
                   logger.error(

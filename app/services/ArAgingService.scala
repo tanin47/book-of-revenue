@@ -82,7 +82,7 @@ class ArAgingService @Inject() (
   import ArAgingService.*
   import framework.PostgresProfile.api.*
 
-  private[this] def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
+  private def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
     if (sorts.isEmpty) {
       return sql"ORDER BY total DESC, days_120_plus DESC, days_120 DESC, days_90 DESC, days_60 DESC, days_30 DESC"
     }
@@ -112,7 +112,7 @@ class ArAgingService @Inject() (
 
     makeSql(sql"ORDER BY ", joinSqls(sortClauses, sql", "))
   }
-  private[this] def makeGroupByClause(params: Params): SQLActionBuilder = {
+  private def makeGroupByClause(params: Params): SQLActionBuilder = {
     params.groupBy match {
       case GroupBy.Customer => sql"GROUP BY customer_id"
       case GroupBy.Transaction => sql"GROUP BY transaction_id"
@@ -120,7 +120,7 @@ class ArAgingService @Inject() (
     }
   }
 
-  private[this] def makeSelectedColumns(params: Params): SQLActionBuilder = {
+  private def makeSelectedColumns(params: Params): SQLActionBuilder = {
     joinSqls(
       params.columns.map {
         case Column.Date => sql"${params.exclusiveUpUntil.minusMillis(1)} AS date"
@@ -214,7 +214,7 @@ class ArAgingService @Inject() (
     )
   }
 
-  private[this] def getResultColumns(params: Params): Seq[ResultColumn] = {
+  private def getResultColumns(params: Params): Seq[ResultColumn] = {
     params.columns.map { column =>
       ResultColumn(
         id = column,

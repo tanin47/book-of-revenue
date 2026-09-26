@@ -1,8 +1,8 @@
 <script lang="ts" context="module">
-  import {CURRENT_STRIPE_ACCOUNT} from "./globals";
-  import TransactionStatus from "./_transaction_status.svelte"
+import {CURRENT_STRIPE_ACCOUNT} from "./globals";
+import TransactionStatus from "./_transaction_status.svelte"
 
-  export const DEFAULT_COLUMN_RENDERING_SETTINGS: {[key: string]: ColumnSetting} = {
+export const DEFAULT_COLUMN_RENDERING_SETTINGS: {[key: string]: ColumnSetting} = {
     TransactionId: {computeLink: (value) => `/customer/transaction/${value}`},
     TransactionTitle: {computeLink: (value, data, dataIndexById) => `/customer/transaction/${data[dataIndexById.TransactionId]}`, maxCharacterLength: 24},
     ProductId: {computeLink: (value) => value ? `https://dashboard.stripe.com/${CURRENT_STRIPE_ACCOUNT!.stripeAccount.id}/products/${value}` : null},

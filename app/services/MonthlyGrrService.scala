@@ -14,7 +14,6 @@ import slick.jdbc.{GetResult, JdbcProfile, SQLActionBuilder}
 import java.io.{BufferedWriter, File, FileWriter}
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
-import java.sql.Timestamp
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
@@ -233,7 +232,7 @@ class MonthlyGrrService @Inject() (
       .map(_.headOption.getOrElse(0L))
   }
 
-  private[this] def getCustomerRevenueByMonthResultColumns(params: CustomerRevenueByMonthParams): Seq[CustomerRevenueByMonthResultColumn] = {
+  private def getCustomerRevenueByMonthResultColumns(params: CustomerRevenueByMonthParams): Seq[CustomerRevenueByMonthResultColumn] = {
     val periods = generatePeriods(params.periodStart, params.periodEnd.plusMillis(1))
     Seq(
       CustomerRevenueByMonthResultColumn(id = Column.CustomerId, tpe = ColumnType.String),
@@ -244,7 +243,7 @@ class MonthlyGrrService @Inject() (
     }
   }
 
-  private[this] def makeCustomerOrderByClause(sorts: Seq[CustomerRevenueByMonthSort], periodEnd: Instant): SQLActionBuilder = {
+  private def makeCustomerOrderByClause(sorts: Seq[CustomerRevenueByMonthSort], periodEnd: Instant): SQLActionBuilder = {
     if (sorts.isEmpty) {
       return sql""""#${PeriodColumn(periodEnd.toEpochMilli).name}" DESC NULLS LAST, customer_name ASC"""
     }
@@ -266,7 +265,7 @@ class MonthlyGrrService @Inject() (
     )
   }
 
-  private[this] def makeCustomerByMonthSql(stripeAccountId: String, liveMode: Boolean, params: CustomerRevenueByMonthParams): SQLActionBuilder = {
+  private def makeCustomerByMonthSql(stripeAccountId: String, liveMode: Boolean, params: CustomerRevenueByMonthParams): SQLActionBuilder = {
     makeSql(
       makeBaseCustomerRevenueByMonthWithSql(stripeAccountId, liveMode, params),
       sql"""

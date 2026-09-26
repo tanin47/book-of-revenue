@@ -1,11 +1,14 @@
 package database.services
 
 import database.models.Transaction
-import database.models.stripe.{StripeCreditBalanceTransaction, StripeCreditBalanceTransactionTable, RichStripeCreditBalanceTransaction}
+import database.models.stripe.{
+  RichStripeCreditBalanceTransaction,
+  StripeCreditBalanceTransaction,
+  StripeCreditBalanceTransactionTable
+}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
-import slick.jdbc.JdbcProfile
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -121,7 +124,7 @@ class CreditBalanceTransactionService @Inject() (
     }.flatMap(hydrate)
   }
 
-  private[this] def hydrate(items: Seq[StripeCreditBalanceTransaction]): Future[Seq[RichStripeCreditBalanceTransaction]] = {
+  private def hydrate(items: Seq[StripeCreditBalanceTransaction]): Future[Seq[RichStripeCreditBalanceTransaction]] = {
     creditGrantService.getByIds(items.map(_.creditGrantId).toSet).map { creditGrants =>
       val creditGrantsById = creditGrants.map { g => g.id -> g }.toMap
 

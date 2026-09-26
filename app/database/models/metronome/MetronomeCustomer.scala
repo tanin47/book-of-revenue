@@ -43,5 +43,5 @@ class MetronomeCustomerTable(tag: Tag) extends Table[MetronomeCustomer](tag, Som
     createdAt,
     updatedAt,
     archivedAt
-  ).<>((MetronomeCustomer.apply _).tupled, MetronomeCustomer.unapply)
+  ).<>((MetronomeCustomer.apply).tupled, MetronomeCustomer.unapply)
 }

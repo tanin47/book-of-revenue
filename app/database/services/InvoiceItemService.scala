@@ -1,6 +1,6 @@
 package database.services
 
-import database.models.stripe.{StripeInvoiceItem, StripeInvoiceItemTable, RichStripeInvoiceItem}
+import database.models.stripe.{RichStripeInvoiceItem, StripeInvoiceItem, StripeInvoiceItemTable}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
@@ -112,7 +112,7 @@ class InvoiceItemService @Inject() (
     getByIds(ids).flatMap(hydrate)
   }
 
-  private[this] def hydrate(items: Seq[StripeInvoiceItem]): Future[Seq[RichStripeInvoiceItem]] = {
+  private def hydrate(items: Seq[StripeInvoiceItem]): Future[Seq[RichStripeInvoiceItem]] = {
     for {
       discounts <- discountService.getRichByIds(items.flatMap(_.discountIds).toSet)
       taxRates <- taxRateService.getByIds(items.flatMap(_.taxRateIds).toSet)

@@ -1,10 +1,9 @@
 package database.services
 
-import database.models.stripe.{StripeBalanceTransaction, StripeBalanceTransactionTable, RichStripeBalanceTransaction}
+import database.models.stripe.{RichStripeBalanceTransaction, StripeBalanceTransaction, StripeBalanceTransactionTable}
 import framework.{BaseDbService, Instant, PlayConfig}
 import org.postgresql.util.PSQLException
 import play.api.db.slick.DatabaseConfigProvider
-import slick.jdbc.JdbcProfile
 
 import javax.inject.{Inject, Provider, Singleton}
 import scala.concurrent.{ExecutionContext, Future}

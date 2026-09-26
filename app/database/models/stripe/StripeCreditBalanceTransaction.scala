@@ -112,5 +112,5 @@ class StripeCreditBalanceTransactionTable(tag: Tag) extends Table[StripeCreditBa
     debitCreditsAppliedInvoiceId,
     debitCreditsAppliedInvoiceLineItemId,
     syncedAt
-  ).<>((StripeCreditBalanceTransaction.apply _).tupled, StripeCreditBalanceTransaction.unapply)
+  ).<>((StripeCreditBalanceTransaction.apply).tupled, StripeCreditBalanceTransaction.unapply)
 }

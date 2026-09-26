@@ -27,5 +27,5 @@ class StripeCreditNoteLineItemTaxTable(tag: Tag) extends Table[StripeCreditNoteL
     rank,
     amount,
     taxBehavior
-  ).<>((StripeCreditNoteLineItemTax.apply _).tupled, StripeCreditNoteLineItemTax.unapply)
+  ).<>((StripeCreditNoteLineItemTax.apply).tupled, StripeCreditNoteLineItemTax.unapply)
 }

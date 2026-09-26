@@ -1,4 +1,4 @@
-@()(implicit req: framework.Request[_])
+@()(implicit req: framework.Request[?])
 
 @main("Register") {
   <script src='@routes.AssetsController.versioned("svelte/auth/register.js")'></script>

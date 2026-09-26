@@ -12,7 +12,8 @@ import {
 } from "../../common/table_models";
 import {
   addMonths,
-  CURRENT_CURRENCY, CURRENT_STRIPE_ACCOUNT,
+  CURRENT_CURRENCY,
+  CURRENT_STRIPE_ACCOUNT,
   FIRST_ACCOUNTING_PERIOD,
   formatAccountingPeriod,
   LATEST_ACCOUNTING_PERIOD

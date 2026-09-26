@@ -1,6 +1,5 @@
 package database.models
 
-import database.models.User.PreferredLang
 import framework.Jsonable
 import framework.PostgresProfile.api.*
 import play.api.libs.json.{JsObject, Json}
@@ -39,5 +38,5 @@ class UserTable(tag: Tag) extends Table[User](tag, "user") {
     username,
     hashedPassword,
     createdAt
-  ).<>((User.apply _).tupled, User.unapply)
+  ).<>((User.apply).tupled, User.unapply)
 }

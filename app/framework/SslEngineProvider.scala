@@ -3,22 +3,19 @@ package framework
 import background.LetsencryptCertificateIssuer.readPrivateKey
 import database.services.FileService
 import framework.Helpers.await
-import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x509.{Extension, GeneralName, GeneralNames}
 import org.bouncycastle.cert.jcajce.{JcaX509CertificateConverter, JcaX509v3CertificateBuilder}
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.bouncycastle.openssl.PEMParser
-import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import play.core.ApplicationProvider
 import play.server.api.SSLEngineProvider
 
-import java.io.{ByteArrayInputStream, StringReader}
+import java.io.ByteArrayInputStream
 import java.math.BigInteger
 import java.nio.charset.StandardCharsets
 import java.security.cert.{Certificate, CertificateFactory}
-import java.security.{KeyPairGenerator, KeyStore, PrivateKey, Security}
+import java.security.{KeyPairGenerator, KeyStore, Security}
 import java.time.Duration
 import java.util.Date
 import javax.inject.Inject

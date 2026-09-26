@@ -59,5 +59,5 @@ class StripeTaxRateTable(tag: Tag) extends Table[StripeTaxRate](tag, Some("strip
     flatAmount,
     flatAmountCurrency,
     rateType
-  ).<>((StripeTaxRate.apply _).tupled, StripeTaxRate.unapply)
+  ).<>((StripeTaxRate.apply).tupled, StripeTaxRate.unapply)
 }

@@ -1,14 +1,6 @@
 <script lang="ts">
 import BarChart, {type DataPoint} from "./_bar_chart.svelte";
-import {
-  FIRST_ACCOUNTING_PERIOD,
-  formatAccountingPeriod,
-  getMonthlyArpaAuditUrl,
-  LATEST_ACCOUNTING_PERIOD
-} from "../common/globals";
-import {onMount} from "svelte";
-import {post} from "../common/form";
-import type {Params} from "./_filter_dialog.svelte";
+import {getMonthlyArpaAuditUrl} from "../common/globals";
 
 export let points: DataPoint[] = []
 

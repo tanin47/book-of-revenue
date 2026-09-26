@@ -1,10 +1,9 @@
 package background
 
-import database.models.stripe.StripeRawObject
-import database.services.{BalanceTransactionService, ChargeService, CouponService, CreditBalanceTransactionService, CreditGrantService, CreditNoteLineItemPretaxCreditAmountService, CreditNoteLineItemService, CreditNoteLineItemTaxService, CreditNoteRefundService, CreditNoteService, CustomerBalanceTransactionService, CustomerService, DiscountService, DisputeService, InvoiceItemService, InvoiceLineItemDiscountAmountService, InvoiceLineItemPretaxCreditAmountService, InvoiceLineItemService, InvoiceLineItemTaxService, InvoicePaymentService, InvoiceService, MeterEventSummaryService, PaymentIntentService, PriceService, PriceTierService, ProductService, RawStripeObjectService, RefundService, SubscriptionItemService, SubscriptionService, TaxRateService, TrackedExceptionService}
+import database.services.*
 import framework.Helpers.await
 import framework.Instant
-import org.jobrunr.jobs.lambdas.{JobRequest, JobRequestHandler}
+import org.jobrunr.jobs.lambdas.JobRequest
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsLookupResult, JsObject, Json}
 import play.api.{Environment, Logger, Mode, Play}
@@ -62,7 +61,7 @@ class StripeNormalizer @Inject() (
   meterEventSummaryService: MeterEventSummaryService,
   trackedExceptionService: TrackedExceptionService
 )(implicit ec: ExecutionContext) extends BaseJobRequestHandler[StripeNormalizerRequest](trackedExceptionService) {
-  private[this] val logger = Logger(getClass)
+  private val logger = Logger(getClass)
 
   def run2(req: StripeNormalizerRequest): Unit = {
     var maxSyncedAt: Option[Instant] = None
@@ -112,7 +111,7 @@ class StripeNormalizer @Inject() (
     }
   }
 
-  private[this] def normalizeMeterEventSummary(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizeMeterEventSummary(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     val _ = await(meterEventSummaryService.create(MeterEventSummaryService.CreateData(
         stripeAccountId = stripeAccountId,
         liveMode = liveMode,
@@ -126,7 +125,7 @@ class StripeNormalizer @Inject() (
     )))
   }
 
-  private[this] def normalizePaymentIntent(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizePaymentIntent(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     // `latest_charge` is either the id or, when expanded, the full object.
     val latestCharge = normalizeExpandableRef(json \ "latest_charge") { chargeJson => normalizeCharge(chargeJson, syncedAt, stripeAccountId, liveMode) }
 
@@ -143,7 +142,7 @@ class StripeNormalizer @Inject() (
     )))
   }
 
-  private[this] def normalizeCharge(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizeCharge(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     val charge = await(chargeService.create(ChargeService.CreateData(
         stripeAccountId = stripeAccountId,
         liveMode = liveMode,
@@ -164,7 +163,7 @@ class StripeNormalizer @Inject() (
     )))
   }
 
-  private[this] def normalizeRefund(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizeRefund(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     val _ = await(refundService.create(RefundService.CreateData(
         stripeAccountId = stripeAccountId,
         liveMode = liveMode,
@@ -182,7 +181,7 @@ class StripeNormalizer @Inject() (
     )))
   }
 
-  private[this] def normalizeDispute(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizeDispute(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     val _ = await(disputeService.create(DisputeService.CreateData(
         stripeAccountId = stripeAccountId,
         liveMode = liveMode,
@@ -199,7 +198,7 @@ class StripeNormalizer @Inject() (
     )))
   }
 
-  private[this] def normalizeBalanceTransaction(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizeBalanceTransaction(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     val _ = await(balanceTransactionService.create(BalanceTransactionService.CreateData(
         stripeAccountId = stripeAccountId,
         liveMode = liveMode,
@@ -217,7 +216,7 @@ class StripeNormalizer @Inject() (
     )))
   }
 
-  private[this] def normalizeCustomer(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizeCustomer(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     val _ = await(customerService.create(CustomerService.CreateData(
         stripeAccountId = stripeAccountId,
         liveMode = liveMode,
@@ -228,7 +227,7 @@ class StripeNormalizer @Inject() (
     )))
   }
 
-  private[this] def normalizeCustomerBalanceTransaction(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizeCustomerBalanceTransaction(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     val _ = await(customerBalanceTransactionService.create(CustomerBalanceTransactionService.CreateData(
         stripeAccountId = stripeAccountId,
         liveMode = liveMode,
@@ -246,7 +245,7 @@ class StripeNormalizer @Inject() (
     )))
   }
 
-  private[this] def normalizeCreditGrant(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizeCreditGrant(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     // `customer` is either the id or, when expanded, the full object.
     val customerId = normalizeExpandableRef(json \ "customer") { customerJson => normalizeCustomer(customerJson, syncedAt, stripeAccountId, liveMode) }.get
 
@@ -265,7 +264,7 @@ class StripeNormalizer @Inject() (
     )))
   }
 
-  private[this] def normalizeCreditBalanceTransaction(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizeCreditBalanceTransaction(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     val creditGrantId = normalizeExpandableRef(json \ "credit_grant") { creditGrantJson => normalizeCreditGrant(creditGrantJson, syncedAt, stripeAccountId, liveMode) }.get
 
     val _ = await(creditBalanceTransactionService.create(CreditBalanceTransactionService.CreateData(
@@ -290,7 +289,7 @@ class StripeNormalizer @Inject() (
     )))
   }
 
-  private[this] def normalizeCreditNote(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizeCreditNote(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     val creditNoteId = (json \ "id").as[String]
 
     val _ = await(creditNoteService.create(CreditNoteService.CreateData(
@@ -367,7 +366,7 @@ class StripeNormalizer @Inject() (
     }))
   }
 
-  private[this] def normalizeSubscription(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizeSubscription(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     val discountIds = normalizeExpandableRefs(json \ "discounts") { discountJson => normalizeDiscount(discountJson, syncedAt, stripeAccountId, liveMode) }
     val defaultTaxRateIds = normalizeExpandableRefs(json \ "default_tax_rates") { taxRateJson => normalizeTaxRate(taxRateJson, syncedAt, stripeAccountId, liveMode) }
 
@@ -405,7 +404,7 @@ class StripeNormalizer @Inject() (
     }
   }
 
-  private[this] def normalizeProduct(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizeProduct(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     val _ = await(productService.create(ProductService.CreateData(
       stripeAccountId = stripeAccountId,
       liveMode = liveMode,
@@ -416,7 +415,7 @@ class StripeNormalizer @Inject() (
     )))
   }
 
-  private[this] def normalizePrice(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizePrice(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     val _ = await(priceService.create(PriceService.CreateData(
         stripeAccountId = stripeAccountId,
         liveMode = liveMode,
@@ -449,7 +448,7 @@ class StripeNormalizer @Inject() (
     }))
   }
 
-  private[this] def normalizeInvoiceItem(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizeInvoiceItem(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     // `discounts` and `tax_rates` are either arrays of ids or, when expanded, arrays of full objects;
     // normalize the objects when present and keep the ids either way.
     val discountIds = normalizeExpandableRefs(json \ "discounts") { discountJson => normalizeDiscount(discountJson, syncedAt, stripeAccountId, liveMode) }
@@ -477,7 +476,7 @@ class StripeNormalizer @Inject() (
 
   // A Stripe reference field is either an id string or, when expanded, the full object. Normalize the
   // expanded object (if present) and return the id either way.
-  private[this] def normalizeExpandableRef(ref: JsLookupResult)(normalize: JsObject => Unit): Option[String] = {
+  private def normalizeExpandableRef(ref: JsLookupResult)(normalize: JsObject => Unit): Option[String] = {
     ref.asOpt[String].orElse {
       ref.asOpt[JsObject].map { obj =>
         normalize(obj)
@@ -487,14 +486,14 @@ class StripeNormalizer @Inject() (
   }
 
   // Like normalizeExpandableRef, but for an array of ids or expanded objects.
-  private[this] def normalizeExpandableRefs(ref: JsLookupResult)(normalize: JsObject => Unit): Seq[String] = {
+  private def normalizeExpandableRefs(ref: JsLookupResult)(normalize: JsObject => Unit): Seq[String] = {
     ref.asOpt[Seq[JsObject]] match {
       case Some(objs) => objs.map { obj => normalize(obj); (obj \ "id").as[String] }
       case None => ref.asOpt[Seq[String]].getOrElse(Seq.empty)
     }
   }
 
-  private[this] def normalizeDiscount(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizeDiscount(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     // A discount embeds its coupon as a full object.
     val couponId = normalizeExpandableRef(json \ "coupon") { couponJson => normalizeCoupon(couponJson, syncedAt, stripeAccountId, liveMode) }
     val _ = await(discountService.create(DiscountService.CreateData(
@@ -505,7 +504,7 @@ class StripeNormalizer @Inject() (
     )))
   }
 
-  private[this] def normalizeCoupon(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizeCoupon(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     val _ = await(couponService.create(CouponService.CreateData(
         stripeAccountId = stripeAccountId,
         liveMode = liveMode,
@@ -516,7 +515,7 @@ class StripeNormalizer @Inject() (
     )))
   }
 
-  private[this] def normalizeTaxRate(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizeTaxRate(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     val _ = await(taxRateService.create(TaxRateService.CreateData(
         stripeAccountId = stripeAccountId,
         liveMode = liveMode,
@@ -529,7 +528,7 @@ class StripeNormalizer @Inject() (
     )))
   }
 
-  private[this] def normalizeInvoice(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizeInvoice(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     val statusTransitions = (json \ "status_transitions").as[JsObject]
 
     val invoice = await(invoiceService.create(InvoiceService.CreateData(
@@ -624,7 +623,7 @@ class StripeNormalizer @Inject() (
     payments.foreach { _.foreach { payment => normalizeInvoicePayment(payment, syncedAt, stripeAccountId, liveMode) } }
   }
 
-  private[this] def normalizeInvoicePayment(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
+  private def normalizeInvoicePayment(json: JsObject, syncedAt: Instant, stripeAccountId: String, liveMode: Boolean): Unit = {
     // `charge`, `payment_intent`, and `payment_record` are either ids or, when expanded, full objects.
     val chargeId = normalizeExpandableRef(json \ "payment" \ "charge") { chargeJson => normalizeCharge(chargeJson, syncedAt, stripeAccountId, liveMode) }
     val paymentIntentId = normalizeExpandableRef(json \ "payment" \ "payment_intent") { paymentIntentJson => normalizePaymentIntent(paymentIntentJson, syncedAt, stripeAccountId, liveMode) }

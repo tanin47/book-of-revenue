@@ -100,5 +100,5 @@ class StripeCreditNoteTable(tag: Tag) extends Table[StripeCreditNote](tag, Some(
     createdAt,
     effectiveAt,
     voidedAt
-  ).<>((StripeCreditNote.apply _).tupled, StripeCreditNote.unapply)
+  ).<>((StripeCreditNote.apply).tupled, StripeCreditNote.unapply)
 }

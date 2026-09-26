@@ -1,4 +1,4 @@
-import type {Component, SvelteComponent} from "svelte";
+import type {Component} from "svelte";
 
 export type ComputeLinkFn = ((
   value: any,

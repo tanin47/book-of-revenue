@@ -5,7 +5,7 @@ import database.models.{JournalEntry, Transaction}
 import database.services.*
 import framework.Helpers.await
 import framework.Instant
-import org.jobrunr.jobs.lambdas.{JobRequest, JobRequestHandler}
+import org.jobrunr.jobs.lambdas.JobRequest
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.{Environment, Logger, Mode, Play}
 import process.*
@@ -64,7 +64,7 @@ class ProcessTransactionWorker @Inject() (
   metronomeDraftInvoiceService: MetronomeDraftInvoiceService,
   trackedExceptionService: TrackedExceptionService
 )(implicit ec: ExecutionContext) extends BaseJobRequestHandler[ProcessTransactionWorkerRequest](trackedExceptionService) {
-  private[this] val logger = Logger(getClass)
+  private val logger = Logger(getClass)
 
   def run2(req: ProcessTransactionWorkerRequest): Unit = {
     val batchTimestamp = Instant.now()
@@ -260,7 +260,7 @@ class ProcessTransactionWorker @Inject() (
     ))
   }
 
-  private[this] def makeProcessInvoice(transaction: Transaction): Option[ProcessTransaction] = {
+  private def makeProcessInvoice(transaction: Transaction): Option[ProcessTransaction] = {
     val invoiceOpt = await(invoiceService.getRichById(transaction.id))
     if (invoiceOpt.isEmpty) {
       logger.info(s"The invoice ${transaction.id} does not exist. Skipping.")

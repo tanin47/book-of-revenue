@@ -1,7 +1,7 @@
 package database.models
 
-import framework.{Instant, Jsonable}
 import framework.PostgresProfile.api.*
+import framework.{Instant, Jsonable}
 import play.api.libs.json.{JsObject, Json}
 import slick.lifted.{ProvenShape, Rep}
 
@@ -30,5 +30,5 @@ class TrackedExceptionTable(tag: Tag) extends Table[TrackedException](tag, "trac
     exceptionClass,
     message,
     stackTrace
-  ).<>((TrackedException.apply _).tupled, TrackedException.unapply)
+  ).<>((TrackedException.apply).tupled, TrackedException.unapply)
 }

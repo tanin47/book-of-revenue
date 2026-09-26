@@ -1,8 +1,5 @@
 <script lang="ts">
 import BarChart, {type DataPoint} from "./_bar_chart.svelte";
-import {onMount} from "svelte";
-import {post} from "../common/form";
-import type {Params} from "./_filter_dialog.svelte";
 import {getDirectCashFlowAuditUrl} from "../common/globals";
 
 export let points: DataPoint[] = []

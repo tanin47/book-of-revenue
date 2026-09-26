@@ -1,8 +1,8 @@
 package controllers
 
 import background.{LetsencryptCertificateIssuer, LetsencryptCertificateIssuerRequest}
-import database.services.{JournalEntryService, StripeAccountService, UserService}
-import framework.{BaseController, ControllerComponents, NotFoundException, PlayConfig}
+import database.services.UserService
+import framework.{BaseController, ControllerComponents, PlayConfig}
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Action, AnyContent}
 

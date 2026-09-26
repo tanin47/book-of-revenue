@@ -40,5 +40,5 @@ class StripeRawObjectTable(tag: Tag) extends Table[StripeRawObject](tag, Some("s
     rawJson,
     syncedAt,
     processedCount
-  ).<>((StripeRawObject.apply _).tupled, StripeRawObject.unapply)
+  ).<>((StripeRawObject.apply).tupled, StripeRawObject.unapply)
 }

@@ -25,5 +25,5 @@ class MetronomeCreditTypeTable(tag: Tag) extends Table[MetronomeCreditType](tag,
     name,
     isCurrency,
     updatedAt,
-  ).<>((MetronomeCreditType.apply _).tupled, MetronomeCreditType.unapply)
+  ).<>((MetronomeCreditType.apply).tupled, MetronomeCreditType.unapply)
 }

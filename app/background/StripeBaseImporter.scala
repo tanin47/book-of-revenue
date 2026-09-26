@@ -1,23 +1,17 @@
 package background
 
 import database.models.stripe.{StripeImporterJob, StripeImporterJobCursor}
-import database.services.{RawStripeObjectService, StripeImporterJobCursorService, StripeImporterJobService}
+import database.services.{RawStripeObjectService, StripeImporterJobCursorService}
 import framework.Helpers.await
-import org.jobrunr.jobs.lambdas.{JobRequest, JobRequestHandler}
-import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.{JsObject, Json}
-import play.api.{Environment, Logger, Mode, Play}
-import services.StripeService
+import play.api.Logger
+import play.api.libs.json.JsObject
 import services.StripeService.ListResult
-
-import javax.inject.{Inject, Singleton}
-import scala.concurrent.ExecutionContext
 
 trait StripeBaseImporter {
   def rawStripeObjectService: RawStripeObjectService
   def stripeImporterJobCursorService: StripeImporterJobCursorService
 
-  private[this] val logger = Logger(getClass)
+  private val logger = Logger(getClass)
 
   def importAllWithWrite(
     job: StripeImporterJob,

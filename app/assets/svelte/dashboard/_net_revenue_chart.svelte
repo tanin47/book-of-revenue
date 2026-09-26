@@ -1,6 +1,6 @@
 <script lang="ts">
 import BarChart, {type DataPoint} from "./_bar_chart.svelte";
-import {formatAccountingPeriod, getNetRevenueAuditUrl} from "../common/globals";
+import {getNetRevenueAuditUrl} from "../common/globals";
 
 export let points: DataPoint[]
 

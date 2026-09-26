@@ -1,9 +1,9 @@
 package background
 
-import database.services.{PriceService, RawStripeObjectService, StripeAccountService, SubscriptionItemService, SubscriptionService, TrackedExceptionService}
+import database.services.*
 import framework.Helpers.await
 import framework.Instant
-import org.jobrunr.jobs.lambdas.{JobRequest, JobRequestHandler}
+import org.jobrunr.jobs.lambdas.JobRequest
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsObject, JsString}
 import play.api.{Environment, Logger, Mode, Play}
@@ -39,10 +39,10 @@ class StripeMeterEventSummaryImporter @Inject() (
   priceService: PriceService,
   trackedExceptionService: TrackedExceptionService,
 )(implicit ec: ExecutionContext) extends BaseJobRequestHandler[StripeMeterEventSummaryImporterRequest](trackedExceptionService) {
-  private[this] val logger = Logger(getClass)
+  private val logger = Logger(getClass)
 
   // Event summaries require an aligned time window; we floor/ceil to the hour to satisfy Stripe.
-  private[this] val oneHour = 3600L
+  private val oneHour = 3600L
 
   def run2(req: StripeMeterEventSummaryImporterRequest): Unit = {
     val accounts = await(stripeAccountService.getAll())
@@ -53,7 +53,7 @@ class StripeMeterEventSummaryImporter @Inject() (
     }
   }
 
-  private[this] def importData(stripeAccountId: String, apiKey: String, liveMode: Boolean): Unit = {
+  private def importData(stripeAccountId: String, apiKey: String, liveMode: Boolean): Unit = {
     logger.info(s"Importing meter event summaries for stripeAccountId=$stripeAccountId liveMode=$liveMode")
     val subscriptionsById = await(subscriptionService.getAll(stripeAccountId, liveMode)).map { s => s.id -> s }.toMap
     val pricesById = await(priceService.getAll(stripeAccountId, liveMode)).map { p => p.id -> p }.toMap
@@ -96,9 +96,9 @@ class StripeMeterEventSummaryImporter @Inject() (
     }
   }
 
-  private[this] def floorToHour(epochSecond: Long): Long = (epochSecond / oneHour) * oneHour
+  private def floorToHour(epochSecond: Long): Long = (epochSecond / oneHour) * oneHour
 
-  private[this] def ceilToHour(epochSecond: Long): Long = ((epochSecond + oneHour - 1) / oneHour) * oneHour
+  private def ceilToHour(epochSecond: Long): Long = ((epochSecond + oneHour - 1) / oneHour) * oneHour
 
   private def importAll(stripeAccountId: String, liveMode: Boolean)(fn: Option[String] => ListResult[JsObject]): Unit = {
     var startingAfter: Option[String] = None
