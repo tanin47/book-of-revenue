@@ -116,6 +116,11 @@ case class ProcessStandaloneCharge(
       stripeCreditNoteLineItemId = None,
       stripeProductId = None,
       stripePriceId = None,
+      metronomeCustomerId = None,
+      metronomeProductId = None,
+      metronomeContractId = None,
+      metronomeInvoiceId = None,
+      metronomeLineItemId = None,
       createdAt = syncedAt
     )
   }

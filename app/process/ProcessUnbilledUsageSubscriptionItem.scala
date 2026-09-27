@@ -83,6 +83,11 @@ object ProcessUnbilledUsageSubscriptionItem {
         stripeCreditNoteLineItemId = None,
         stripeProductId = Some(price.base.productId),
         stripePriceId = Some(price.base.id),
+        metronomeCustomerId = None,
+        metronomeProductId = None,
+        metronomeContractId = None,
+        metronomeInvoiceId = None,
+        metronomeLineItemId = None,
         createdAt = null
       )
     }
@@ -226,6 +231,11 @@ case class ProcessUnbilledUsageSubscriptionItem(
           stripeSubscriptionItemId = Some(subscriptionItem.base.id),
           stripeProductId = subscriptionItem.price.map(_.base.productId),
           stripePriceId = Some(subscriptionItem.base.priceId),
+          metronomeCustomerId = None,
+          metronomeProductId = None,
+          metronomeContractId = None,
+          metronomeInvoiceId = None,
+          metronomeLineItemId = None,
           createdAt = syncedAt
         )
       }

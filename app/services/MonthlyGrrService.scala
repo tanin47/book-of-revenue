@@ -5,17 +5,26 @@ import database.models.JournalEntry.AccountCategory
 import database.services.JournalEntryService
 import database.services.JournalEntryService.{ColumnType, SortDirection}
 import framework.Helpers.{escapeCsv, formatCsvValue}
-import framework.{Instant, Jsonable, PeriodColumn}
+import framework.Jooq.*
+import framework.{Instant, Jooq, Jsonable, PeriodColumn}
+import jooq.generated.stripe.Tables.STRIPE_CUSTOMER
+import org.jooq.impl.DSL
+import org.jooq.impl.DSL.*
+import org.jooq.scalaextensions.Conversions.*
+import org.jooq.types.YearToMonth
+import org.jooq.{CommonTableExpression, OrderField, SortOrder}
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import play.api.libs.json.{JsObject, Json}
 import process.Helpers.generatePeriods
-import slick.jdbc.{GetResult, JdbcProfile, SQLActionBuilder}
+import slick.jdbc.{GetResult, JdbcProfile}
 
 import java.io.{BufferedWriter, File, FileWriter}
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.time.ZoneOffset
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 
 object MonthlyGrrService {
@@ -86,60 +95,85 @@ class MonthlyGrrService @Inject() (
   import MonthlyGrrService.*
   import framework.PostgresProfile.api.*
 
-  def makeBaseSql(stripeAccountId: String, liveMode: Boolean, currency: String, periodStart: Instant, periodEnd: Instant): SQLActionBuilder = {
+  def makeBaseSql(
+    stripeAccountId: String,
+    liveMode: Boolean,
+    currency: String,
+    periodStart: Instant,
+    periodEnd: Instant
+  ): org.jooq.CommonTableExpression[?] = {
     val revenueAccounts = JournalEntry.Account.values.filter(_.getAccountCategory() == AccountCategory.Revenue).toList
     val contraRevenueAccounts = JournalEntry.Account.values.filter(_.getAccountCategory() == AccountCategory.ContraRevenue).toList
 
-    sql"""
-      WITH raw_entries AS (
-        SELECT
-          accounting_period AT TIME ZONE 'UTC' AS accounting_period,
-          customer_id,
-          SUM(
-            (CASE WHEN debit = ANY(${(revenueAccounts ++ contraRevenueAccounts).map(_.name)}) THEN -settlement_amount ELSE 0 END)
-            + (CASE WHEN credit = ANY(${(revenueAccounts ++ contraRevenueAccounts).map(_.name)}) THEN settlement_amount ELSE 0 END)
-          ) AS net_revenue
-        FROM journal_entry
-        WHERE
-          stripe_account_id = $stripeAccountId
-          AND live_mode = $liveMode
-          AND accounting_period >= ($periodStart - INTERVAL '1 month')
-          AND accounting_period <= $periodEnd
-          AND settlement_currency = $currency
-        GROUP BY accounting_period, customer_id
-      ),
+    val j = jooq.generated.public.tables.JournalEntry.JOURNAL_ENTRY
 
-      customer_entries AS (
-        SELECT
-          COALESCE(e.accounting_period, b.accounting_period + INTERVAL '1 month') AS accounting_period,
-          COALESCE(e.customer_id, b.customer_id) AS customer_id,
-          (CASE
-            WHEN e.net_revenue < 0 OR b.net_revenue <= 0 THEN 0
-            WHEN COALESCE(e.net_revenue, 0) < b.net_revenue THEN COALESCE(e.net_revenue, 0) * 100 / b.net_revenue
-            ELSE 100
-          END) AS grr
-        FROM raw_entries e
-        RIGHT JOIN raw_entries b
-        ON e.accounting_period = (b.accounting_period + INTERVAL '1 month')
-        AND e.customer_id = b.customer_id
-        WHERE b.net_revenue > 0
+    val rawEntries = name("raw_entries").as(
+      select(
+        j.ACCOUNTING_PERIOD.as("accounting_period"),
+        j.CUSTOMER_ID.as("customer_id"),
+        sum(
+          when(j.DEBIT.in((revenueAccounts ++ contraRevenueAccounts).asJava), j.SETTLEMENT_AMOUNT.neg()).otherwise(0L)
+            .add(when(j.CREDIT.in((revenueAccounts ++ contraRevenueAccounts).asJava), j.SETTLEMENT_AMOUNT).otherwise(0L))
+        ).as("net_revenue")
       )
-    """
-  }
+        .from(j)
+        .where(j.STRIPE_ACCOUNT_ID.eq(stripeAccountId))
+        .and(j.LIVE_MODE.eq(Boolean.box(liveMode)))
+        .and(j.ACCOUNTING_PERIOD.ge(periodStart.atOffset(ZoneOffset.UTC).minusMonths(1).toInstant))
+        .and(j.ACCOUNTING_PERIOD.le(periodEnd))
+        .and(j.SETTLEMENT_CURRENCY.eq(currency))
+        .groupBy(
+          j.ACCOUNTING_PERIOD,
+          j.CUSTOMER_ID
+        )
+    )
+    val e = rawEntries.as("e")
+    val b = rawEntries.as("b")
 
+    val eAccountingPeriod = e.field("accounting_period", classOf[Instant])
+    val eCustomerId = e.field("customer_id", classOf[String])
+    val eNetRevenue = e.field("net_revenue", classOf[JLong])
+
+    val bAccountingPeriod = b.field("accounting_period", classOf[Instant])
+    val bCustomerId = b.field("customer_id", classOf[String])
+    val bNetRevenue = b.field("net_revenue", classOf[JLong])
+
+    val customerEntries = name("customer_entries").as(
+      `with`(rawEntries)
+      .select(
+        coalesce(eAccountingPeriod, addMonthsUtc(bAccountingPeriod, 1)).as("accounting_period"),
+        coalesce(eCustomerId, bCustomerId).as("customer_id"),
+        when[JLong]((eNetRevenue < 0L).or(bNetRevenue <= 0L), 0L)
+          .when(
+            coalesce[JLong](eNetRevenue, 0L) <= bNetRevenue,
+            coalesce[JLong](eNetRevenue, 0L) * 100L / bNetRevenue
+          )
+          .otherwise(100L)
+          .as("grr")
+      )
+        .from(e)
+        .rightJoin(b)
+        .on(eAccountingPeriod.eq(addMonthsUtc(bAccountingPeriod, 1)))
+        .and(eCustomerId.eq(bCustomerId))
+        .where(bNetRevenue.gt(0L))
+    )
+
+    customerEntries
+  }
 
   def get(stripeAccountId: String, liveMode: Boolean, currency: String, periodStart: Instant, periodEnd: Instant): Future[Seq[DataPoint]] = {
     db.run {
-        makeSql(
-          makeBaseSql(stripeAccountId, liveMode, currency, periodStart, periodEnd),
-          sql"""
-          SELECT
-            accounting_period,
-            SUM(grr) / COUNT(customer_id) AS grr
-          FROM customer_entries
-          GROUP BY accounting_period
-          ORDER BY accounting_period ASC
-        """
+        val customerEntries = makeBaseSql(stripeAccountId, liveMode, currency, periodStart, periodEnd)
+
+        toSqlActionBuilder(
+          `with`(customerEntries)
+            .select(
+              field("accounting_period"),
+              sum(field("grr", classOf[java.lang.Long])).div(count(field("customer_id"))).as("grr")
+            )
+            .from(customerEntries)
+            .groupBy(customerEntries.field("accounting_period"))
+            .orderBy(customerEntries.field("accounting_period").asc())
         ).as[(Instant, Double)]
       }
       .map { items =>
@@ -157,61 +191,54 @@ class MonthlyGrrService @Inject() (
   }
 
 
-  def makeBaseCustomerRevenueByMonthWithSql(stripeAccountId: String, liveMode: Boolean, params: CustomerRevenueByMonthParams): SQLActionBuilder = {
+  def makeBaseCustomerRevenueByMonthWithSql(
+    stripeAccountId: String,
+    liveMode: Boolean,
+    params: CustomerRevenueByMonthParams
+  ): org.jooq.CommonTableExpression[?] = {
     val periods = generatePeriods(params.periodStart, params.periodEnd.plusMillis(1))
-    val sumPeriodColumnsSql = joinSqls(
-      periods.map { period =>
-        sql"""
-          SUM(CASE WHEN accounting_period = ${period.startedAt} AT TIME ZONE 'UTC' THEN grr ELSE 0 END) AS "#${PeriodColumn(period.startedAt.toEpochMilli).name}"
-        """
-      },
-      sql", "
-    )
-
-    val periodColumnsSql = joinSqls(
-      periods.map { period => sql""""#${PeriodColumn(period.startedAt.toEpochMilli).name}"""" },
-      sql", "
-    )
-
-    val keywordCond = if (params.keyword.isEmpty) {
-      sql""
-    } else {
-      val modifiedKeyword = s"%${params.keyword}%"
-      sql"""AND (customer_id ilike $modifiedKeyword OR c.name ilike $modifiedKeyword OR c.email ilike $modifiedKeyword)"""
+    val sumPeriodColumns = periods.map { period =>
+      sum(
+        when(field("accounting_period", classOf[Instant]).eq(period.startedAt), field("grr", classOf[java.lang.Long]))
+          .otherwise(DSL.inline(0L))
+      ).as(PeriodColumn(period.startedAt.toEpochMilli).name)
     }
 
-    makeSql(
-      makeBaseSql(stripeAccountId, liveMode, params.currency, params.periodStart, params.periodEnd),
-      sql"""
-        ,
-        month_customer_entries AS (
-          SELECT
-            customer_id,
-      """,
-      sumPeriodColumnsSql,
-      sql"""
-          FROM customer_entries
-          GROUP BY customer_id
-        ),
+    val keywordCond = if (params.keyword.isEmpty) {
+      DSL.inline(true)
+    } else {
+      val modifiedKeyword = s"%${params.keyword}%"
+      field("customer_id").likeIgnoreCase(modifiedKeyword)
+        .or(field("c.name").likeIgnoreCase(modifiedKeyword))
+        .or(field("c.email").likeIgnoreCase(modifiedKeyword))
+    }
 
-        customer_entry_with_infos AS (
-          SELECT
-            COALESCE(e.customer_id, c.id) AS customer_id,
-            c.name AS customer_name,
-            c.email AS customer_email,
-      """,
-      periodColumnsSql,
-      sql"""
-          FROM
-            stripe.customer c
-            LEFT JOIN month_customer_entries e
-            ON c.id = e.customer_id
-          WHERE c.stripe_account_id = $stripeAccountId AND c.live_mode = $liveMode
-      """,
-      keywordCond,
-      sql"""
+    val customerEntries = makeBaseSql(stripeAccountId, liveMode, params.currency, params.periodStart, params.periodEnd)
+    val monthCustomerEntries = name("month_customer_entries").as(
+      `with`(customerEntries)
+        .select((Seq(field("customer_id")) ++ sumPeriodColumns).asJava)
+        .from(customerEntries)
+        .groupBy(field("customer_id"))
+    )
+    val e = monthCustomerEntries.as("e")
+    val c = STRIPE_CUSTOMER.as("c")
+
+    name("customer_entry_with_infos").as(
+      `with`(monthCustomerEntries)
+        .select(
+          coalesce(e.field("customer_id"), c.ID).as("customer_id"),
+          c.NAME.as("customer_name"),
+          c.EMAIL.as("customer_email"),
+          e.asterisk().except("customer_id")
         )
-      """
+        .from(c)
+        .leftJoin(e)
+        .on(c.ID.eq(e.field("customer_id", classOf[String])))
+        .where(
+          c.STRIPE_ACCOUNT_ID.eq(stripeAccountId)
+          .and(c.LIVE_MODE.eq(Boolean.box(liveMode)))
+          .and(keywordCond)
+        )
     )
   }
 
@@ -222,11 +249,12 @@ class MonthlyGrrService @Inject() (
   ): Future[Long] = {
     db
       .run {
-        makeSql(
-          makeBaseCustomerRevenueByMonthWithSql(stripeAccountId, liveMode, params),
-          sql"""
-            SELECT COUNT(*) FROM customer_entry_with_infos
-          """,
+        val customerEntryWithInfos = makeBaseCustomerRevenueByMonthWithSql(stripeAccountId, liveMode, params)
+
+        toSqlActionBuilder(
+          `with`(customerEntryWithInfos)
+            .select(count(asterisk()))
+            .from(customerEntryWithInfos)
         ).as[Long]
       }
       .map(_.headOption.getOrElse(0L))
@@ -243,35 +271,37 @@ class MonthlyGrrService @Inject() (
     }
   }
 
-  private def makeCustomerOrderByClause(sorts: Seq[CustomerRevenueByMonthSort], periodEnd: Instant): SQLActionBuilder = {
+  private def makeCustomerOrderByClause(sorts: Seq[CustomerRevenueByMonthSort], periodEnd: Instant): Seq[OrderField[?]] = {
     if (sorts.isEmpty) {
-      return sql""""#${PeriodColumn(periodEnd.toEpochMilli).name}" DESC NULLS LAST, customer_name ASC"""
+      return Seq(
+        field(PeriodColumn(periodEnd.toEpochMilli).name).desc().nullsLast(),
+        field("customer_name").asc()
+      )
     }
 
-    joinSqls(
-      sorts.map { sort =>
-        sort.column match {
-          case p: PeriodColumn => sql""""#${p.name}" #${sort.direction.toString.toUpperCase} NULLS LAST"""
-          case c: Column =>
-            val columnName = c match {
-              case Column.CustomerId => "customer_id"
-              case Column.CustomerName => "customer_name"
-              case Column.CustomerEmail => "customer_email"
-            }
-            sql"#$columnName #${sort.direction.toString.toUpperCase} NULLS LAST"
-        }
-      },
-      sql","
-    )
+    sorts.map { sort =>
+      sort.column match {
+        case p: PeriodColumn =>
+          field(quotedName(p.name)).sort(SortOrder.valueOf(sort.direction.toString.toUpperCase())).nullsLast()
+        case c: Column =>
+          val columnName = c match {
+            case Column.CustomerId => "customer_id"
+            case Column.CustomerName => "customer_name"
+            case Column.CustomerEmail => "customer_email"
+          }
+          field(columnName).sort(SortOrder.valueOf(sort.direction.toString.toUpperCase())).nullsLast()
+      }
+    }
   }
 
-  private def makeCustomerByMonthSql(stripeAccountId: String, liveMode: Boolean, params: CustomerRevenueByMonthParams): SQLActionBuilder = {
-    makeSql(
-      makeBaseCustomerRevenueByMonthWithSql(stripeAccountId, liveMode, params),
-      sql"""
-        SELECT * FROM customer_entry_with_infos ORDER BY
-      """,
-      makeCustomerOrderByClause(params.sorts, params.periodEnd),
+  private def makeCustomerByMonthSql(stripeAccountId: String, liveMode: Boolean, params: CustomerRevenueByMonthParams): CommonTableExpression[?] = {
+    val customerEntryWithInfos = makeBaseCustomerRevenueByMonthWithSql(stripeAccountId, liveMode, params)
+
+    name("customer_by_month").as(
+      `with`(customerEntryWithInfos)
+        .select(asterisk())
+        .from(customerEntryWithInfos)
+        .orderBy(makeCustomerOrderByClause(params.sorts, params.periodEnd).asJava)
     )
   }
 
@@ -286,9 +316,14 @@ class MonthlyGrrService @Inject() (
     implicit val getResult: GetResult[Seq[Option[Any]]] = makeGetResultForCustomerRevenueByMonth(resultColumns)
     db
       .run {
-        makeSql(
-          makeCustomerByMonthSql(stripeAccountId, liveMode, params),
-          sql"LIMIT $limit OFFSET $offset"
+        val customerByMonth = makeCustomerByMonthSql(stripeAccountId, liveMode, params)
+
+        toSqlActionBuilder(
+          `with`(customerByMonth)
+            .select(asterisk())
+            .from(customerByMonth)
+            .limit(limit)
+            .offset(offset)
         ).as[Seq[Option[Any]]]
       }
       .map { rows =>
@@ -308,7 +343,14 @@ class MonthlyGrrService @Inject() (
 
     db
       .stream {
-        makeCustomerByMonthSql(stripeAccountId, liveMode, params).as[Seq[Option[Any]]]
+        val customerByMonth = makeCustomerByMonthSql(stripeAccountId, liveMode, params)
+        Jooq
+          .toSqlActionBuilder(
+            `with`(customerByMonth)
+              .select(asterisk())
+              .from(customerByMonth)
+          )
+          .as[Seq[Option[Any]]]
       }
       .foreach { row =>
         var i = 0

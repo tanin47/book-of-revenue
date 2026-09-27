@@ -150,6 +150,11 @@ case class JournalEntry(
   stripeCreditNoteLineItemId: Option[String],
   stripeProductId: Option[String],
   stripePriceId: Option[String],
+  metronomeCustomerId: Option[String],
+  metronomeProductId: Option[String],
+  metronomeContractId: Option[String],
+  metronomeInvoiceId: Option[String],
+  metronomeLineItemId: Option[String],
   createdAt: Instant
 ) extends Jsonable {
   def swap(): JournalEntry = copy(
@@ -224,6 +229,11 @@ class JournalEntryTable(tag: Tag) extends Table[JournalEntry](tag, "journal_entr
   def creditNoteLineItemId: Rep[Option[String]] = column[Option[String]]("credit_note_line_item_id")
   def productId: Rep[Option[String]] = column[Option[String]]("product_id")
   def priceId: Rep[Option[String]] = column[Option[String]]("price_id")
+  def metronomeCustomerId: Rep[Option[String]] = column[Option[String]]("metronome_customer_id")
+  def metronomeProductId: Rep[Option[String]] = column[Option[String]]("metronome_product_id")
+  def metronomeContractId: Rep[Option[String]] = column[Option[String]]("metronome_contract_id")
+  def metronomeInvoiceId: Rep[Option[String]] = column[Option[String]]("metronome_invoice_id")
+  def metronomeLineItemId: Rep[Option[String]] = column[Option[String]]("metronome_line_item_id")
   def createdAt: Rep[Instant] = column[Instant]("created_at")
 
   def * : ProvenShape[JournalEntry] = (
@@ -261,6 +271,11 @@ class JournalEntryTable(tag: Tag) extends Table[JournalEntry](tag, "journal_entr
     creditNoteLineItemId ::
     productId ::
     priceId ::
+    metronomeCustomerId ::
+    metronomeProductId ::
+    metronomeContractId ::
+    metronomeInvoiceId ::
+    metronomeLineItemId ::
     createdAt ::
       HNil
   ).mapTo[JournalEntry]

@@ -2,6 +2,8 @@ package database.services
 
 import database.models.{JournalEntry, JournalEntryTable, Transaction}
 import framework.{Instant, Jsonable, PlayConfig}
+import jooq.generated.public.Tables.JOURNAL_ENTRY
+import org.jooq.CommonTableExpression
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import play.api.libs.json.{JsObject, Json}
 import slick.jdbc.{GetResult, JdbcProfile, PositionedResult, SQLActionBuilder}
@@ -11,6 +13,9 @@ import java.time.OffsetDateTime
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
+import org.jooq.impl.DSL
+import org.jooq.impl.DSL.*
+import org.jooq.scalaextensions.Conversions.*
 
 object JournalEntryService {
   case class CreateData(
@@ -95,6 +100,16 @@ object JournalEntryService {
         }
       }
     }
+  }
+
+  def getMappedJournalEntries(): CommonTableExpression[?] = {
+    name("mapped_journal_entries").as(
+      select(
+        asterisk().except("product_id"),
+        coalesce(JOURNAL_ENTRY.METRONOME_PRODUCT_ID, JOURNAL_ENTRY.PRODUCT_ID).as("product_id"),
+      )
+      .from(JOURNAL_ENTRY)
+    )
   }
 }
 

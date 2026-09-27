@@ -9,6 +9,10 @@ import slick.jdbc.JdbcProfile
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
+import org.jooq.impl.DSL
+import org.jooq.impl.DSL.*
+import org.jooq.scalaextensions.Conversions.*
+import framework.Jooq.*
 
 object ActiveCustomerChartService {
   case class DataPoint(
@@ -32,31 +36,32 @@ class ActiveCustomerChartService @Inject() (
 
   def get(stripeAccountId: String, liveMode: Boolean, currency: String, periodStart: Instant, periodEnd: Instant): Future[Seq[DataPoint]] = {
     db.run {
-      makeSql(
-        netRevenueService.makeBaseWithSql(
-          stripeAccountId = stripeAccountId,
-          liveMode = liveMode,
-          params = NetRevenueService.Params(
-            periodStart = periodStart,
-            periodEnd = periodEnd,
-            currency = currency,
-            groupBy = Some(NetRevenueService.GroupBy.Customer),
-            showOnly = Some(NetRevenueService.ShowOnly.NetRevenue),
-            productId = None,
-            customerId = None,
-            transactionId = None,
-            columns = Seq.empty,
-            sorts = Seq.empty
+      val groups = netRevenueService.makeBaseWithSql(
+        stripeAccountId = stripeAccountId,
+        liveMode = liveMode,
+        params = NetRevenueService.Params(
+          periodStart = periodStart,
+          periodEnd = periodEnd,
+          currency = currency,
+          groupBy = Some(NetRevenueService.GroupBy.Customer),
+          showOnly = Some(NetRevenueService.ShowOnly.NetRevenue),
+          productId = None,
+          customerId = None,
+          transactionId = None,
+          columns = Seq.empty,
+          sorts = Seq.empty
+        )
+      )
+
+      toSqlActionBuilder(
+        `with`(groups)
+          .select(
+            field("accounting_period"),
+            DSL.count(asterisk()).as("customer_count")
           )
-        ),
-        sql"""
-          SELECT
-            accounting_period,
-            COUNT(*) AS customer_count
-          FROM groups
-          GROUP BY accounting_period
-          ORDER BY accounting_period ASC
-        """
+          .from(groups)
+          .groupBy(field("accounting_period"))
+          .orderBy(field("accounting_period").asc())
       ).as[(Instant, Long)]
     }
       .map { items =>
