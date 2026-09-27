@@ -3,6 +3,7 @@ package services
 import database.models.JournalEntry
 import database.services.JournalEntryService
 import database.services.JournalEntryService.{ColumnType, SortDirection}
+import database.services.MetronomeLineItemService.getMetronomeProductNames
 import framework.Helpers.{escapeCsv, formatCsvValue}
 import framework.{EventColumn, Instant, Jsonable}
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
@@ -16,6 +17,15 @@ import java.nio.file.Files
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
+import org.jooq.impl.DSL
+import org.jooq.impl.DSL.*
+import org.jooq.scalaextensions.Conversions.*
+import framework.Jooq.*
+import jooq.generated.public.Tables.TRANSACTION
+import jooq.generated.stripe.Tables.{STRIPE_CUSTOMER, STRIPE_INVOICE, STRIPE_INVOICE_LINE_ITEM, STRIPE_PRODUCT}
+import org.jooq.{CommonTableExpression, Condition, Field, SelectSeekStepN, SortField, SortOrder}
+
+import scala.jdk.CollectionConverters.SeqHasAsJava
 
 object AccountChangeByEventService {
   case class DataPointAmount(
@@ -193,94 +203,80 @@ class AccountChangeByEventService @Inject() (
     liveMode: Boolean,
     params: Params,
     events: Seq[JournalEntry.Event],
-  ): SQLActionBuilder = {
-    val eventColumnsSql = joinSqls(
-      events.map { event =>
-        sql"""
-          SUM(CASE WHEN computed_event = ${event.name} THEN net_settlement_change ELSE 0 END) AS "#${EventColumn(event).name}"
-        """
-      },
-      sql", "
-    )
-    val whereSql = params.showOnly match {
-      case Some(Column.NetChange) => sql"net_settlement_change != 0"
-      case Some(col: EventColumn) => sql""""#${col.name}" != 0"""
-      case Some(_) => throw new IllegalArgumentException(s"Invalid showOnly: ${params.showOnly}")
-      case None =>
-        makeSql(
-          sql"net_settlement_change != 0 OR ",
-          joinSqls(
-            events.map { event =>
-              sql""""#${EventColumn(event).name}" != 0"""
-            },
-            sql" OR "
-          )
-        )
+  ): CommonTableExpression[?] = {
+    val eventColumnsSql = events.map { event =>
+      sum(when(field("computed_event", classOf[Any]) === event.name, field("net_settlement_change", classOf[java.lang.Long])).otherwise(0L)).as(EventColumn(event).name)
     }
 
     val keys = makeGroupKeys(params)
-    val groupByClause = joinSqls(keys.map { k => sql"#$k" }, sql", ")
 
-    makeSql(
-      balanceSheetService.makeNetChangeSql(
-        stripeAccountId = stripeAccountId,
-        liveMode = liveMode,
-        params = BalanceSheetService.Params(
-          periodStart = Some(params.periodStart),
-          periodEnd = Some(params.periodEnd),
-          groupBy = params.groupBy match {
-            case GroupBy.Summary => Some(BalanceSheetService.GroupBy.Summary)
-            case GroupBy.Product => Some(BalanceSheetService.GroupBy.Product)
-            case GroupBy.Customer => Some(BalanceSheetService.GroupBy.Customer)
-            case GroupBy.Transaction => Some(BalanceSheetService.GroupBy.Transaction)
-            case GroupBy.LineItem => Some(BalanceSheetService.GroupBy.LineItem)
-          },
-          groupBy2 = Some(BalanceSheetService.GroupBy2.Event),
-          currency = params.currency,
-          showOnly = None,
-          productId = params.productId,
-          customerId = params.customerId,
-          transactionId = params.transactionId,
-          accounts = Seq(params.account.name),
-          columns = Seq(
-            BalanceSheetService.Column.AccountingPeriod,
-            BalanceSheetService.Column.Event,
-            BalanceSheetService.Column.Account,
-            BalanceSheetService.Column.NetChange,
-          ),
-          sorts = Seq.empty
+    val netChanges = balanceSheetService.makeNetChangeSql(
+      stripeAccountId = stripeAccountId,
+      liveMode = liveMode,
+      params = BalanceSheetService.Params(
+        periodStart = Some(params.periodStart),
+        periodEnd = Some(params.periodEnd),
+        groupBy = params.groupBy match {
+          case GroupBy.Summary => Some(BalanceSheetService.GroupBy.Summary)
+          case GroupBy.Product => Some(BalanceSheetService.GroupBy.Product)
+          case GroupBy.Customer => Some(BalanceSheetService.GroupBy.Customer)
+          case GroupBy.Transaction => Some(BalanceSheetService.GroupBy.Transaction)
+          case GroupBy.LineItem => Some(BalanceSheetService.GroupBy.LineItem)
+        },
+        groupBy2 = Some(BalanceSheetService.GroupBy2.Event),
+        currency = params.currency,
+        showOnly = None,
+        productId = params.productId,
+        customerId = params.customerId,
+        transactionId = params.transactionId,
+        accounts = Seq(params.account.name),
+        columns = Seq(
+          BalanceSheetService.Column.AccountingPeriod,
+          BalanceSheetService.Column.Event,
+          BalanceSheetService.Column.Account,
+          BalanceSheetService.Column.NetChange,
         ),
-        forCumulative = false
+        sorts = Seq.empty
       ),
-      sql"""
-        ,
+      forCumulative = false
+    )
 
-        raw_groups AS (
-          SELECT
-            accounting_period,
-      """,
-      eventColumnsSql,
-      sql"""
-            ,
-            SUM(net_settlement_change) AS net_settlement_change,
-            MAX(customer_id) AS customer_id,
-            MAX(transaction_id) AS transaction_id,
-            MAX(invoice_id) AS invoice_id,
-            MAX(invoice_line_item_id) AS invoice_line_item_id
-          FROM net_changes
-          GROUP BY
-      """,
-      groupByClause,
-      sql"""
-        ),
-        groups AS (
-          SELECT * FROM raw_groups
-          WHERE
-      """,
-      whereSql,
-      sql"""
-        )
-      """
+    val groupBys = keys.map { k => field(k) }
+    val rawGroups = name("raw_groups").as(
+      `with`(netChanges)
+        .select((
+          Seq(field("accounting_period")) ++
+            eventColumnsSql ++
+            Seq(
+              max(field("net_settlement_change", classOf[Any])).as("net_settlement_change"),
+              max(field("customer_id", classOf[Any])).as("customer_id"),
+              max(field("transaction_id", classOf[Any])).as("transaction_id"),
+              max(field("invoice_id", classOf[Any])).as("invoice_id"),
+              max(field("invoice_line_item_id", classOf[Any])).as("invoice_line_item_id")
+            )
+        ).asJava)
+        .from(netChanges)
+        .groupBy(groupBys.asJava)
+    )
+
+    val whereCond = params.showOnly match {
+      case Some(Column.NetChange) => field("net_settlement_change") !== 0
+      case Some(col: EventColumn) => field(quotedName(col.name)) !== 0
+      case Some(_) => throw new IllegalArgumentException(s"Invalid showOnly: ${params.showOnly}")
+      case None =>
+        or((
+          Seq(field("net_settlement_change") !== 0) ++
+            events.map { event =>
+              field(quotedName(EventColumn(event).name)) !== 0
+            },
+        ).asJava)
+    }
+
+    name("groups").as(
+      `with`(rawGroups)
+        .select(asterisk())
+        .from(rawGroups)
+        .where(whereCond)
     )
   }
 
@@ -292,12 +288,8 @@ class AccountChangeByEventService @Inject() (
     for {
       events <- getRelevantEvents(Seq(params.account))
       result <- db.run {
-        makeSql(
-          makeBaseWithSql(stripeAccountId, liveMode, params, events),
-          sql"""
-            SELECT COUNT(*) FROM groups
-          """
-        ).as[Long]
+        val groups = makeBaseWithSql(stripeAccountId, liveMode, params, events)
+        toSqlActionBuilder(`with`(groups).select(DSL.count(asterisk())).from(groups)).as[Long]
       }
     } yield {
       result.headOption.getOrElse(0L)
@@ -309,42 +301,35 @@ class AccountChangeByEventService @Inject() (
     liveMode: Boolean,
     params: Params,
     events: Seq[JournalEntry.Event],
-  ): SQLActionBuilder = {
-    makeSql(
-      makeBaseWithSql(stripeAccountId, liveMode, params, events),
-      sql"""
-        ,
-
-        group_with_lookup_columns AS(
-          SELECT
-            main.*,
-            con.title AS transaction_title,
-            cus.name AS customer_name,
-            cus.email AS customer_email,
-            inv.number AS invoice_number,
-            il.description AS invoice_line_item_description,
-            il.started_at AS invoice_line_item_started_at,
-            il.ended_at AS invoice_line_item_ended_at,
-            price.product_id AS product_id,
-            product.name AS product_name
-          FROM groups main
-          LEFT JOIN transaction con ON con.id = main.transaction_id
-          LEFT JOIN stripe.customer cus ON cus.id = main.customer_id
-          LEFT JOIN stripe.invoice inv ON inv.id = main.invoice_id
-          LEFT JOIN stripe.invoice_line_item il ON il.id = main.invoice_line_item_id
-          LEFT JOIN stripe.price ON price.id = il.price_id
-          LEFT JOIN stripe.product ON product.id = price.product_id
+  ): SelectSeekStepN[?] = {
+    val groups = makeBaseWithSql(stripeAccountId, liveMode, params, events)
+    val metronomeProductNames = getMetronomeProductNames()
+    val groupWithLookupColumns = name("group_with_lookup_columns").as(
+      `with`(groups, metronomeProductNames)
+        .select(
+          groups.asterisk(),
+          TRANSACTION.TITLE.as("transaction_title"),
+          STRIPE_CUSTOMER.NAME.as("customer_name"),
+          STRIPE_CUSTOMER.EMAIL.as("customer_email"),
+          STRIPE_INVOICE.NUMBER.as("invoice_number"),
+          STRIPE_INVOICE_LINE_ITEM.DESCRIPTION.as("invoice_line_item_description"),
+          STRIPE_INVOICE_LINE_ITEM.STARTED_AT.as("invoice_line_item_started_at"),
+          STRIPE_INVOICE_LINE_ITEM.ENDED_AT.as("invoice_line_item_ended_at"),
+          coalesce(metronomeProductNames.field("name", classOf[String]), STRIPE_PRODUCT.NAME).as("product_name")
         )
-
-        SELECT
-      """,
-      makeSelectedColumns(params, events),
-      sql"""
-         FROM group_with_lookup_columns
-         ORDER BY
-      """,
-      makeOrderByClause(params.sorts),
+        .from(groups)
+        .leftJoin(TRANSACTION).on(TRANSACTION.ID === groups.field("transaction_id", classOf[String]))
+        .leftJoin(STRIPE_CUSTOMER).on(STRIPE_CUSTOMER.ID === groups.field("customer_id", classOf[String]))
+        .leftJoin(STRIPE_INVOICE).on(STRIPE_INVOICE.ID === groups.field("invoice_id", classOf[String]))
+        .leftJoin(STRIPE_INVOICE_LINE_ITEM).on(STRIPE_INVOICE_LINE_ITEM.ID === groups.field("invoice_line_item_id", classOf[String]))
+        .leftJoin(STRIPE_PRODUCT).on(STRIPE_PRODUCT.ID === groups.field("product_id", classOf[String]))
+        .leftJoin(metronomeProductNames).on(metronomeProductNames.field("id", classOf[String]) === groups.field("product_id", classOf[String]))
     )
+
+    `with`(groupWithLookupColumns)
+      .select(makeSelectedColumns(params, events).asJava)
+      .from(groupWithLookupColumns)
+      .orderBy(makeOrderByClause(params.sorts).asJava)
   }
 
   private def computeColumns(params: Params, events: Seq[JournalEntry.Event]): Seq[Column | EventColumn] = {
@@ -365,36 +350,35 @@ class AccountChangeByEventService @Inject() (
       }
   }
 
-  private def makeSelectedColumns(params: Params, events: Seq[JournalEntry.Event]): SQLActionBuilder = {
-    joinSqls(
-      computeColumns(params, events).map {
-        case e: EventColumn => sql""""#${e.name}""""
-        case Column.AccountingPeriod => sql"accounting_period"
-        case Column.NetChange => sql"net_settlement_change"
-        case Column.ProductId => sql"product_id"
-        case Column.ProductName => sql"product_name"
-        case Column.CustomerId => sql"customer_id"
-        case Column.CustomerName => sql"customer_name"
-        case Column.CustomerEmail => sql"customer_email"
-        case Column.TransactionId => sql"transaction_id"
-        case Column.TransactionTitle => sql"transaction_title"
-        case Column.InvoiceId => sql"invoice_id"
-        case Column.InvoiceNumber => sql"invoice_number"
-        case Column.InvoiceLineItemDescription => sql"invoice_line_item_description"
-        case Column.InvoiceLineItemId => sql"invoice_line_item_id"
-        case Column.InvoiceLineItemStartedAt => sql"invoice_line_item_started_at"
-        case Column.InvoiceLineItemEndedAt => sql"invoice_line_item_ended_at"
-      },
-      sql", "
-    )
+  private def makeSelectedColumns(params: Params, events: Seq[JournalEntry.Event]): Seq[Field[?]] = {
+      computeColumns(params, events)
+        .map {
+          case e: EventColumn => e.name
+          case Column.AccountingPeriod => "accounting_period"
+          case Column.NetChange => "net_settlement_change"
+          case Column.ProductId => "product_id"
+          case Column.ProductName => "product_name"
+          case Column.CustomerId => "customer_id"
+          case Column.CustomerName => "customer_name"
+          case Column.CustomerEmail => "customer_email"
+          case Column.TransactionId => "transaction_id"
+          case Column.TransactionTitle => "transaction_title"
+          case Column.InvoiceId => "invoice_id"
+          case Column.InvoiceNumber => "invoice_number"
+          case Column.InvoiceLineItemDescription => "invoice_line_item_description"
+          case Column.InvoiceLineItemId => "invoice_line_item_id"
+          case Column.InvoiceLineItemStartedAt => "invoice_line_item_started_at"
+          case Column.InvoiceLineItemEndedAt => "invoice_line_item_ended_at"
+        }
+        .map { s => field(quotedName(s)) }
   }
 
-  private def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
+  private def makeOrderByClause(sorts: Seq[Sort]): Seq[SortField[?]] = {
     if (sorts.isEmpty) {
-      return sql"accounting_period ASC, net_settlement_change DESC"
+      return Seq(field("accounting_period").asc(), field("net_settlement_change").desc())
     }
 
-    val sortClauses = sorts.map { sort =>
+    sorts.map { sort =>
       val name = sort.column match {
         case e: EventColumn => e.name
         case Column.AccountingPeriod => "accounting_period"
@@ -414,10 +398,8 @@ class AccountChangeByEventService @Inject() (
         case Column.InvoiceLineItemEndedAt => "invoice_line_item_ended_at"
       }
 
-      sql""""#${name}" #${sort.direction.toString.toUpperCase} NULLS LAST"""
+      field(quotedName(name)).sort(SortOrder.valueOf(sort.direction.toString.toUpperCase)).nullsLast()
     }
-
-    joinSqls(sortClauses, sql", ")
   }
 
   private def getResultColumns(params: Params, events: Seq[JournalEntry.Event]): Seq[ResultColumn] = {
@@ -460,9 +442,12 @@ class AccountChangeByEventService @Inject() (
         implicit val getResult: GetResult[Seq[Option[Any]]] = makeGetResult(resultColumns)
 
         db.run {
-          makeSql(
-            makeListSql(stripeAccountId, liveMode, params, events),
-            sql" LIMIT $limit OFFSET $offset"
+          val list = makeListSql(stripeAccountId, liveMode, params, events)
+          toSqlActionBuilder(
+            select(asterisk())
+              .from(list)
+              .limit(limit)
+              .offset(offset)
           ).as[Seq[Option[Any]]]
         }.map { rows =>
           Result(resultColumns, rows.toList)
@@ -487,7 +472,8 @@ class AccountChangeByEventService @Inject() (
 
         db
           .stream {
-            makeListSql(stripeAccountId, liveMode, params, events).as[Seq[Option[Any]]]
+            val list = makeListSql(stripeAccountId, liveMode, params, events)
+            toSqlActionBuilder(select(asterisk()).from(list)).as[Seq[Option[Any]]]
           }
           .foreach { row =>
             var i = 0

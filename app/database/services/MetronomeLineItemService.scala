@@ -2,10 +2,25 @@ package database.services
 
 import database.models.metronome.{MetronomeLineItem, MetronomeLineItemTable}
 import framework.BaseDbService
+import jooq.generated.metronome.Tables.METRONOME_LINE_ITEM
+import org.jooq.CommonTableExpression
+import org.jooq.impl.DSL.*
 import play.api.db.slick.DatabaseConfigProvider
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+
+object MetronomeLineItemService {
+  def getMetronomeProductNames(): CommonTableExpression[?] = {
+    name("metronome_product_names").as(
+      select(METRONOME_LINE_ITEM.PRODUCT_ID.as("id"), METRONOME_LINE_ITEM.NAME.as("name"))
+        .distinctOn(METRONOME_LINE_ITEM.PRODUCT_ID)
+        .from(METRONOME_LINE_ITEM)
+        .where(METRONOME_LINE_ITEM.UNIT_PRICE.isNotNull)
+        .orderBy(METRONOME_LINE_ITEM.PRODUCT_ID, METRONOME_LINE_ITEM.UPDATED_AT.desc)
+    )
+  }
+}
 
 @Singleton
 class MetronomeLineItemService @Inject() (
