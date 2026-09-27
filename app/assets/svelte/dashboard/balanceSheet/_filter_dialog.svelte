@@ -21,7 +21,6 @@ export type Params = TableParams & {
     {id: 'StartingBalance', forceChecked: true, rank: 3},
     {id: 'NetChange', forceChecked: true, rank: 4},
     {id: 'EndingBalance', forceChecked: true, rank: 5},
-    {id: 'Event', forceChecked: true, rank: 6},
   ]
 
   export const COLUMNS = makeColumnGroupBys(['Summary', 'Product', 'Customer', 'Transaction', 'LineItem'], BASE_COLUMNS)

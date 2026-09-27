@@ -3,11 +3,12 @@ package services
 import database.models.JournalEntry
 import database.models.JournalEntry.AccountCategory
 import database.services.JournalEntryService.{ColumnType, SortDirection, getMappedJournalEntries, getValue}
+import database.services.MetronomeLineItemService.getMetronomeProductNames
 import framework.Helpers.{escapeCsv, formatCsvValue}
 import framework.Jooq.*
 import framework.{Instant, Jsonable, PeriodColumn, PlayConfig}
-import jooq.generated.metronome.Tables.{METRONOME_CUSTOMER, METRONOME_INVOICE, METRONOME_LINE_ITEM}
-import jooq.generated.public.Tables.{JOURNAL_ENTRY, TRANSACTION}
+import jooq.generated.metronome.Tables.METRONOME_LINE_ITEM
+import jooq.generated.public.Tables.TRANSACTION
 import jooq.generated.stripe.Tables.{STRIPE_CUSTOMER, STRIPE_INVOICE, STRIPE_INVOICE_LINE_ITEM, STRIPE_PRODUCT}
 import org.jooq.impl.DSL
 import org.jooq.impl.DSL.*
@@ -402,13 +403,7 @@ class NetRevenueService @Inject() (
         .from(mappedJournalEntries)
         .where(whereClause.asJava)
     )
-    val metronomeProductNames = name("metronome_product_names").as(
-      select(METRONOME_LINE_ITEM.PRODUCT_ID.as("id"), METRONOME_LINE_ITEM.NAME.as("name"))
-        .distinctOn(METRONOME_LINE_ITEM.PRODUCT_ID)
-        .from(METRONOME_LINE_ITEM)
-        .where(METRONOME_LINE_ITEM.UNIT_PRICE.isNotNull)
-        .orderBy(METRONOME_LINE_ITEM.PRODUCT_ID, METRONOME_LINE_ITEM.UPDATED_AT.desc)
-    )
+    val metronomeProductNames = getMetronomeProductNames()
     val entries = name("entries").as(
       `with`(rawEntries, metronomeProductNames)
       .select(
@@ -701,7 +696,7 @@ class NetRevenueService @Inject() (
               TRANSACTION.STRIPE_ACCOUNT_ID === stripeAccountId,
               TRANSACTION.LIVE_MODE === liveMode,
               params.customerId match {
-                case None => trueCondition()
+                case None => TRANSACTION.CUSTOMER_ID.isNull()
                 case Some(customerId) => TRANSACTION.CUSTOMER_ID === customerId
               }
             )

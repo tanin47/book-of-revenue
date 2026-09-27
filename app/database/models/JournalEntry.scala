@@ -2,11 +2,13 @@ package database.models
 
 import framework.PostgresProfile.api.*
 import framework.{Instant, Jsonable}
+import org.jooq.Field
 import play.api.libs.json.{JsObject, Json}
 import slick.collection.heterogeneous.HNil
 import slick.jdbc.SQLActionBuilder
 import slick.lifted.{ProvenShape, Rep}
 
+import scala.jdk.CollectionConverters.SeqHasAsJava
 import scala.language.postfixOps
 
 object JournalEntry {
@@ -16,6 +18,21 @@ object JournalEntry {
     def isCredit(): Boolean = {
       Set(ContractLiability, StatutoryLiability, NonFinancialLiability, Revenue, Gain).contains(this)
     }
+  }
+
+  def getAccountCategoryField(col: Field[String]): Field[String] = {
+    import org.jooq.impl.DSL
+    import org.jooq.impl.DSL.*
+    import org.jooq.scalaextensions.Conversions.*
+    import framework.Jooq.*
+
+    val categories = Account.values.groupBy(_.getAccountCategory()).toList
+    val (firstCategory, firstAccounts) = categories.head
+
+    categories.tail
+      .foldLeft(when(col.in(firstAccounts.toList.asJava), DSL.inline(firstCategory.toString))) { case (previous, (category, accounts)) =>
+        previous.when(col.in(accounts.toList.asJava), DSL.inline(category.toString))
+      }
   }
 
   def getCategorySqlCond(accountFieldName: String): SQLActionBuilder = {
