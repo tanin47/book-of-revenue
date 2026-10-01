@@ -33,6 +33,4 @@ object Jooq {
   def addMonthsUtc(col: Field[Instant], numMonths: Int): Field[Instant] = {
     atTimeZoneUtc(atTimeZoneUtc(col).add(YearToMonth.valueOf(s"0-$numMonths")))
   }
-
-  type JLong = java.lang.Long
 }

@@ -2,17 +2,26 @@ package services
 
 import database.models.JournalEntry
 import database.services.JournalEntryService
-import database.services.JournalEntryService.{ColumnType, SortDirection, getValue}
+import database.services.JournalEntryService.{ColumnType, SortDirection, getMappedJournalEntries, getValue}
+import database.services.MetronomeLineItemService.getMetronomeProductNames
 import framework.Helpers.{escapeCsv, formatCsvValue}
+import framework.Jooq.*
 import framework.{Instant, Jsonable, PlayConfig}
+import jooq.generated.public.Tables.TRANSACTION
+import jooq.generated.stripe.Tables.{STRIPE_CUSTOMER, STRIPE_INVOICE, STRIPE_INVOICE_LINE_ITEM, STRIPE_PRODUCT}
+import org.jooq.impl.DSL
+import org.jooq.impl.DSL.*
+import org.jooq.scalaextensions.Conversions.*
+import org.jooq.{CommonTableExpression, Condition, Field, SelectSeekStepN, SortField, SortOrder}
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import play.api.libs.json.{JsObject, Json}
-import slick.jdbc.{GetResult, JdbcProfile, SQLActionBuilder}
+import slick.jdbc.{GetResult, JdbcProfile}
 
 import java.io.{BufferedWriter, File, FileWriter}
 import java.nio.charset.StandardCharsets
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters.SeqHasAsJava
 import scala.language.implicitConversions
 
 object DebitsAndCreditsService {
@@ -113,12 +122,16 @@ class DebitsAndCreditsService @Inject() (
   import framework.PostgresProfile.api.*
 
 
-  private def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
+  private def makeOrderByClause(sorts: Seq[Sort]): Seq[SortField[?]] = {
     if (sorts.isEmpty) {
-      return sql"ORDER BY accounting_period ASC, debit ASC, credit ASC"
+      return Seq(
+        field("accounting_period").asc,
+        field("debit").asc,
+        field("credit").asc
+      )
     }
 
-    val sortClauses = sorts.map { sort =>
+    sorts.map { sort =>
       val name = sort.column match {
         case Column.AccountingPeriod => "accounting_period"
         case Column.AttributionPeriod => "attribution_period"
@@ -143,62 +156,57 @@ class DebitsAndCreditsService @Inject() (
         case Column.InvoiceLineItemEndedAt => "invoice_line_item_ended_at"
       }
 
-      sql"#${name} #${sort.direction.toString.toUpperCase}"
+      field(name).sort(SortOrder.valueOf(sort.direction.toString.toUpperCase))
     }
-
-    makeSql(sql"ORDER BY ", joinSqls(sortClauses, sql", "))
   }
 
-  private def makeSelectedColumns(params: Params): SQLActionBuilder = {
-    joinSqls(
-      if (params.groupBy.isEmpty) {
-        params.columns.map {
-          case Column.AccountingPeriod => sql"accounting_period"
-          case Column.AttributionPeriod => sql"attribution_period"
-          case Column.Debit => sql"debit"
-          case Column.Credit => sql"credit"
-          case Column.Amount => sql"settlement_amount AS amount"
-          case Column.Event => sql"event"
-          case Column.ReversedEvent => sql"reversed_event"
-          case Column.OccurredAt => sql"occurred_at"
-          case Column.ProductId => sql"product_id"
-          case Column.ProductName => sql"product_name"
-          case Column.CustomerId => sql"product_id"
-          case Column.CustomerName => sql"customer_name"
-          case Column.CustomerEmail => sql"customer_email"
-          case Column.TransactionId => sql"transaction_id"
-          case Column.TransactionTitle => sql"transaction_title"
-          case Column.InvoiceId => sql"invoice_id"
-          case Column.InvoiceNumber => sql"invoice_number"
-          case Column.InvoiceLineItemDescription => sql"invoice_line_item_description"
-          case Column.InvoiceLineItemId => sql"invoice_line_item_id"
-          case Column.InvoiceLineItemStartedAt => sql"invoice_line_item_started_at"
-          case Column.InvoiceLineItemEndedAt => sql"invoice_line_item_ended_at"
-        }
-      } else {
-        params.columns.map {
-          case Column.AccountingPeriod => sql"accounting_period"
-          case Column.Debit => sql"debit"
-          case Column.Credit => sql"credit"
-          case Column.Amount => sql"SUM(settlement_amount) AS amount"
-          case Column.ProductId => sql"MAX(product_id) AS product_id"
-          case Column.ProductName => sql"MAX(product_name) AS product_name"
-          case Column.CustomerId => sql"MAX(customer_id) AS product_id"
-          case Column.CustomerName => sql"MAX(customer_name) AS customer_name"
-          case Column.CustomerEmail => sql"MAX(customer_email) AS customer_email"
-          case Column.TransactionId => sql"MAX(transaction_id) AS transaction_id"
-          case Column.TransactionTitle => sql"MAX(transaction_title) AS transaction_title"
-          case Column.InvoiceId => sql"MAX(invoice_id) AS invoice_id"
-          case Column.InvoiceNumber => sql"MAX(invoice_number) AS invoice_number"
-          case Column.InvoiceLineItemDescription => sql"MAX(invoice_line_item_description) AS invoice_line_item_description"
-          case Column.InvoiceLineItemId => sql"MAX(invoice_line_item_id) AS invoice_line_item_id"
-          case Column.InvoiceLineItemStartedAt => sql"MIN(invoice_line_item_started_at) AS invoice_line_item_started_at"
-          case Column.InvoiceLineItemEndedAt => sql"MAX(invoice_line_item_ended_at) AS invoice_line_item_ended_at"
-          case other => throw new Exception(s"Invalid column in the grouping mode: $other")
-        }
-      },
-      sql", "
-    )
+  private def makeSelectedColumns(params: Params): Seq[Field[?]] = {
+    if (params.groupBy.isEmpty) {
+      params.columns.map {
+        case Column.AccountingPeriod => field("accounting_period")
+        case Column.AttributionPeriod => field("attribution_period")
+        case Column.Debit => field("debit")
+        case Column.Credit => field("credit")
+        case Column.Amount => field("settlement_amount").as("amount")
+        case Column.Event => field("event")
+        case Column.ReversedEvent => field("reversed_event")
+        case Column.OccurredAt => field("occurred_at")
+        case Column.ProductId => field("product_id")
+        case Column.ProductName => field("product_name")
+        case Column.CustomerId => field("customer_id")
+        case Column.CustomerName => field("customer_name")
+        case Column.CustomerEmail => field("customer_email")
+        case Column.TransactionId => field("transaction_id")
+        case Column.TransactionTitle => field("transaction_title")
+        case Column.InvoiceId => field("invoice_id")
+        case Column.InvoiceNumber => field("invoice_number")
+        case Column.InvoiceLineItemDescription => field("invoice_line_item_description")
+        case Column.InvoiceLineItemId => field("invoice_line_item_id")
+        case Column.InvoiceLineItemStartedAt => field("invoice_line_item_started_at")
+        case Column.InvoiceLineItemEndedAt => field("invoice_line_item_ended_at")
+      }
+    } else {
+      params.columns.map {
+        case Column.AccountingPeriod => field("accounting_period")
+        case Column.Debit => field("debit")
+        case Column.Credit => field("credit")
+        case Column.Amount => sum(field("settlement_amount", classOf[java.lang.Long])).as("amount")
+        case Column.ProductId => max(field("product_id")).as("product_id")
+        case Column.ProductName => max(field("product_name")).as("product_name")
+        case Column.CustomerId => max(field("customer_id")).as("customer_id")
+        case Column.CustomerName => max(field("customer_name")).as("customer_name")
+        case Column.CustomerEmail => max(field("customer_email")).as("customer_email")
+        case Column.TransactionId => max(field("transaction_id")).as("transaction_id")
+        case Column.TransactionTitle => max(field("transaction_title")).as("transaction_title")
+        case Column.InvoiceId => max(field("invoice_id")).as("invoice_id")
+        case Column.InvoiceNumber => max(field("invoice_number")).as("invoice_number")
+        case Column.InvoiceLineItemDescription => max(field("invoice_line_item_description")).as("invoice_line_item_description")
+        case Column.InvoiceLineItemId => max(field("invoice_line_item_id")).as("invoice_line_item_id")
+        case Column.InvoiceLineItemStartedAt => min(field("invoice_line_item_started_at")).as("invoice_line_item_started_at")
+        case Column.InvoiceLineItemEndedAt => max(field("invoice_line_item_ended_at")).as("invoice_line_item_ended_at")
+        case other => throw new Exception(s"Invalid column in the grouping mode: $other")
+      }
+    }
   }
 
   private def getResultColumns(params: Params): Seq[ResultColumn] = {
@@ -232,105 +240,110 @@ class DebitsAndCreditsService @Inject() (
     }
   }
 
-  private def makeGroupByClause(params: Params): SQLActionBuilder = {
+  private def makeGroupByClause(params: Params): Seq[Field[?]] = {
     params.groupBy
       .map {
-        case GroupBy.Product => sql", product_id"
-        case GroupBy.Customer => sql", customer_id"
-        case GroupBy.Transaction => sql", transaction_id"
-        case GroupBy.LineItem => sql", transaction_id, invoice_line_item_id"
-        case GroupBy.Summary => sql""
+        case GroupBy.Product => Seq(field("product_id"))
+        case GroupBy.Customer => Seq(field("customer_id"))
+        case GroupBy.Transaction => Seq(field("transaction_id"))
+        case GroupBy.LineItem => Seq(field("transaction_id"), field("invoice_line_item_id"))
+        case GroupBy.Summary => Seq.empty
       }
-      .map { extraGroupKey =>
-        makeSql(sql"GROUP BY accounting_period, debit, credit", extraGroupKey)
+      .map { extraGroupKeys =>
+        Seq(field("accounting_period"), field("debit"), field("credit")) ++ extraGroupKeys
       }
-      .getOrElse(sql"")
+      .getOrElse(Seq.empty)
   }
 
-  private def makeBaseWithSql(stripeAccountId: String, liveMode: Boolean, params: Params): SQLActionBuilder = {
-    val whereClause = joinSqls(
-      Seq(
-        Some(sql"j.stripe_account_id = $stripeAccountId"),
-        Some(sql"j.live_mode = $liveMode"),
-        Some(sql"j.settlement_currency = ${params.currency}"),
-        params.periodStart.map { p => sql"accounting_period >= $p" },
-        params.periodEnd.map { p => sql"accounting_period <= $p" },
-        params.transactionId.map { c => sql"j.transaction_id = $c" },
-        params.lineItemId.map { c => sql"j.invoice_line_item_id = $c" },
-        if (params.accounts.nonEmpty) {
-          Some(sql"(debit = ANY(${params.accounts}) OR credit = ANY(${params.accounts}))")
-        } else {
-          None
-        }
-      ).flatten,
-      sql" AND "
+  private def makeBaseWithSql(stripeAccountId: String, liveMode: Boolean, params: Params): CommonTableExpression[?] = {
+    val mappedJournalEntries = getMappedJournalEntries()
+    val j = mappedJournalEntries.as("j")
+    def jField(columnName: String): Field[Any] = field(name("j", columnName), classOf[Any])
+
+    val whereClause: Seq[Condition] = Seq(
+      Some(jField("stripe_account_id") === stripeAccountId),
+      Some(jField("live_mode") === liveMode),
+      Some(jField("settlement_currency") === params.currency),
+      params.periodStart.map { p => field("accounting_period") >= p },
+      params.periodEnd.map { p => field("accounting_period") <= p },
+      params.transactionId.map { c => jField("transaction_id") === c },
+      params.lineItemId.map { c => jField("invoice_line_item_id") === c },
+      if (params.accounts.nonEmpty) {
+        Some(field("debit").in(params.accounts.asJava).or(field("credit").in(params.accounts.asJava)))
+      } else {
+        None
+      }
+    ).flatten
+
+    val metronomeProductNames = getMetronomeProductNames()
+
+    val entries = name("entries").as(
+      `with`(mappedJournalEntries, metronomeProductNames)
+        .select(
+          j.asterisk(),
+          STRIPE_CUSTOMER.NAME.as("customer_name"),
+          STRIPE_CUSTOMER.EMAIL.as("customer_email"),
+          STRIPE_INVOICE.NUMBER.as("invoice_number"),
+          STRIPE_INVOICE_LINE_ITEM.DESCRIPTION.as("invoice_line_item_description"),
+          STRIPE_INVOICE_LINE_ITEM.STARTED_AT.as("invoice_line_item_started_at"),
+          STRIPE_INVOICE_LINE_ITEM.ENDED_AT.as("invoice_line_item_ended_at"),
+          coalesce(metronomeProductNames.field("name"), STRIPE_PRODUCT.NAME).as("product_name"),
+          TRANSACTION.TITLE.as("transaction_title")
+        )
+        .from(j)
+        .leftJoin(STRIPE_CUSTOMER).on(jField("customer_id") === STRIPE_CUSTOMER.ID)
+        .leftJoin(STRIPE_INVOICE).on(jField("invoice_id") === STRIPE_INVOICE.ID)
+        .leftJoin(STRIPE_INVOICE_LINE_ITEM).on(jField("invoice_line_item_id") === STRIPE_INVOICE_LINE_ITEM.ID)
+        .leftJoin(STRIPE_PRODUCT).on(jField("product_id") === STRIPE_PRODUCT.ID)
+        .leftJoin(metronomeProductNames).on(jField("product_id") === metronomeProductNames.field("id"))
+        .leftJoin(TRANSACTION).on(jField("transaction_id") === TRANSACTION.ID)
+        .where(whereClause.asJava)
     )
 
-    makeSql(
-      sql"""
-        WITH entries AS (
-          SELECT
-            j.*,
-            cus.name AS customer_name,
-            cus.email AS customer_email,
-            inv.number AS invoice_number,
-            il.description AS invoice_line_item_description,
-            il.started_at AS invoice_line_item_started_at,
-            il.ended_at AS invoice_line_item_ended_at,
-            pr.name AS product_name,
-            co.title AS transaction_title
-          FROM journal_entry j
-          LEFT JOIN stripe.customer cus ON cus.id = j.customer_id
-          LEFT JOIN stripe.invoice inv ON inv.id = j.invoice_id
-          LEFT JOIN stripe.invoice_line_item il ON il.id = j.invoice_line_item_id
-          LEFT JOIN stripe.product pr ON pr.id = j.product_id
-          LEFT JOIN transaction co ON co.id = j.transaction_id
-          WHERE
-      """,
-      whereClause,
-      sql"""
-        ),
+    val groupBys = makeGroupByClause(params)
+    val groupSelect = `with`(entries)
+      .select(makeSelectedColumns(params).asJava)
+      .from(entries)
 
-        groups AS (
-          SELECT
-      """,
-      makeSelectedColumns(params),
-      sql"""
-          FROM entries
-      """,
-      makeGroupByClause(params),
-      sql"""
-        )
-      """
+    name("groups").as(
+      if (groupBys.isEmpty) { groupSelect } else { groupSelect.groupBy(groupBys.asJava) }
     )
   }
 
   def count(stripeAccountId: String, liveMode: Boolean, params: Params): Future[Long] = {
     db
       .run {
-        makeSql(
-          makeBaseWithSql(stripeAccountId, liveMode, params),
-          sql"""
-            SELECT COUNT(*) FROM groups
-          """,
+        val groups = makeBaseWithSql(stripeAccountId, liveMode, params)
+        toSqlActionBuilder(
+          `with`(groups)
+            .select(DSL.count(asterisk()))
+            .from(groups)
         ).as[Long]
       }
       .map(_.headOption.getOrElse(0L))
   }
 
 
+  private def makeListSql(stripeAccountId: String, liveMode: Boolean, params: Params): SelectSeekStepN[?] = {
+    val groups = makeBaseWithSql(stripeAccountId, liveMode, params)
+
+    `with`(groups)
+      .select(asterisk())
+      .from(groups)
+      .orderBy(makeOrderByClause(params.sorts).asJava)
+  }
+
   def get(stripeAccountId: String, liveMode: Boolean, params: Params, offset: Int, limit: Int): Future[Result] = {
     val resultColumns = getResultColumns(params)
     implicit val getResult: GetResult[Seq[Option[Any]]] = makeGetResult(resultColumns)
     db
       .run {
-        makeSql(
-          makeBaseWithSql(stripeAccountId, liveMode, params),
-          sql"""
-            SELECT * FROM groups
-          """,
-          makeOrderByClause(params.sorts),
-          sql"LIMIT $limit OFFSET $offset"
+        val list = makeListSql(stripeAccountId, liveMode, params)
+        toSqlActionBuilder(
+          select(asterisk())
+            .from(list)
+            .limit(limit)
+            .offset(offset)
         ).as[Seq[Option[Any]]]
       }
       .map { rows =>
@@ -348,12 +361,10 @@ class DebitsAndCreditsService @Inject() (
 
     db
       .stream {
-        makeSql(
-          makeBaseWithSql(stripeAccountId, liveMode, params),
-          sql"""
-            SELECT * FROM groups
-          """,
-          makeOrderByClause(params.sorts),
+        val list = makeListSql(stripeAccountId, liveMode, params)
+        toSqlActionBuilder(
+          select(asterisk())
+            .from(list)
         ).as[Seq[Option[Any]]]
       }
       .foreach { row =>
@@ -371,34 +382,38 @@ class DebitsAndCreditsService @Inject() (
   }
 
   def getAllAccounts(stripeAccountId: String, liveMode: Boolean): Future[Seq[String]] = {
-    val whereClause = joinSqls(
-      Seq(
-        sql"stripe_account_id = $stripeAccountId",
-        sql"live_mode = $liveMode"
-      ),
-      sql" AND "
+    val whereClause: Seq[Condition] = Seq(
+      field("stripe_account_id") === stripeAccountId,
+      field("live_mode") === liveMode
     )
-    db.run {
-      makeSql(
-        sql"""
-          WITH debits AS (
-            SELECT DISTINCT debit AS account FROM journal_entry WHERE
-        """,
-        whereClause,
-        sql"""
-          ), credits AS (
-            SELECT DISTINCT credit AS account FROM journal_entry WHERE
-        """,
-        whereClause,
-        sql"""
-          ), combined AS (
-            SELECT account FROM debits UNION ALL SELECT account FROM credits
-          )
 
-          SELECT DISTINCT account FROM combined ORDER BY account ASC
-        """
+    db.run {
+      val mappedJournalEntries = getMappedJournalEntries()
+
+      val debits = name("debits").as(
+        `with`(mappedJournalEntries)
+          .selectDistinct(field("debit").as("account"))
+          .from(mappedJournalEntries)
+          .where(whereClause.asJava)
       )
-        .as[String]
+      val credits = name("credits").as(
+        `with`(mappedJournalEntries)
+          .selectDistinct(field("credit").as("account"))
+          .from(mappedJournalEntries)
+          .where(whereClause.asJava)
+      )
+      val combined = name("combined").as(
+        `with`(debits, credits)
+          .select(asterisk()).from(debits)
+          .unionAll(select(asterisk()).from(credits))
+      )
+
+      toSqlActionBuilder(
+        `with`(combined)
+          .selectDistinct(field("account"))
+          .from(combined)
+          .orderBy(field("account").asc)
+      ).as[String]
     }
   }
 

@@ -1,18 +1,27 @@
 package services
 
 import database.models.JournalEntry
-import database.models.JournalEntry.{AccountCategory, getCategorySqlCond}
-import database.services.JournalEntryService.{ColumnType, SortDirection, getValue}
+import database.models.JournalEntry.{AccountCategory, getAccountCategoryField}
+import database.services.JournalEntryService.{ColumnType, SortDirection, getMappedJournalEntries, getValue}
+import database.services.MetronomeLineItemService.getMetronomeProductNames
 import framework.Helpers.{escapeCsv, formatCsvValue}
+import framework.Jooq.*
 import framework.{Instant, Jsonable, PlayConfig}
+import jooq.generated.public.Tables.TRANSACTION
+import jooq.generated.stripe.Tables.{STRIPE_CUSTOMER, STRIPE_INVOICE, STRIPE_INVOICE_LINE_ITEM, STRIPE_PRODUCT}
+import org.jooq.impl.DSL
+import org.jooq.impl.DSL.*
+import org.jooq.scalaextensions.Conversions.*
+import org.jooq.{CommonTableExpression, Condition, Field, SelectSeekStepN, SortField, SortOrder}
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import play.api.libs.json.{JsObject, Json}
-import slick.jdbc.{GetResult, JdbcProfile, SQLActionBuilder}
+import slick.jdbc.{GetResult, JdbcProfile}
 
 import java.io.{BufferedWriter, File, FileWriter}
 import java.nio.charset.StandardCharsets
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters.SeqHasAsJava
 import scala.language.implicitConversions
 
 object IncomeStatementService {
@@ -94,12 +103,16 @@ class IncomeStatementService @Inject() (
   import framework.PostgresProfile.api.*
 
 
-  private def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
+  private def makeOrderByClause(sorts: Seq[Sort]): Seq[SortField[?]] = {
     if (sorts.isEmpty) {
-      return sql"ORDER BY accounting_period ASC, net_settlement_income DESC, account ASC"
+      return Seq(
+        field("accounting_period").asc,
+        field("net_settlement_income").desc,
+        field("account").asc
+      )
     }
 
-    val sortClauses = sorts.map { sort =>
+    sorts.map { sort =>
       val name = sort.column match {
         case Column.AccountingPeriod => "accounting_period"
         case Column.AttributionPeriod => "attribution_period"
@@ -123,61 +136,56 @@ class IncomeStatementService @Inject() (
         case Column.InvoiceLineItemEndedAt => "invoice_line_item_ended_at"
       }
 
-      sql"#${name} #${sort.direction.toString.toUpperCase}"
+      field(name).sort(SortOrder.valueOf(sort.direction.toString.toUpperCase))
     }
-
-    makeSql(sql"ORDER BY ", joinSqls(sortClauses, sql", "))
   }
 
-  private def makeSelectedColumns(params: Params): SQLActionBuilder = {
-    joinSqls(
-      if (params.groupBy.isEmpty) {
-        params.columns.map {
-          case Column.AccountingPeriod => sql"accounting_period"
-          case Column.AttributionPeriod => sql"attribution_period"
-          case Column.Account => sql"account"
-          case Column.Category => sql"category"
-          case Column.NetIncome => sql"net_settlement_income"
-          case Column.OccurredAt => sql"occurred_at"
-          case Column.Event => sql"event"
-          case Column.ProductId => sql"product_id"
-          case Column.ProductName => sql"product_name"
-          case Column.CustomerId => sql"product_id"
-          case Column.CustomerName => sql"customer_name"
-          case Column.CustomerEmail => sql"customer_email"
-          case Column.TransactionId => sql"transaction_id"
-          case Column.TransactionTitle => sql"transaction_title"
-          case Column.InvoiceId => sql"invoice_id"
-          case Column.InvoiceNumber => sql"invoice_number"
-          case Column.InvoiceLineItemDescription => sql"invoice_line_item_description"
-          case Column.InvoiceLineItemId => sql"invoice_line_item_id"
-          case Column.InvoiceLineItemStartedAt => sql"invoice_line_item_started_at"
-          case Column.InvoiceLineItemEndedAt => sql"invoice_line_item_ended_at"
-        }
-      } else {
-        params.columns.map {
-          case Column.AccountingPeriod => sql"accounting_period"
-          case Column.Account => sql"account"
-          case Column.Category => makeSql(getCategorySqlCond("account"), sql" AS category")
-          case Column.NetIncome => sql"SUM(net_settlement_income) AS net_settlement_income"
-          case Column.ProductId => sql"MAX(product_id) AS product_id"
-          case Column.ProductName => sql"MAX(product_name) AS product_name"
-          case Column.CustomerId => sql"MAX(customer_id) AS product_id"
-          case Column.CustomerName => sql"MAX(customer_name) AS customer_name"
-          case Column.CustomerEmail => sql"MAX(customer_email) AS customer_email"
-          case Column.TransactionId => sql"MAX(transaction_id) AS transaction_id"
-          case Column.TransactionTitle => sql"MAX(transaction_title) AS transaction_title"
-          case Column.InvoiceId => sql"MAX(invoice_id) AS invoice_id"
-          case Column.InvoiceNumber => sql"MAX(invoice_number) AS invoice_number"
-          case Column.InvoiceLineItemDescription => sql"MAX(invoice_line_item_description) AS invoice_line_item_description"
-          case Column.InvoiceLineItemId => sql"MAX(invoice_line_item_id) AS invoice_line_item_id"
-          case Column.InvoiceLineItemStartedAt => sql"MIN(invoice_line_item_started_at) AS invoice_line_item_started_at"
-          case Column.InvoiceLineItemEndedAt => sql"MAX(invoice_line_item_ended_at) AS invoice_line_item_ended_at"
-          case other => throw new Exception(s"Invalid column in the grouping mode: $other")
-        }
-      },
-      sql", "
-    )
+  private def makeSelectedColumns(params: Params): Seq[Field[?]] = {
+    if (params.groupBy.isEmpty) {
+      params.columns.map {
+        case Column.AccountingPeriod => field("accounting_period")
+        case Column.AttributionPeriod => field("attribution_period")
+        case Column.Account => field("account")
+        case Column.Category => field("category")
+        case Column.NetIncome => field("net_settlement_income")
+        case Column.OccurredAt => field("occurred_at")
+        case Column.Event => field("event")
+        case Column.ProductId => field("product_id")
+        case Column.ProductName => field("product_name")
+        case Column.CustomerId => field("customer_id")
+        case Column.CustomerName => field("customer_name")
+        case Column.CustomerEmail => field("customer_email")
+        case Column.TransactionId => field("transaction_id")
+        case Column.TransactionTitle => field("transaction_title")
+        case Column.InvoiceId => field("invoice_id")
+        case Column.InvoiceNumber => field("invoice_number")
+        case Column.InvoiceLineItemDescription => field("invoice_line_item_description")
+        case Column.InvoiceLineItemId => field("invoice_line_item_id")
+        case Column.InvoiceLineItemStartedAt => field("invoice_line_item_started_at")
+        case Column.InvoiceLineItemEndedAt => field("invoice_line_item_ended_at")
+      }
+    } else {
+      params.columns.map {
+        case Column.AccountingPeriod => field("accounting_period")
+        case Column.Account => field("account")
+        case Column.Category => getAccountCategoryField(field("account", classOf[String])).as("category")
+        case Column.NetIncome => sum(field("net_settlement_income", classOf[java.lang.Long])).as("net_settlement_income")
+        case Column.ProductId => max(field("product_id")).as("product_id")
+        case Column.ProductName => max(field("product_name")).as("product_name")
+        case Column.CustomerId => max(field("customer_id")).as("customer_id")
+        case Column.CustomerName => max(field("customer_name")).as("customer_name")
+        case Column.CustomerEmail => max(field("customer_email")).as("customer_email")
+        case Column.TransactionId => max(field("transaction_id")).as("transaction_id")
+        case Column.TransactionTitle => max(field("transaction_title")).as("transaction_title")
+        case Column.InvoiceId => max(field("invoice_id")).as("invoice_id")
+        case Column.InvoiceNumber => max(field("invoice_number")).as("invoice_number")
+        case Column.InvoiceLineItemDescription => max(field("invoice_line_item_description")).as("invoice_line_item_description")
+        case Column.InvoiceLineItemId => max(field("invoice_line_item_id")).as("invoice_line_item_id")
+        case Column.InvoiceLineItemStartedAt => min(field("invoice_line_item_started_at")).as("invoice_line_item_started_at")
+        case Column.InvoiceLineItemEndedAt => max(field("invoice_line_item_ended_at")).as("invoice_line_item_ended_at")
+        case other => throw new Exception(s"Invalid column in the grouping mode: $other")
+      }
+    }
   }
 
   private def getResultColumns(params: Params): Seq[ResultColumn] = {
@@ -210,143 +218,156 @@ class IncomeStatementService @Inject() (
     }
   }
 
-  private def makeGroupByClause(params: Params): SQLActionBuilder = {
+  private def makeGroupByClause(params: Params): Seq[Field[?]] = {
     params.groupBy
       .map {
-        case GroupBy.Product => sql", product_id"
-        case GroupBy.Customer => sql", customer_id"
-        case GroupBy.Transaction => sql", transaction_id"
-        case GroupBy.LineItem => sql", transaction_id, invoice_line_item_id"
-        case GroupBy.Summary => sql""
+        case GroupBy.Product => Seq(field("product_id"))
+        case GroupBy.Customer => Seq(field("customer_id"))
+        case GroupBy.Transaction => Seq(field("transaction_id"))
+        case GroupBy.LineItem => Seq(field("transaction_id"), field("invoice_line_item_id"))
+        case GroupBy.Summary => Seq.empty
       }
-      .map { extraGroupKey =>
-        makeSql(sql"GROUP BY accounting_period, category, account", extraGroupKey)
+      .map { extraGroupKeys =>
+        Seq(field("accounting_period"), field("category"), field("account")) ++ extraGroupKeys
       }
-      .getOrElse(sql"")
+      .getOrElse(Seq.empty)
   }
 
-  private def makeBaseWithSql(stripeAccountId: String, liveMode: Boolean, params: Params): SQLActionBuilder = {
-    val whereClause = joinSqls(
-      Seq(
-        Some(sql"stripe_account_id = $stripeAccountId"),
-        Some(sql"live_mode = $liveMode"),
-        Some(sql"settlement_currency = ${params.currency}"),
-        params.periodStart.map { p => sql"accounting_period >= ${p}" },
-        params.periodEnd.map { p => sql"accounting_period <= ${p}" },
-        params.productId.map { c => sql"product_id = $c" },
-        params.customerId.map { c => sql"customer_id = $c" },
-        params.transactionId.map { c => sql"transaction_id = $c" },
-        if (params.accounts.nonEmpty) {
-          Some(sql"(debit = ANY(${params.accounts}) OR credit = ANY(${params.accounts}))")
-        } else {
-          None
-        }
-      ).flatten,
-      sql" AND "
-    )
+  private def makeBaseWithSql(stripeAccountId: String, liveMode: Boolean, params: Params): CommonTableExpression[?] = {
+    val whereClause: Seq[Condition] = Seq(
+      Some(field("stripe_account_id") === stripeAccountId),
+      Some(field("live_mode") === liveMode),
+      Some(field("settlement_currency") === params.currency),
+      params.periodStart.map { p => field("accounting_period") >= p },
+      params.periodEnd.map { p => field("accounting_period") <= p },
+      params.productId.map { c => field("product_id") === c },
+      params.customerId.map { c => field("customer_id") === c },
+      params.transactionId.map { c => field("transaction_id") === c },
+      if (params.accounts.nonEmpty) {
+        Some(field("debit").in(params.accounts.asJava).or(field("credit").in(params.accounts.asJava)))
+      } else {
+        None
+      }
+    ).flatten
 
     val revenueAccounts = JournalEntry.Account.values.filter(_.getAccountCategory() == AccountCategory.Revenue).toList
     val contraRevenueAccounts = JournalEntry.Account.values.filter(_.getAccountCategory() == AccountCategory.ContraRevenue).toList
     val expenseAccounts = JournalEntry.Account.values.filter(_.getAccountCategory() == AccountCategory.Expense).toList
     val gainAccounts = JournalEntry.Account.values.filter(_.getAccountCategory() == AccountCategory.Gain).toList
 
-    makeSql(
-      sql"""
-        WITH credit_entries AS (
-          SELECT
-            *,
-            credit as account,
-            CASE
-              WHEN credit = ANY(${(revenueAccounts ++ gainAccounts).map(_.name)}) THEN settlement_amount
-              WHEN credit = ANY(${(contraRevenueAccounts ++ expenseAccounts).map(_.name)}) THEN settlement_amount
-              ELSE 0
-            END AS net_settlement_income
-          FROM journal_entry
-          WHERE
-      """,
-      whereClause,
-      sql"""
-        ),
-        debit_entries AS (
-          SELECT
-            *,
-            debit as account,
-            CASE
-              WHEN debit = ANY(${(revenueAccounts ++ gainAccounts).map(_.name)}) THEN -settlement_amount
-              WHEN debit = ANY(${(contraRevenueAccounts ++ expenseAccounts).map(_.name)}) THEN -settlement_amount
-              ELSE 0
-            END AS net_settlement_income
-          FROM journal_entry
-          WHERE
-      """,
-      whereClause,
-      // TODO: we should move the joins to after grouping
-      sql"""
-        ),
-        raw_entries AS (
-          SELECT * FROM credit_entries UNION ALL SELECT * FROM debit_entries
-        ),
-        entries AS (
-          SELECT
-            j.*,
-            cus.name AS customer_name,
-            cus.email AS customer_email,
-            inv.number AS invoice_number,
-            il.description AS invoice_line_item_description,
-            il.started_at AS invoice_line_item_started_at,
-            il.ended_at AS invoice_line_item_ended_at,
-            pr.name AS product_name,
-            co.title AS transaction_title
-          FROM raw_entries j
-          LEFT JOIN stripe.customer cus ON cus.id = j.customer_id
-          LEFT JOIN stripe.invoice inv ON inv.id = j.invoice_id
-          LEFT JOIN stripe.invoice_line_item il ON il.id = j.invoice_line_item_id
-          LEFT JOIN stripe.product pr ON pr.id = j.product_id
-          LEFT JOIN transaction co ON co.id = j.transaction_id
-          WHERE net_settlement_income != 0
-        ),
+    val incomeAccountNames = (revenueAccounts ++ gainAccounts).map(_.name)
+    val contraIncomeAccountNames = (contraRevenueAccounts ++ expenseAccounts).map(_.name)
 
-        groups AS (
-          SELECT
-      """,
-      makeSelectedColumns(params),
-      sql"""
-          FROM entries
-      """,
-      makeGroupByClause(params),
-      sql"""
-          HAVING SUM(net_settlement_income) != 0
+    val mappedJournalEntries = getMappedJournalEntries()
+
+    val creditEntries = name("credit_entries").as(
+      `with`(mappedJournalEntries)
+        .select(
+          asterisk(),
+          field("credit").as("account"),
+          when(field("credit").in(incomeAccountNames.asJava), field("settlement_amount"))
+            .when(field("credit").in(contraIncomeAccountNames.asJava), field("settlement_amount"))
+            .otherwise(0L)
+            .as("net_settlement_income")
         )
-      """
+        .from(mappedJournalEntries)
+        .where(whereClause.asJava)
+    )
+
+    val debitEntries = name("debit_entries").as(
+      `with`(mappedJournalEntries)
+        .select(
+          asterisk(),
+          field("debit").as("account"),
+          when(field("debit").in(incomeAccountNames.asJava), field("settlement_amount").neg())
+            .when(field("debit").in(contraIncomeAccountNames.asJava), field("settlement_amount").neg())
+            .otherwise(0L)
+            .as("net_settlement_income")
+        )
+        .from(mappedJournalEntries)
+        .where(whereClause.asJava)
+    )
+
+    val rawEntries = name("raw_entries").as(
+      `with`(creditEntries, debitEntries)
+        .select(asterisk()).from(creditEntries)
+        .unionAll(select(asterisk()).from(debitEntries))
+    )
+
+    // TODO: we should move the joins to after grouping
+    val j = rawEntries.as("j")
+    def jField(columnName: String): Field[Any] = field(name("j", columnName), classOf[Any])
+
+    val metronomeProductNames = getMetronomeProductNames()
+
+    val entries = name("entries").as(
+      `with`(rawEntries, metronomeProductNames)
+        .select(
+          j.asterisk(),
+          STRIPE_CUSTOMER.NAME.as("customer_name"),
+          STRIPE_CUSTOMER.EMAIL.as("customer_email"),
+          STRIPE_INVOICE.NUMBER.as("invoice_number"),
+          STRIPE_INVOICE_LINE_ITEM.DESCRIPTION.as("invoice_line_item_description"),
+          STRIPE_INVOICE_LINE_ITEM.STARTED_AT.as("invoice_line_item_started_at"),
+          STRIPE_INVOICE_LINE_ITEM.ENDED_AT.as("invoice_line_item_ended_at"),
+          coalesce(metronomeProductNames.field("name"), STRIPE_PRODUCT.NAME).as("product_name"),
+          TRANSACTION.TITLE.as("transaction_title")
+        )
+        .from(j)
+        .leftJoin(STRIPE_CUSTOMER).on(jField("customer_id") === STRIPE_CUSTOMER.ID)
+        .leftJoin(STRIPE_INVOICE).on(jField("invoice_id") === STRIPE_INVOICE.ID)
+        .leftJoin(STRIPE_INVOICE_LINE_ITEM).on(jField("invoice_line_item_id") === STRIPE_INVOICE_LINE_ITEM.ID)
+        .leftJoin(STRIPE_PRODUCT).on(jField("product_id") === STRIPE_PRODUCT.ID)
+        .leftJoin(metronomeProductNames).on(jField("product_id") === metronomeProductNames.field("id"))
+        .leftJoin(TRANSACTION).on(jField("transaction_id") === TRANSACTION.ID)
+        .where(field("net_settlement_income") !== 0)
+    )
+
+    val groupBys = makeGroupByClause(params)
+    val groupSelect = `with`(entries)
+      .select(makeSelectedColumns(params).asJava)
+      .from(entries)
+
+    name("groups").as(
+      (if (groupBys.isEmpty) { groupSelect } else { groupSelect.groupBy(groupBys.asJava) })
+        .having(sum(field("net_settlement_income", classOf[java.lang.Long])).ne(java.math.BigDecimal.ZERO))
     )
   }
 
   def count(stripeAccountId: String, liveMode: Boolean, params: Params): Future[Long] = {
     db
       .run {
-        makeSql(
-          makeBaseWithSql(stripeAccountId, liveMode, params),
-          sql"""
-            SELECT COUNT(*) FROM groups
-          """,
+        val groups = makeBaseWithSql(stripeAccountId, liveMode, params)
+        toSqlActionBuilder(
+          `with`(groups)
+            .select(DSL.count(asterisk()))
+            .from(groups)
         ).as[Long]
       }
       .map(_.headOption.getOrElse(0L))
   }
 
 
+  private def makeListSql(stripeAccountId: String, liveMode: Boolean, params: Params): SelectSeekStepN[?] = {
+    val groups = makeBaseWithSql(stripeAccountId, liveMode, params)
+
+    `with`(groups)
+      .select(asterisk())
+      .from(groups)
+      .orderBy(makeOrderByClause(params.sorts).asJava)
+  }
+
   def get(stripeAccountId: String, liveMode: Boolean, params: Params, offset: Int, limit: Int): Future[Result] = {
     val resultColumns = getResultColumns(params)
     implicit val getResult: GetResult[Seq[Option[Any]]] = makeGetResult(resultColumns)
     db
       .run {
-        makeSql(
-          makeBaseWithSql(stripeAccountId, liveMode, params),
-          sql"""
-            SELECT * FROM groups
-          """,
-          makeOrderByClause(params.sorts),
-          sql"LIMIT $limit OFFSET $offset"
+        val list = makeListSql(stripeAccountId, liveMode, params)
+        toSqlActionBuilder(
+          select(asterisk())
+            .from(list)
+            .limit(limit)
+            .offset(offset)
         ).as[Seq[Option[Any]]]
       }
       .map { rows =>
@@ -364,12 +385,10 @@ class IncomeStatementService @Inject() (
 
     db
       .stream {
-        makeSql(
-          makeBaseWithSql(stripeAccountId, liveMode, params),
-          sql"""
-            SELECT * FROM groups
-          """,
-          makeOrderByClause(params.sorts),
+        val list = makeListSql(stripeAccountId, liveMode, params)
+        toSqlActionBuilder(
+          select(asterisk())
+            .from(list)
         ).as[Seq[Option[Any]]]
       }
       .foreach { row =>
