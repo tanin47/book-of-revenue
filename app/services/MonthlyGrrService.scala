@@ -3,7 +3,7 @@ package services
 import database.models.JournalEntry
 import database.models.JournalEntry.AccountCategory
 import database.services.JournalEntryService
-import database.services.JournalEntryService.{ColumnType, SortDirection}
+import database.services.JournalEntryService.{ColumnType, SortDirection, getMappedJournalEntries}
 import framework.Helpers.{escapeCsv, formatCsvValue}
 import framework.Jooq.*
 import framework.{Instant, Jooq, Jsonable, PeriodColumn}
@@ -105,26 +105,28 @@ class MonthlyGrrService @Inject() (
     val revenueAccounts = JournalEntry.Account.values.filter(_.getAccountCategory() == AccountCategory.Revenue).toList
     val contraRevenueAccounts = JournalEntry.Account.values.filter(_.getAccountCategory() == AccountCategory.ContraRevenue).toList
 
-    val j = jooq.generated.public.tables.JournalEntry.JOURNAL_ENTRY
+    val mappedJournalEntries = getMappedJournalEntries()
 
     val rawEntries = name("raw_entries").as(
       select(
-        j.ACCOUNTING_PERIOD.as("accounting_period"),
-        j.CUSTOMER_ID.as("customer_id"),
+        mappedJournalEntries.field("accounting_period"),
+        mappedJournalEntries.field("customer_id"),
         sum(
-          when(j.DEBIT.in((revenueAccounts ++ contraRevenueAccounts).asJava), j.SETTLEMENT_AMOUNT.neg()).otherwise(0L)
-            .add(when(j.CREDIT.in((revenueAccounts ++ contraRevenueAccounts).asJava), j.SETTLEMENT_AMOUNT).otherwise(0L))
-        ).as("net_revenue")
+          when(mappedJournalEntries.field("debit").in((revenueAccounts ++ contraRevenueAccounts).asJava), mappedJournalEntries.field("settlement_amount", classOf[java.lang.Long]).neg())
+            .otherwise(0L)
+            .add(when(mappedJournalEntries.field("credit").in((revenueAccounts ++ contraRevenueAccounts).asJava), mappedJournalEntries.field("settlement_amount", classOf[java.lang.Long])).otherwise(0L)) ).as("net_revenue")
       )
-        .from(j)
-        .where(j.STRIPE_ACCOUNT_ID.eq(stripeAccountId))
-        .and(j.LIVE_MODE.eq(Boolean.box(liveMode)))
-        .and(j.ACCOUNTING_PERIOD.ge(periodStart.atOffset(ZoneOffset.UTC).minusMonths(1).toInstant))
-        .and(j.ACCOUNTING_PERIOD.le(periodEnd))
-        .and(j.SETTLEMENT_CURRENCY.eq(currency))
+        .from(mappedJournalEntries)
+        .where(
+          mappedJournalEntries.field("stripe_account_id", classOf[String]) === stripeAccountId,
+          mappedJournalEntries.field("live_mode", classOf[Boolean]) === liveMode,
+          mappedJournalEntries.field("accounting_period", classOf[Instant]) >= periodStart.atOffset(ZoneOffset.UTC).minusMonths(1).toInstant,
+          mappedJournalEntries.field("accounting_period", classOf[Instant]) <= periodEnd,
+          mappedJournalEntries.field("settlement_currency", classOf[String]) === currency
+        )
         .groupBy(
-          j.ACCOUNTING_PERIOD,
-          j.CUSTOMER_ID
+          mappedJournalEntries.field("accounting_period"),
+          mappedJournalEntries.field("customer_id")
         )
     )
     val e = rawEntries.as("e")
@@ -132,21 +134,21 @@ class MonthlyGrrService @Inject() (
 
     val eAccountingPeriod = e.field("accounting_period", classOf[Instant])
     val eCustomerId = e.field("customer_id", classOf[String])
-    val eNetRevenue = e.field("net_revenue", classOf[JLong])
+    val eNetRevenue = e.field("net_revenue", classOf[java.lang.Long])
 
     val bAccountingPeriod = b.field("accounting_period", classOf[Instant])
     val bCustomerId = b.field("customer_id", classOf[String])
-    val bNetRevenue = b.field("net_revenue", classOf[JLong])
+    val bNetRevenue = b.field("net_revenue", classOf[java.lang.Long])
 
     val customerEntries = name("customer_entries").as(
       `with`(rawEntries)
       .select(
         coalesce(eAccountingPeriod, addMonthsUtc(bAccountingPeriod, 1)).as("accounting_period"),
         coalesce(eCustomerId, bCustomerId).as("customer_id"),
-        when[JLong]((eNetRevenue < 0L).or(bNetRevenue <= 0L), 0L)
+        when[java.lang.Long]((eNetRevenue < 0L).or(bNetRevenue <= 0L), 0L)
           .when(
-            coalesce[JLong](eNetRevenue, 0L) <= bNetRevenue,
-            coalesce[JLong](eNetRevenue, 0L) * 100L / bNetRevenue
+            coalesce[java.lang.Long](eNetRevenue, 0L) <= bNetRevenue,
+            coalesce[java.lang.Long](eNetRevenue, 0L) * 100L / bNetRevenue
           )
           .otherwise(100L)
           .as("grr")
