@@ -108,14 +108,15 @@ class MonthlyGrrService @Inject() (
     val mappedJournalEntries = getMappedJournalEntries()
 
     val rawEntries = name("raw_entries").as(
-      select(
-        mappedJournalEntries.field("accounting_period"),
-        mappedJournalEntries.field("customer_id"),
-        sum(
-          when(mappedJournalEntries.field("debit").in((revenueAccounts ++ contraRevenueAccounts).asJava), mappedJournalEntries.field("settlement_amount", classOf[java.lang.Long]).neg())
-            .otherwise(0L)
-            .add(when(mappedJournalEntries.field("credit").in((revenueAccounts ++ contraRevenueAccounts).asJava), mappedJournalEntries.field("settlement_amount", classOf[java.lang.Long])).otherwise(0L)) ).as("net_revenue")
-      )
+      `with`(mappedJournalEntries)
+        .select(
+          mappedJournalEntries.field("accounting_period"),
+          mappedJournalEntries.field("customer_id"),
+          sum(
+            when(mappedJournalEntries.field("debit").in((revenueAccounts ++ contraRevenueAccounts).asJava), mappedJournalEntries.field("settlement_amount", classOf[java.lang.Long]).neg())
+              .otherwise(0L)
+              .add(when(mappedJournalEntries.field("credit").in((revenueAccounts ++ contraRevenueAccounts).asJava), mappedJournalEntries.field("settlement_amount", classOf[java.lang.Long])).otherwise(0L)) ).as("net_revenue")
+        )
         .from(mappedJournalEntries)
         .where(
           mappedJournalEntries.field("stripe_account_id", classOf[String]) === stripeAccountId,
