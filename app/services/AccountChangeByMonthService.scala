@@ -2,19 +2,27 @@ package services
 
 import database.models.JournalEntry
 import database.services.JournalEntryService
-import database.services.JournalEntryService.{ColumnType, SortDirection}
+import database.services.JournalEntryService.{ColumnType, SortDirection, getMappedJournalEntries}
 import framework.Helpers.{escapeCsv, formatCsvValue}
+import framework.Jooq.*
 import framework.{Instant, Jsonable, PeriodColumn}
+import jooq.generated.public.Tables.TRANSACTION
+import org.jooq.impl.DSL
+import org.jooq.impl.DSL.*
+import org.jooq.scalaextensions.Conversions.*
+import org.jooq.{CommonTableExpression, Condition, Field, SelectSeekStepN, SortField, SortOrder}
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import play.api.libs.json.{JsObject, Json}
 import process.Helpers.generatePeriods
-import slick.jdbc.{GetResult, JdbcProfile, SQLActionBuilder}
+import slick.jdbc.{GetResult, JdbcProfile}
 
 import java.io.{BufferedWriter, File, FileWriter}
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters.SeqHasAsJava
+import scala.language.implicitConversions
 
 object AccountChangeByMonthService {
   enum Column extends Enum[Column] {
@@ -83,108 +91,103 @@ class AccountChangeByMonthService @Inject()(
   import AccountChangeByMonthService.*
   import framework.PostgresProfile.api.*
 
-  def makeBaseSql(stripeAccountId: String, liveMode: Boolean, params: Params): SQLActionBuilder = {
+  def makeBaseSql(stripeAccountId: String, liveMode: Boolean, params: Params): CommonTableExpression[?] = {
     val (creditAccounts, debitAccounts) = params.accounts.partition(_.isCredit())
+    val accountNames = params.accounts.map(_.name)
 
-    def whereSql(isCredit: Boolean) = joinSqls(
-      Seq(
-        Some(sql"stripe_account_id = $stripeAccountId"),
-        Some(sql"live_mode = $liveMode"),
-        Some(sql"settlement_currency = ${params.currency}"),
-        Some(sql"accounting_period >= ${params.periodStart}"),
-        Some(sql"accounting_period <= ${params.periodEnd}"),
-        Some(sql"customer_id = ${params.customerId}"),
-        if (isCredit) {
-          Some(sql"credit = ANY(${params.accounts.map(_.name)})")
-        } else {
-          Some(sql"debit = ANY(${params.accounts.map(_.name)})")
-        }
-      ).flatten,
-      sql" AND "
+    def whereClause(isCredit: Boolean): Seq[Condition] = Seq(
+      field("stripe_account_id") === stripeAccountId,
+      field("live_mode") === liveMode,
+      field("settlement_currency") === params.currency,
+      field("accounting_period") >= params.periodStart,
+      field("accounting_period") <= params.periodEnd,
+      field("customer_id") === params.customerId,
+      if (isCredit) {
+        field("credit").in(accountNames.asJava)
+      } else {
+        field("debit").in(accountNames.asJava)
+      }
     )
 
-    val periodColumnSqls = joinSqls(
-      generatePeriods(params.periodStart, params.periodEnd.plusMillis(1)).map { period =>
-        sql"""SUM(CASE WHEN accounting_period = ${period.startedAt} THEN net_settlement_change ELSE 0 END) AS "#${PeriodColumn(period.startedAt.toEpochMilli).name}""""
-      },
-      sql", "
-    )
+    val settlementAmount = field("settlement_amount", classOf[java.lang.Long])
+    val periods = generatePeriods(params.periodStart, params.periodEnd.plusMillis(1))
 
-    val periodColumnWhereSql = joinSqls(
-      generatePeriods(params.periodStart, params.periodEnd.plusMillis(1)).map { period =>
-        sql""""#${PeriodColumn(period.startedAt.toEpochMilli).name}" != 0"""
-      },
-      sql" OR "
-    )
+    val mappedJournalEntries = getMappedJournalEntries()
 
-    makeSql(
-      sql"""
-        WITH
-        credit_net_changes AS (
-          SELECT
-            *,
-            credit AS account,
-            (CASE
-              WHEN credit = ANY(${creditAccounts.map(_.name)}) THEN settlement_amount
-              ELSE -settlement_amount
-            END) AS net_settlement_change
-          FROM journal_entry
-          WHERE
-      """,
-      whereSql(isCredit = true),
-      sql"""
-        ),
-
-        debit_net_changes AS (
-          SELECT
-            *,
-            debit AS account,
-            (CASE
-              WHEN debit = ANY(${debitAccounts.map(_.name)}) THEN settlement_amount
-              ELSE -settlement_amount
-            END) AS net_settlement_change
-          FROM journal_entry
-          WHERE
-      """,
-      whereSql(isCredit = false),
-      sql"""
-        ),
-
-        net_changes AS (
-          SELECT * FROM credit_net_changes UNION ALL SELECT * FROM debit_net_changes
-        ),
-
-        unfiltered_groups AS (
-          SELECT
-            transaction_id,
-      """,
-      periodColumnSqls,
-      sql"""
-          FROM net_changes
-          GROUP BY transaction_id
-        ),
-
-        filtered_groups AS (
-          SELECT * FROM unfiltered_groups WHERE
-      """,
-      periodColumnWhereSql,
-      sql"""
-        ),
-
-        groups AS (
-          SELECT
-            t.id AS transaction_id,
-            t.type AS transaction_type,
-            t.title AS transaction_title,
-            t.started_at AS transaction_date,
-            t.status AS transaction_status,
-            t.settlement_total_value AS transaction_value,
-            g.*
-          FROM transaction t
-          LEFT JOIN filtered_groups g ON t.id = g.transaction_id
-          WHERE t.customer_id = ${params.customerId}
+    val creditNetChanges = name("credit_net_changes").as(
+      `with`(mappedJournalEntries)
+        .select(
+          asterisk(),
+          field("credit").as("account"),
+          when(field("credit").in(creditAccounts.map(_.name).asJava), settlementAmount)
+            .otherwise(settlementAmount.neg())
+            .as("net_settlement_change")
         )
-      """
+        .from(mappedJournalEntries)
+        .where(whereClause(isCredit = true).asJava)
+    )
+
+    val debitNetChanges = name("debit_net_changes").as(
+      `with`(mappedJournalEntries)
+        .select(
+          asterisk(),
+          field("debit").as("account"),
+          when(field("debit").in(debitAccounts.map(_.name).asJava), settlementAmount)
+            .otherwise(settlementAmount.neg())
+            .as("net_settlement_change")
+        )
+        .from(mappedJournalEntries)
+        .where(whereClause(isCredit = false).asJava)
+    )
+
+    val netChanges = name("net_changes").as(
+      `with`(creditNetChanges, debitNetChanges)
+        .select(asterisk()).from(creditNetChanges)
+        .unionAll(select(asterisk()).from(debitNetChanges))
+    )
+
+    val periodColumns = periods.map { period =>
+      sum(
+        when(field("accounting_period", classOf[Instant]).eq(period.startedAt), field("net_settlement_change", classOf[java.lang.Long]))
+          .otherwise(DSL.inline(0L))
+      ).as(PeriodColumn(period.startedAt.toEpochMilli).name)
+    }
+
+    val unfilteredGroups = name("unfiltered_groups").as(
+      `with`(netChanges)
+        .select((Seq(field("transaction_id")) ++ periodColumns).asJava)
+        .from(netChanges)
+        .groupBy(field("transaction_id"))
+    )
+
+    val periodColumnConditions = periods.map { period =>
+      field(quotedName(PeriodColumn(period.startedAt.toEpochMilli).name)) !== 0
+    }
+
+    val filteredGroups = name("filtered_groups").as(
+      `with`(unfilteredGroups)
+        .select(asterisk())
+        .from(unfilteredGroups)
+        .where(or(periodColumnConditions.asJava))
+    )
+
+    val t = TRANSACTION.as("t")
+    val g = filteredGroups.as("g")
+
+    name("groups").as(
+      `with`(filteredGroups)
+        .select(
+          t.ID.as("transaction_id"),
+          t.TYPE.as("transaction_type"),
+          t.TITLE.as("transaction_title"),
+          t.STARTED_AT.as("transaction_date"),
+          t.STATUS.as("transaction_status"),
+          t.SETTLEMENT_TOTAL_VALUE.as("transaction_value"),
+          g.asterisk()
+        )
+        .from(t)
+        .leftJoin(g).on(t.ID === field(name("g", "transaction_id"), classOf[String]))
+        .where(t.CUSTOMER_ID === params.customerId)
     )
   }
 
@@ -194,23 +197,24 @@ class AccountChangeByMonthService @Inject()(
     params: Params
   ): Future[Long] = {
     db.run {
-      makeSql(
-        makeBaseSql(stripeAccountId, liveMode, params),
-        sql"""
-        SELECT COUNT(*) FROM groups
-      """
+      val groups = makeBaseSql(stripeAccountId, liveMode, params)
+
+      toSqlActionBuilder(
+        `with`(groups)
+          .select(DSL.count(asterisk()))
+          .from(groups)
       ).as[Long]
         .map(_.headOption.getOrElse(0L))
     }
   }
 
-  private def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
+  private def makeOrderByClause(sorts: Seq[Sort]): Seq[SortField[?]] = {
     if (sorts.isEmpty) {
-      return sql"transaction_date DESC"
+      return Seq(field("transaction_date").desc)
     }
 
-    val sortClauses = sorts.map { sort =>
-      val name = sort.column match {
+    sorts.map { sort =>
+      val columnName = sort.column match {
         case e: PeriodColumn => e.name
         case Column.TransactionId => "transaction_id"
         case Column.TransactionType => "transaction_type"
@@ -220,10 +224,8 @@ class AccountChangeByMonthService @Inject()(
         case Column.TransactionDate => "transaction_date"
       }
 
-      sql""""#$name" #${sort.direction.toString.toUpperCase} NULLS LAST"""
+      field(quotedName(columnName)).sort(SortOrder.valueOf(sort.direction.toString.toUpperCase)).nullsLast()
     }
-
-    joinSqls(sortClauses, sql", ")
   }
 
   private def getResultColumns(params: Params): Seq[ResultColumn] = {
@@ -258,36 +260,27 @@ class AccountChangeByMonthService @Inject()(
     }
   }
 
-  private def makeSelectedColumns(resultColumns: Seq[ResultColumn]): SQLActionBuilder = {
-    joinSqls(
-      resultColumns.map { col =>
-        col.id match {
-          case p: PeriodColumn => sql""""#${p.name}""""
-          case Column.TransactionId => sql"transaction_id"
-          case Column.TransactionTitle => sql"transaction_title"
-          case Column.TransactionType => sql"transaction_type"
-          case Column.TransactionValue => sql"transaction_value"
-          case Column.TransactionStatus => sql"transaction_status"
-          case Column.TransactionDate => sql"transaction_date"
-        }
-      },
-      sql", "
-    )
+  private def makeSelectedColumns(resultColumns: Seq[ResultColumn]): Seq[Field[?]] = {
+    resultColumns.map { col =>
+      col.id match {
+        case p: PeriodColumn => field(quotedName(p.name))
+        case Column.TransactionId => field("transaction_id")
+        case Column.TransactionTitle => field("transaction_title")
+        case Column.TransactionType => field("transaction_type")
+        case Column.TransactionValue => field("transaction_value")
+        case Column.TransactionStatus => field("transaction_status")
+        case Column.TransactionDate => field("transaction_date")
+      }
+    }
   }
 
-  private def makeListSql(stripeAccountId: String, liveMode: Boolean, params: Params, resultColumns: Seq[ResultColumn]): SQLActionBuilder = {
-    makeSql(
-      makeBaseSql(stripeAccountId, liveMode, params),
-      sql"""
-        SELECT
-      """,
-      makeSelectedColumns(resultColumns),
-      sql"""
-      FROM groups
-        ORDER BY
-      """,
-      makeOrderByClause(params.sorts),
-    )
+  private def makeListSql(stripeAccountId: String, liveMode: Boolean, params: Params, resultColumns: Seq[ResultColumn]): SelectSeekStepN[?] = {
+    val groups = makeBaseSql(stripeAccountId, liveMode, params)
+
+    `with`(groups)
+      .select(makeSelectedColumns(resultColumns).asJava)
+      .from(groups)
+      .orderBy(makeOrderByClause(params.sorts).asJava)
   }
 
   def get(
@@ -301,11 +294,13 @@ class AccountChangeByMonthService @Inject()(
     implicit val getResult: GetResult[Seq[Option[Any]]] = makeGetResult(resultColumns)
 
     db.run {
-      makeSql(
-        makeListSql(stripeAccountId, liveMode, params, resultColumns),
-        sql"""
-            LIMIT $limit OFFSET $offset
-          """
+      val list = makeListSql(stripeAccountId, liveMode, params, resultColumns)
+
+      toSqlActionBuilder(
+        select(asterisk())
+          .from(list)
+          .limit(limit)
+          .offset(offset)
       ).as[Seq[Option[Any]]]
     }.map { rows =>
       Result(resultColumns, rows.toList)
@@ -323,7 +318,12 @@ class AccountChangeByMonthService @Inject()(
 
     db
       .stream {
-        makeListSql(stripeAccountId, liveMode, params, resultColumns.toList).as[Seq[Option[Any]]]
+        val list = makeListSql(stripeAccountId, liveMode, params, resultColumns.toList)
+
+        toSqlActionBuilder(
+          select(asterisk())
+            .from(list)
+        ).as[Seq[Option[Any]]]
       }
       .foreach { row =>
         var i = 0

@@ -1,16 +1,26 @@
 package services
 
-import database.services.JournalEntryService.{ColumnType, SortDirection, getValue}
+import database.models.JournalEntry
+import database.services.JournalEntryService.{ColumnType, SortDirection, getMappedJournalEntries, getValue}
 import framework.Helpers.{escapeCsv, formatCsvValue}
+import framework.Jooq.*
 import framework.{Instant, Jsonable, PlayConfig}
+import jooq.generated.public.Tables.TRANSACTION
+import jooq.generated.stripe.Tables.{STRIPE_CUSTOMER, STRIPE_INVOICE}
+import org.jooq.impl.DSL
+import org.jooq.impl.DSL.*
+import org.jooq.scalaextensions.Conversions.*
+import org.jooq.{CommonTableExpression, Condition, Field, SelectSeekStepN, SortField, SortOrder}
 import play.api.db.slick.{DatabaseConfigProvider, HasDatabaseConfigProvider}
 import play.api.libs.json.{JsObject, Json}
-import slick.jdbc.{GetResult, JdbcProfile, SQLActionBuilder}
+import slick.jdbc.{GetResult, JdbcProfile}
 
 import java.io.{BufferedWriter, File, FileWriter}
 import java.nio.charset.StandardCharsets
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters.SeqHasAsJava
+import scala.language.implicitConversions
 
 object ArAgingService {
   enum Column extends Enum[Column] {
@@ -82,12 +92,19 @@ class ArAgingService @Inject() (
   import ArAgingService.*
   import framework.PostgresProfile.api.*
 
-  private def makeOrderByClause(sorts: Seq[Sort]): SQLActionBuilder = {
+  private def makeOrderByClause(sorts: Seq[Sort]): Seq[SortField[?]] = {
     if (sorts.isEmpty) {
-      return sql"ORDER BY total DESC, days_120_plus DESC, days_120 DESC, days_90 DESC, days_60 DESC, days_30 DESC"
+      return Seq(
+        field("total").desc,
+        field("days_120_plus").desc,
+        field("days_120").desc,
+        field("days_90").desc,
+        field("days_60").desc,
+        field("days_30").desc
+      )
     }
 
-    val sortClauses = sorts.map { sort =>
+    sorts.map { sort =>
       val name = sort.column match {
         case Column.Date => "date"
         case Column.NotDue => "not_due"
@@ -107,110 +124,118 @@ class ArAgingService @Inject() (
         case Column.InvoiceNumber => "invoice_number"
       }
 
-      sql"#${name} #${sort.direction.toString.toUpperCase}"
+      field(name).sort(SortOrder.valueOf(sort.direction.toString.toUpperCase))
     }
-
-    makeSql(sql"ORDER BY ", joinSqls(sortClauses, sql", "))
   }
-  private def makeGroupByClause(params: Params): SQLActionBuilder = {
+
+  private def makeGroupByClause(params: Params): Seq[Field[?]] = {
     params.groupBy match {
-      case GroupBy.Customer => sql"GROUP BY customer_id"
-      case GroupBy.Transaction => sql"GROUP BY transaction_id"
-      case GroupBy.Summary => sql""
+      case GroupBy.Customer => Seq(field("customer_id"))
+      case GroupBy.Transaction => Seq(field("transaction_id"))
+      case GroupBy.Summary => Seq.empty
     }
   }
 
-  private def makeSelectedColumns(params: Params): SQLActionBuilder = {
-    joinSqls(
-      params.columns.map {
-        case Column.Date => sql"${params.exclusiveUpUntil.minusMillis(1)} AS date"
-        case Column.NotDue => sql"SUM(not_due) AS not_due"
-        case Column.Days30 => sql"SUM(days_30) AS days_30"
-        case Column.Days60 => sql"SUM(days_60) AS days_60"
-        case Column.Days90 => sql"SUM(days_90) AS days_90"
-        case Column.Days120 => sql"SUM(days_120) AS days_120"
-        case Column.Days120Plus => sql"SUM(days_120_plus) AS days_120_plus"
-        case Column.Total => sql"SUM(total) AS total"
-        case Column.OccurredAt => sql"MIN(occurred_at) AS occurred_at"
-        case Column.CustomerId => sql"MIN(customer_id) AS customer_id"
-        case Column.CustomerName => sql"MIN(customer_name) AS customer_name"
-        case Column.CustomerEmail => sql"MIN(customer_email) AS customer_email"
-        case Column.TransactionId => sql"MIN(transaction_id) AS transaction_id"
-        case Column.TransactionTitle => sql"MIN(transaction_title) AS transaction_title"
-        case Column.InvoiceId => sql"MIN(invoice_id) AS invoice_id"
-        case Column.InvoiceNumber => sql"MIN(invoice_number) AS invoice_number"
-      },
-      sql", "
-    )
+  private def makeSelectedColumns(params: Params): Seq[Field[?]] = {
+    params.columns.map {
+      case Column.Date => DSL.`val`(params.exclusiveUpUntil.minusMillis(1)).as("date")
+      case Column.NotDue => sum(field("not_due", classOf[java.lang.Long])).as("not_due")
+      case Column.Days30 => sum(field("days_30", classOf[java.lang.Long])).as("days_30")
+      case Column.Days60 => sum(field("days_60", classOf[java.lang.Long])).as("days_60")
+      case Column.Days90 => sum(field("days_90", classOf[java.lang.Long])).as("days_90")
+      case Column.Days120 => sum(field("days_120", classOf[java.lang.Long])).as("days_120")
+      case Column.Days120Plus => sum(field("days_120_plus", classOf[java.lang.Long])).as("days_120_plus")
+      case Column.Total => sum(field("total", classOf[java.lang.Long])).as("total")
+      case Column.OccurredAt => min(field("occurred_at")).as("occurred_at")
+      case Column.CustomerId => min(field("customer_id")).as("customer_id")
+      case Column.CustomerName => min(field("customer_name")).as("customer_name")
+      case Column.CustomerEmail => min(field("customer_email")).as("customer_email")
+      case Column.TransactionId => min(field("transaction_id")).as("transaction_id")
+      case Column.TransactionTitle => min(field("transaction_title")).as("transaction_title")
+      case Column.InvoiceId => min(field("invoice_id")).as("invoice_id")
+      case Column.InvoiceNumber => min(field("invoice_number")).as("invoice_number")
+    }
   }
 
-  private def makeBaseSql(stripeAccountId: String, liveMode: Boolean, params: Params): SQLActionBuilder = {
-    val whereClause = joinSqls(
-      Seq(
-        Some(sql"stripe_account_id = $stripeAccountId"),
-        Some(sql"live_mode = $liveMode"),
-        Some(sql"occurred_at <= ${params.exclusiveUpUntil}"),
-        Some(sql"settlement_currency = ${params.currency}"),
-        Some(sql"'AccountsReceivable' IN (debit, credit)"),
-        params.customerId.map(customerId => sql"customer_id = $customerId"),
-      ).flatten,
-      sql" AND "
+  private def makeBaseSql(stripeAccountId: String, liveMode: Boolean, params: Params): CommonTableExpression[?] = {
+    val accountsReceivable = DSL.inline(JournalEntry.Account.AccountsReceivable.name)
+
+    val whereClause: Seq[Condition] = Seq(
+      Some(field("stripe_account_id") === stripeAccountId),
+      Some(field("live_mode") === liveMode),
+      Some(field("occurred_at") <= params.exclusiveUpUntil),
+      Some(field("settlement_currency") === params.currency),
+      Some(accountsReceivable.in(field("debit"), field("credit"))),
+      params.customerId.map { customerId => field("customer_id") === customerId }
+    ).flatten
+
+    val settlementAmount = field("settlement_amount", classOf[java.lang.Long])
+    val amount = sum(
+      when(field("debit") === accountsReceivable, settlementAmount)
+        .otherwise(0L)
+        .add(when(field("credit") === accountsReceivable, settlementAmount.neg()).otherwise(0L))
     )
 
-    makeSql(
-      sql"""
-        WITH entries AS (
-          SELECT
-            transaction_id,
-            customer_id,
-            MIN(invoice_id) AS invoice_id,
-            EXTRACT(DAY FROM (${params.exclusiveUpUntil} - MIN(occurred_at)))::INTEGER AS days_outstanding,
-            MIN(occurred_at) AS occurred_at,
-            SUM(
-              (CASE WHEN debit = 'AccountsReceivable' THEN settlement_amount ELSE 0 END) +
-              (CASE WHEN credit = 'AccountsReceivable' THEN -settlement_amount ELSE 0 END)
-            ) AS amount
-          FROM journal_entry
-          WHERE
-      """,
-      whereClause,
-      sql"""
-          GROUP BY settlement_currency, customer_id, transaction_id
-          HAVING SUM(
-            (CASE WHEN debit = 'AccountsReceivable' THEN settlement_amount ELSE 0 END) +
-              (CASE WHEN credit = 'AccountsReceivable' THEN -settlement_amount ELSE 0 END)
-          ) != 0
-        ),
-        bucketed AS (
-          SELECT
-            e.transaction_id,
-            e.customer_id,
-            e.invoice_id,
-            e.occurred_at,
-            cus.name AS customer_name,
-            cus.email AS customer_email,
-            inv.number AS invoice_number,
-            con.title AS transaction_title,
-            CASE WHEN days_outstanding <= 0 THEN e.amount ELSE 0 END AS "not_due",
-            CASE WHEN days_outstanding > 0 AND days_outstanding <= 30 THEN e.amount ELSE 0 END AS "days_30",
-            CASE WHEN days_outstanding > 30 AND days_outstanding <= 60 THEN e.amount ELSE 0 END AS "days_60",
-            CASE WHEN days_outstanding > 60 AND days_outstanding <= 90 THEN e.amount ELSE 0 END AS "days_90",
-            CASE WHEN days_outstanding > 90 AND days_outstanding <= 120 THEN e.amount ELSE 0 END AS "days_120",
-            CASE WHEN days_outstanding > 120 THEN e.amount ELSE 0 END AS "days_120_plus",
-            e.amount AS total
-          FROM entries e
-          LEFT JOIN stripe.customer cus ON e.customer_id = cus.id
-          LEFT JOIN transaction con ON e.transaction_id = con.id
-          LEFT JOIN stripe.invoice inv ON e.invoice_id = inv.id
-        ),
+    val mappedJournalEntries = getMappedJournalEntries()
 
-        groups AS (
-          SELECT
-      """,
-      makeSelectedColumns(params),
-      sql"FROM bucketed",
-      makeGroupByClause(params),
-      sql")"
+    val entries = name("entries").as(
+      `with`(mappedJournalEntries)
+        .select(
+          field("transaction_id"),
+          field("customer_id"),
+          min(field("invoice_id")).as("invoice_id"),
+          field(
+            "EXTRACT(DAY FROM ({0} - {1}))::INTEGER",
+            classOf[Integer],
+            DSL.`val`(params.exclusiveUpUntil),
+            min(field("occurred_at"))
+          ).as("days_outstanding"),
+          min(field("occurred_at")).as("occurred_at"),
+          amount.as("amount")
+        )
+        .from(mappedJournalEntries)
+        .where(whereClause.asJava)
+        .groupBy(field("settlement_currency"), field("customer_id"), field("transaction_id"))
+        .having(amount.ne(java.math.BigDecimal.ZERO))
+    )
+
+    val e = entries.as("e")
+    def eField(columnName: String): Field[Any] = field(name("e", columnName), classOf[Any])
+    val eAmount = field(name("e", "amount"), classOf[java.lang.Long])
+    val daysOutstanding = field("days_outstanding", classOf[Integer])
+
+    val bucketed = name("bucketed").as(
+      `with`(entries)
+        .select(
+          eField("transaction_id"),
+          eField("customer_id"),
+          eField("invoice_id"),
+          eField("occurred_at"),
+          STRIPE_CUSTOMER.NAME.as("customer_name"),
+          STRIPE_CUSTOMER.EMAIL.as("customer_email"),
+          STRIPE_INVOICE.NUMBER.as("invoice_number"),
+          TRANSACTION.TITLE.as("transaction_title"),
+          when(daysOutstanding <= 0, eAmount).otherwise(0L).as("not_due"),
+          when((daysOutstanding > 0).and(daysOutstanding <= 30), eAmount).otherwise(0L).as("days_30"),
+          when((daysOutstanding > 30).and(daysOutstanding <= 60), eAmount).otherwise(0L).as("days_60"),
+          when((daysOutstanding > 60).and(daysOutstanding <= 90), eAmount).otherwise(0L).as("days_90"),
+          when((daysOutstanding > 90).and(daysOutstanding <= 120), eAmount).otherwise(0L).as("days_120"),
+          when(daysOutstanding > 120, eAmount).otherwise(0L).as("days_120_plus"),
+          eAmount.as("total")
+        )
+        .from(e)
+        .leftJoin(STRIPE_CUSTOMER).on(eField("customer_id") === STRIPE_CUSTOMER.ID)
+        .leftJoin(TRANSACTION).on(eField("transaction_id") === TRANSACTION.ID)
+        .leftJoin(STRIPE_INVOICE).on(eField("invoice_id") === STRIPE_INVOICE.ID)
+    )
+
+    val groupBys = makeGroupByClause(params)
+    val groupSelect = `with`(bucketed)
+      .select(makeSelectedColumns(params).asJava)
+      .from(bucketed)
+
+    name("groups").as(
+      if (groupBys.isEmpty) { groupSelect } else { groupSelect.groupBy(groupBys.asJava) }
     )
   }
 
@@ -243,15 +268,24 @@ class ArAgingService @Inject() (
   def count(stripeAccountId: String, liveMode: Boolean, params: Params): Future[Long] = {
     db
       .run {
-        makeSql(
-          makeBaseSql(stripeAccountId, liveMode, params),
-          sql"""
-            SELECT COUNT(*) FROM groups
-          """
+        val groups = makeBaseSql(stripeAccountId, liveMode, params)
+        toSqlActionBuilder(
+          `with`(groups)
+            .select(DSL.count(asterisk()))
+            .from(groups)
         ).as[Long]
 
       }
       .map(_.headOption.getOrElse(0L))
+  }
+
+  private def makeListSql(stripeAccountId: String, liveMode: Boolean, params: Params): SelectSeekStepN[?] = {
+    val groups = makeBaseSql(stripeAccountId, liveMode, params)
+
+    `with`(groups)
+      .select(asterisk())
+      .from(groups)
+      .orderBy(makeOrderByClause(params.sorts).asJava)
   }
 
   def get(stripeAccountId: String, liveMode: Boolean, params: Params, offset: Int, limit: Int): Future[Result] = {
@@ -260,11 +294,12 @@ class ArAgingService @Inject() (
 
     db
       .run {
-        makeSql(
-          makeBaseSql(stripeAccountId, liveMode, params),
-          sql"SELECT * FROM groups",
-          makeOrderByClause(params.sorts),
-          sql"LIMIT $limit OFFSET $offset"
+        val list = makeListSql(stripeAccountId, liveMode, params)
+        toSqlActionBuilder(
+          select(asterisk())
+            .from(list)
+            .limit(limit)
+            .offset(offset)
         ).as[Seq[Option[Any]]]
       }
       .map { rows =>
@@ -282,12 +317,10 @@ class ArAgingService @Inject() (
 
     db
       .stream {
-        makeSql(
-          makeBaseSql(stripeAccountId, liveMode, params),
-          sql"""
-            SELECT * FROM groups
-          """,
-          makeOrderByClause(params.sorts),
+        val list = makeListSql(stripeAccountId, liveMode, params)
+        toSqlActionBuilder(
+          select(asterisk())
+            .from(list)
         ).as[Seq[Option[Any]]]
       }
       .foreach { row =>
