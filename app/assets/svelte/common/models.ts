@@ -494,3 +494,12 @@ export interface TrackedException {
   message: string
   stackTrace: string
 }
+
+
+export interface MetronomeDataExportDetail {
+  host: string
+  port: number
+  databaseName: string
+  schemaName: string
+  username: string
+}

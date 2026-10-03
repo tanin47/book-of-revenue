@@ -2,14 +2,16 @@ package controllers
 
 import database.services.{JournalEntryService, StripeAccountService, UserService}
 import framework.Helpers.queueBootstrapJobs
-import framework.{BaseController, ControllerComponents, PlayConfig, Tuples}
+import framework.*
 import givers.form.Form
 import givers.form.Mappings.{boolean, text}
 import org.jobrunr.scheduling.JobRequestScheduler
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.mvc.AnyContent
-import services.StripeService
+import services.MetronomeDataExportPostgresUserService.METRONOME_DATA_EXPORT_SCHEMA_NAME
+import services.{MetronomeDataExportPostgresUserService, StripeService}
 
+import java.net.URI
 import javax.inject.*
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -45,6 +47,7 @@ class SettingsController @Inject() (
   stripeService: StripeService,
   stripeAccountService: StripeAccountService,
   journalEntryService: JournalEntryService,
+  metronomePostgresUserService: MetronomeDataExportPostgresUserService,
   jobScheduler: JobRequestScheduler,
   config: PlayConfig,
   cc: ControllerComponents
@@ -62,6 +65,24 @@ class SettingsController @Inject() (
       Ok(Json.obj(
         "stripeAccounts" -> stripeAccounts.map(_.toJson())
       ))
+    }
+  }
+
+  def loadMetronomeDataExportDetail(): play.api.mvc.Action[JsValue] = authenticatedNoStripeAccount(parse.json) { implicit req =>
+    for {
+      detail <- metronomePostgresUserService.getMetronomeDataExportDetail()
+    } yield {
+      Ok(Json.obj(
+        "metronomeDataExportDetail" -> detail.toJson()
+      ))
+    }
+  }
+
+  def generateNewMetronomeDataExportPassword(): play.api.mvc.Action[JsValue] = authenticatedNoStripeAccount(parse.json) { implicit req =>
+    for {
+      newPassword <- metronomePostgresUserService.resetPassword()
+    } yield {
+      Ok(Json.obj("newPassword" -> newPassword))
     }
   }
 

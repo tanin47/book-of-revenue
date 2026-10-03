@@ -24,7 +24,7 @@ import play.api.mvc.Results.Ok
 import play.api.test.Helpers.POST
 import play.api.{Application, Configuration, Mode, inject}
 import process.*
-import services.ExchangeRate
+import services.{ExchangeRate, MetronomeDataExportPostgresUserService}
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
 
@@ -73,6 +73,7 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
   lazy val transactionService: TransactionService = app.injector.instanceOf[TransactionService]
   lazy val metronomeDraftInvoiceService: MetronomeDraftInvoiceService = app.injector.instanceOf[MetronomeDraftInvoiceService]
   lazy val metronomeInvoiceService: MetronomeInvoiceService = app.injector.instanceOf[MetronomeInvoiceService]
+  lazy val metronomeDataExportPostgresUserService: MetronomeDataExportPostgresUserService = app.injector.instanceOf[MetronomeDataExportPostgresUserService]
 
   var idRunner: Int = 0
   var stripeAccount: StripeAccount = scala.compiletime.uninitialized
@@ -112,6 +113,10 @@ class Base extends AnyFunSpec with BeforeAndAfter with BeforeAndAfterAll with Be
           .as[String]
       })
       schemas.foreach { schema => await(db.run { sqlu"""DROP SCHEMA IF EXISTS "#$schema" CASCADE;""" }) }
+
+      val _ = await(db.run {
+        sqlu"DROP USER IF EXISTS #${metronomeDataExportPostgresUserService.getMetronomeUsername()};"
+      })
 
       app.injector.instanceOf[EvolutionsApi].applyFor("default")
 
