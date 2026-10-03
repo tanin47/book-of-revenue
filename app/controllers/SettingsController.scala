@@ -1,9 +1,9 @@
 package controllers
 
 import database.services.{JournalEntryService, StripeAccountService, UserService}
-import framework.Helpers.queueBootstrapJobs
+import framework.Helpers.{makeValidationException, queueBootstrapJobs}
 import framework.*
-import givers.form.Form
+import givers.form.{Form, ValidationException}
 import givers.form.Mappings.{boolean, text}
 import org.jobrunr.scheduling.JobRequestScheduler
 import play.api.libs.json.{JsObject, JsValue, Json}
@@ -79,6 +79,10 @@ class SettingsController @Inject() (
   }
 
   def generateNewMetronomeDataExportPassword(): play.api.mvc.Action[JsValue] = authenticatedNoStripeAccount(parse.json) { implicit req =>
+    if (config.IS_PUBLIC_DEMO) {
+      throw makeValidationException("validation.generateNewMetronomeDataExportPassword.error.forbiddenInDemoMode")
+    }
+
     for {
       newPassword <- metronomePostgresUserService.resetPassword()
     } yield {

@@ -9,7 +9,7 @@ import org.openqa.selenium.*
 import org.openqa.selenium.chrome.{ChromeDriver, ChromeOptions}
 import org.openqa.selenium.interactions.Actions
 import org.openqa.selenium.logging.{LogType, LoggingPreferences}
-import org.openqa.selenium.support.ui.Select
+import org.openqa.selenium.support.ui.{ExpectedConditions, Select, WebDriverWait}
 import play.api.mvc.{DefaultSessionCookieBaker, Session}
 import play.api.test.TestServer
 
@@ -261,5 +261,11 @@ trait Base extends base.Base with MockedTimeChangeListener {
         |      });
         |""".stripMargin
     )
+  }
+
+  def acceptConfirmDialog(): Unit = {
+    val wait = new WebDriverWait(webDriver, java.time.Duration.ofSeconds(10))
+    val confirm = wait.until(ExpectedConditions.alertIsPresent)
+    confirm.accept()
   }
 }

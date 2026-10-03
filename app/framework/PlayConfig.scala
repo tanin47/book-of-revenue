@@ -29,6 +29,8 @@ class PlayConfig @Inject() (
 
   var HAS_VALID_SSL_CERT: Option[PlayConfig.HasValidCert] = None
 
+  var IS_PUBLIC_DEMO: Boolean = getOptString("app.isPublicDemo").exists(_.toBoolean)
+
   def makeFullUrl(path: String): String = s"$BASE_URL$path"
 
   def getString(key: String): String = {

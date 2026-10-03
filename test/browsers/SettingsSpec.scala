@@ -12,14 +12,10 @@ class SettingsSpec extends Base {
     go("/settings")
 
     click(tid("generateMetronomePasswordButton"))
-
-    val wait = new WebDriverWait(webDriver, Duration.ofSeconds(10))
-    val confirm = wait.until(ExpectedConditions.alertIsPresent)
-    confirm.accept()
+    acceptConfirmDialog()
 
     waitUntil { elem(tid("metronomeNewPassword")).getText.nonEmpty }
     val password = elem(tid("metronomeNewPassword")).getText
-    println(password)
     val detail = await(metronomeDataExportPostgresUserService.getMetronomeDataExportDetail())
 
     Using.resource(
@@ -36,5 +32,14 @@ class SettingsSpec extends Base {
         }
       }
     }
+  }
+
+  it("doesn't allow resetting the Metronome password in the public demo mode", user) {
+    config.IS_PUBLIC_DEMO = true
+
+    go("/settings")
+    click(tid("generateMetronomePasswordButton"))
+    acceptConfirmDialog()
+    checkErrorPanel("This is a demo version, generating a new password is not allowed.")
   }
 }
