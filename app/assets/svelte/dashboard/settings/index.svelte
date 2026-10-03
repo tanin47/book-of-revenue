@@ -2,12 +2,18 @@
 import Layout from '../_layout.svelte'
 import {post, ValidationError} from '../../common/form'
 import {onMount} from 'svelte'
-import type {StripeAccount} from "../../common/models";
+import type {MetronomeDataExportDetail, StripeAccount} from "../../common/models";
 import ErrorPanel from '../../common/form/_error_panel.svelte';
+    import Button from '../../common/_button.svelte';
 
 let stripeAccounts: StripeAccount[] = []
+let metronomeDataExportDetail: MetronomeDataExportDetail | null = null
+
 let isLoading = true
+let isLoadingMetronomeDataExportDetail = true
+
 let errors: string[] = []
+let metronomeDataExportDetailErrors: string[] = []
 
 let newApiKey = ''
 let isAdding = false
@@ -50,6 +56,67 @@ async function loadStripeAccounts(): Promise<void> {
   }
 }
 
+async function loadMetronomeDataExportDetail(): Promise<void> {
+  isLoadingMetronomeDataExportDetail = true
+  metronomeDataExportDetailErrors = []
+  try {
+    const json = await post('/settings/load-metronome-data-export-detail', {})
+    metronomeDataExportDetail = json.metronomeDataExportDetail
+  } catch (e) {
+    if (e instanceof ValidationError) {
+      metronomeDataExportDetailErrors = e.messages
+    } else {
+      console.error(e)
+      metronomeDataExportDetailErrors = ['Unable to load the Metronome data export credentials. Please contact your administrator.']
+    }
+  } finally {
+    isLoadingMetronomeDataExportDetail = false
+  }
+}
+
+let newMetronomePassword: string | null = null
+let isRegeneratingPassword = false
+let regeneratePasswordErrors: string[] = []
+let isPasswordCopied = false
+
+async function copyNewMetronomePassword(): Promise<void> {
+  if (newMetronomePassword === null) { return }
+  await navigator.clipboard.writeText(newMetronomePassword)
+  isPasswordCopied = true
+  setTimeout(() => { isPasswordCopied = false }, 2000)
+}
+
+function metronomeFields(metronomeDataExportDetail: MetronomeDataExportDetail) {
+  return [
+    {label: 'Host name', value: metronomeDataExportDetail.host},
+    {label: 'Port', value: String(metronomeDataExportDetail.port)},
+    {label: 'Database name', value: metronomeDataExportDetail.databaseName},
+    {label: 'Schema name', value: metronomeDataExportDetail.schemaName},
+    {label: 'Username', value: metronomeDataExportDetail.username},
+  ]
+}
+
+async function regenerateMetronomePassword(): Promise<void> {
+  if (!window.confirm('Generate a new password? The current password will stop working, and Metronome will fail to export data until you update the password in Metronome.')) { return }
+
+  isRegeneratingPassword = true
+  regeneratePasswordErrors = []
+  try {
+    const json = await post('/settings/generate-metronome-data-export-password', {})
+    newMetronomePassword = json.newPassword
+    isPasswordCopied = false
+  } catch (e) {
+    if (e instanceof ValidationError) {
+      regeneratePasswordErrors = e.messages
+    } else {
+      console.error(e)
+      regeneratePasswordErrors = ['Could not generate a new password. Please try again.']
+    }
+  } finally {
+    isRegeneratingPassword = false
+  }
+}
+
 let removingKey: string | null = null
 
 function apiKeyModes(account: StripeAccount) {
@@ -82,6 +149,7 @@ async function removeApiKey(accountId: string, liveMode: boolean): Promise<void>
 
 onMount(() => {
   void loadStripeAccounts()
+  void loadMetronomeDataExportDetail()
 })
 </script>
 
@@ -95,6 +163,85 @@ onMount(() => {
         <div class="flex flex-col">
           <h1 class="text-xl font-bold leading-tight">Settings</h1>
           <p class="text-sm text-base-content/60">Manage the Stripe accounts connected to Book of Revenue.</p>
+        </div>
+      </div>
+
+      <div class="card bg-base-100 border border-base-300 shadow-sm">
+        <div class="card-body gap-6">
+          <div class="flex flex-col gap-0.5">
+            <span class="font-semibold text-lg">Metronome data export</span>
+            <p class="text-sm text-base-content">
+              Use the credential below to set up a Postgres data export destination in Metronome.
+              See <a class="link link-primary" href="https://docs.metronome.com/guides/reporting-insights/data-export/destinations/postgres-generic" target="_blank" rel="noopener noreferrer">Metronome's instruction</a>.
+            </p>
+          </div>
+          {#if isLoadingMetronomeDataExportDetail}
+            <div class="flex items-center gap-2">
+              <span class="loading loading-spinner loading-xs"></span> Loading...
+            </div>
+          {:else if metronomeDataExportDetailErrors.length > 0 || metronomeDataExportDetail === null}
+            <ErrorPanel errors={metronomeDataExportDetailErrors || ['Unable to load the Metronome data export credentials. Please contact your administrator.']} />
+          {:else}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {#each metronomeFields(metronomeDataExportDetail) as field (field.label)}
+                <div class="flex flex-col gap-1 min-w-0">
+                  <span class="text-xs uppercase text-base-content">{field.label}</span>
+                  <span class="font-bold font-mono break-all">{field.value}</span>
+                </div>
+              {/each}
+            </div>
+            <div class="flex flex-col gap-3 border-t border-base-300 pt-5">
+              <div class="flex flex-col gap-1">
+                <span class="text-xs uppercase text-base-content">Password</span>
+                <p class="text-sm text-gray-600">
+                  For security, the password can't be viewed. Generate a new password to see it once.
+                </p>
+              </div>
+              <div>
+                <Button
+                  dataTestId="generateMetronomePasswordButton"
+                  class="btn btn-outline btn-sm"
+                  isLoading={isRegeneratingPassword}
+                  onClick={() => { void regenerateMetronomePassword() }}
+                >
+                  {#if isRegeneratingPassword}
+                    <span class="loading loading-spinner loading-xs"></span>
+                    Generating…
+                  {:else}
+                    <i class="ph-duotone ph-arrows-clockwise text-base"></i>
+                    Generate new password
+                  {/if}
+                </Button>
+              </div>
+              <ErrorPanel errors={regeneratePasswordErrors} />
+              {#if newMetronomePassword !== null}
+                <div class="flex flex-col gap-2 rounded-lg border border-success/40 bg-success/10 p-4">
+                  <div class="flex items-center gap-1.5 text-sm font-semibold text-success">
+                    <i class="ph-duotone ph-check-circle text-lg"></i>
+                    <span>New password generated</span>
+                  </div>
+                  <div class="flex items-center gap-2 rounded-md border border-base-300 bg-base-100 px-3 py-2">
+                    <span class="grow font-bold font-mono break-all select-all" data-test-id="metronomeNewPassword">{newMetronomePassword}</span>
+                    <button
+                      class="btn btn-ghost btn-xs shrink-0"
+                      title="Copy password"
+                      onclick={() => { void copyNewMetronomePassword() }}
+                    >
+                      {#if isPasswordCopied}
+                        <i class="ph-bold ph-check text-lg text-success"></i>
+                      {:else}
+                        <i class="ph-duotone ph-copy text-lg"></i>
+                      {/if}
+                    </button>
+                  </div>
+                  <p class="flex items-center gap-1.5 text-xs text-base-content">
+                    <i class="ph-duotone ph-warning text-base text-warning"></i>
+                    <span>Copy this password now and update it in Metronome. It won't be shown again.</span>
+                  </p>
+                </div>
+              {/if}
+            </div>
+          {/if}
         </div>
       </div>
 
@@ -129,8 +276,8 @@ onMount(() => {
           <div class="card bg-base-100 border border-base-300 shadow-sm">
             <div class="card-body gap-6">
               <div class="flex items-center gap-3 min-w-0">
-                <div class="flex items-center justify-center size-11 rounded-lg text-[#635bff] shrink-0">
-                  <i class="ph-duotone ph-stripe-logo text-5xl"></i>
+                <div class="flex items-center justify-center font-bold rounded-lg text-[#635bff] shrink-0 border border-2 border-[#635bff] p-1">
+                  Stripe
                 </div>
                 <span class="font-semibold truncate text-2xl">{account.name}</span>
               </div>
@@ -188,7 +335,7 @@ onMount(() => {
       <div class="card bg-base-100 border border-base-300 shadow-sm">
         <div class="card-body gap-3">
           <div class="flex flex-col gap-0.5">
-            <span class="font-semibold text-lg">Add a new API key</span>
+            <span class="font-semibold text-lg">Add a new Stripe API key</span>
             <p class="text-sm text-base-content">Paste a Stripe secret key to connect live or test mode.</p>
           </div>
           <div class="flex flex-col sm:flex-row gap-2">

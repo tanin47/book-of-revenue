@@ -2,14 +2,16 @@ package controllers
 
 import database.services.{JournalEntryService, StripeAccountService, UserService}
 import framework.Helpers.queueBootstrapJobs
-import framework.{BaseController, ControllerComponents, PlayConfig, Tuples}
+import framework.*
 import givers.form.Form
 import givers.form.Mappings.{boolean, text}
 import org.jobrunr.scheduling.JobRequestScheduler
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.mvc.AnyContent
-import services.StripeService
+import services.MetronomeDataExportPostgresUserService.METRONOME_DATA_EXPORT_SCHEMA_NAME
+import services.{MetronomeDataExportPostgresUserService, StripeService}
 
+import java.net.URI
 import javax.inject.*
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -37,6 +39,22 @@ object SettingsController {
     "stripeAccountId" -> text(allowEmpty = false),
     "liveMode" -> boolean,
   )
+
+  case class MetronomeDataExportDetail(
+    host: String,
+    port: Int,
+    databaseName: String,
+    schemaName: String,
+    username: String,
+  ) extends Jsonable {
+    def toJson(): JsObject = Json.obj(
+      "host" -> host,
+      "port" -> port,
+      "databaseName" -> databaseName,
+      "schemaName" -> schemaName,
+      "username" -> username
+    )
+  }
 }
 
 @Singleton
@@ -45,6 +63,7 @@ class SettingsController @Inject() (
   stripeService: StripeService,
   stripeAccountService: StripeAccountService,
   journalEntryService: JournalEntryService,
+  metronomePostgresUserService: MetronomeDataExportPostgresUserService,
   jobScheduler: JobRequestScheduler,
   config: PlayConfig,
   cc: ControllerComponents
@@ -62,6 +81,31 @@ class SettingsController @Inject() (
       Ok(Json.obj(
         "stripeAccounts" -> stripeAccounts.map(_.toJson())
       ))
+    }
+  }
+
+  def loadMetronomeDataExportDetail(): play.api.mvc.Action[JsValue] = authenticatedNoStripeAccount(parse.json) { implicit req =>
+    for {
+      username <- metronomePostgresUserService.getMetronomeUsername()
+    } yield {
+      val postgresUrl = new URI(config.getString("slick.dbs.default.db.properties.url"))
+      Ok(Json.obj(
+        "metronomeDataExportDetail" -> MetronomeDataExportDetail(
+          host = postgresUrl.getHost,
+          port = postgresUrl.getPort,
+          databaseName = postgresUrl.getPath.substring(1),
+          schemaName = METRONOME_DATA_EXPORT_SCHEMA_NAME,
+          username = username,
+        ).toJson()
+      ))
+    }
+  }
+
+  def generateNewMetronomeDataExportPassword(): play.api.mvc.Action[JsValue] = authenticatedNoStripeAccount(parse.json) { implicit req =>
+    for {
+      newPassword <- metronomePostgresUserService.resetPassword()
+    } yield {
+      Ok(Json.obj("newPassword" -> newPassword))
     }
   }
 
