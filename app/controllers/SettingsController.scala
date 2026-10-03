@@ -39,22 +39,6 @@ object SettingsController {
     "stripeAccountId" -> text(allowEmpty = false),
     "liveMode" -> boolean,
   )
-
-  case class MetronomeDataExportDetail(
-    host: String,
-    port: Int,
-    databaseName: String,
-    schemaName: String,
-    username: String,
-  ) extends Jsonable {
-    def toJson(): JsObject = Json.obj(
-      "host" -> host,
-      "port" -> port,
-      "databaseName" -> databaseName,
-      "schemaName" -> schemaName,
-      "username" -> username
-    )
-  }
 }
 
 @Singleton
@@ -86,17 +70,10 @@ class SettingsController @Inject() (
 
   def loadMetronomeDataExportDetail(): play.api.mvc.Action[JsValue] = authenticatedNoStripeAccount(parse.json) { implicit req =>
     for {
-      username <- metronomePostgresUserService.getMetronomeUsername()
+      detail <- metronomePostgresUserService.getMetronomeDataExportDetail()
     } yield {
-      val postgresUrl = new URI(config.getString("slick.dbs.default.db.properties.url"))
       Ok(Json.obj(
-        "metronomeDataExportDetail" -> MetronomeDataExportDetail(
-          host = postgresUrl.getHost,
-          port = postgresUrl.getPort,
-          databaseName = postgresUrl.getPath.substring(1),
-          schemaName = METRONOME_DATA_EXPORT_SCHEMA_NAME,
-          username = username,
-        ).toJson()
+        "metronomeDataExportDetail" -> detail.toJson()
       ))
     }
   }
