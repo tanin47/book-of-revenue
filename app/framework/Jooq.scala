@@ -18,7 +18,7 @@ object Jooq {
 
   def getSql(queryPart: QueryPart): String = {
     val result = ctx.renderInlined(queryPart)
-    logger.info(s"SQL: $result")
+    logger.debug(s"SQL: $result")
     result
   }
 

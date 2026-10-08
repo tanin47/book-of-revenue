@@ -216,9 +216,10 @@ class ProcessTransactionWorker @Inject() (
 
   private def makeProcessStandalonePaymentIntent(transaction: Transaction): Option[ProcessTransaction] = {
     val paymentIntentOpt = await(paymentIntentService.getRichById(transaction.id))
-    if (paymentIntentOpt.isEmpty) {
+    if (paymentIntentOpt.isEmpty || paymentIntentOpt.flatMap(_.charge).isEmpty) {
       return None
     }
+
 
     Some(ProcessStandalonePaymentIntent(
       transaction = transaction,
