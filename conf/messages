@@ -18,3 +18,5 @@ validation.forgotPassword.email.error.notExist = The email isn''t registered. Pl
 
 validation.addNewApiKey.apiKey.error.invalid = The API key is invalid.
 validation.addNewApiKey.apiKey.error.externalError = {0}
+
+validation.generateNewMetronomeDataExportPassword.error.forbiddenInDemoMode = This is a demo version, generating a new password is not allowed.
