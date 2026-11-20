@@ -121,7 +121,7 @@ Docker / daemonUser := "daemon"
 dockerExposedPorts := Seq(80, 443, 8000)
 dockerUsername := Some("tanin47")
 dockerUpdateLatest := false
-dockerBaseImage := "ibm-semeru-runtimes:open-jdk-25.0.3.0-jdk-jammy"
+dockerBaseImage := "ibm-semeru-runtimes:open-25-jdk-jammy"
 
 dockerEntrypoint := dockerEntrypoint.value ++ Seq(
   "-Dconfig.file=./conf/prod.conf",
