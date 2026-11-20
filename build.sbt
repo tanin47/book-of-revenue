@@ -3,7 +3,7 @@ import tanin.play.svelte.SbtSvelte.autoImport.SvelteKeys.svelte
 name := """bookofrevenue"""
 organization := "tanin.bookofrevenue"
 
-version := sys.env.getOrElse("GIT_TAG", "0.1.0-beta-dev")
+version := sys.env.getOrElse("GIT_TAG", "0.3.0-beta-dev")
 
 import _root_.scalafix.sbt.{BuildInfo => ScalafixBuildInfo}
 
